@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#FF9CBE">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ぷにぷに">
+<title>ぷにぷに にっき</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./css/style.css">
+<script src="./js/app.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <div class="title"><b id="petName"></b><small id="genLabel"></small></div>
+  <button class="gear" id="gear" aria-label="おうちの方の設定（長押し）">⚙️</button>
+</header>
+
+<main class="layout">
+  <section>
+    <div class="shell">
+      <div class="screen" id="screen">
+        <div class="gauges" id="gauges"></div>
+        <div class="badges" id="badges"></div>
+        <button class="pet" id="pet" aria-label="なでる"></button>
+        <div class="growth" id="growth"></div>
+      </div>
+      <div class="bubble" aria-live="polite">
+        <p id="bubbleText"></p>
+        <p id="bubbleZh" class="zh"></p>
+        <button class="speak" id="speakBtn" aria-label="よみあげ">🔊</button>
+      </div>
+      <div class="tray" id="tray"></div>
+    </div>
+    <div class="under">
+      <button class="pill" id="zukanBtn">📚 ずかん</button>
+      <button class="pill" id="nextEggBtn" hidden>🥚 つぎの たまご</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="note">
+      <h2>できたこと を おしえてね</h2>
+      <div class="tasks" id="tasks"></div>
+    </div>
+    <div class="note">
+      <h2>つよさ</h2>
+      <div class="params" id="params"></div>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="modal" hidden><div class="sheet" id="sheet"></div></div>
+
+</body>
+</html>

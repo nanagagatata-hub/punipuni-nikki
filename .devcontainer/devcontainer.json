@@ -1,0 +1,25 @@
+// 開発用コンテナ（Ubuntu 24.04）。アプリ本体は静的サイトのままで、ここで入れるものは開発・テスト用の道具だけ。
+// 詳細は CLAUDE.md の「開発環境（Dev Container）」を参照。
+{
+	"name": "PuniPuni (Ubuntu)",
+	"image": "mcr.microsoft.com/devcontainers/base:noble",
+
+	"features": {
+		// ローカルサーバー（python3 -m http.server）用
+		"ghcr.io/devcontainers/features/python:1": { "version": "os-provided" },
+		// 構文チェック（node --check）と Playwright MCP（npx）用
+		"ghcr.io/devcontainers/features/node:1": { "version": "lts" }
+	},
+
+	// ヘッドレス Chromium は /dev/shm が小さいと落ちるため広げる
+	"runArgs": ["--shm-size=1g"],
+
+	// VS Code がホスト側の localhost:8000 へ転送する
+	"forwardPorts": [8000],
+	"portsAttributes": {
+		"8000": { "label": "ぷにぷに (http.server)", "onAutoForward": "notify" }
+	},
+
+	// Playwright 用のブラウザと OS ライブラリを入れる
+	"postCreateCommand": "bash .devcontainer/post-create.sh"
+}

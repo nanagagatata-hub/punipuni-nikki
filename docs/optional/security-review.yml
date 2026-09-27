@@ -1,0 +1,25 @@
+# 任意：GitHub のプルリクエストごとに Claude の自動セキュリティレビューを走らせる設定。
+# 使う場合は .github/workflows/ にコピーし、リポジトリの Secrets に CLAUDE_API_KEY を登録する。
+# 注意：Claude API キー（従量課金）が必要。Pro/Max 等のサブスクリプションとは別契約。
+# 最新の設定項目は https://github.com/anthropics/claude-code-security-review を確認すること。
+name: Security Review
+
+permissions:
+  pull-requests: write
+  contents: read
+
+on:
+  pull_request:
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 2
+      - uses: anthropics/claude-code-security-review@main
+        with:
+          comment-pr: true
+          claude-api-key: ${{ secrets.CLAUDE_API_KEY }}

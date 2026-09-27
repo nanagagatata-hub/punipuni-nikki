@@ -1,0 +1,47 @@
+# 公開リポジトリ（GitHub Pages）に入れないもの
+
+# --- Claude Code の個人設定・作業ファイル（agents/ と settings.json は共有するので残す） ---
+.claude/*
+!.claude/agents/
+!.claude/settings.json
+CLAUDE.local.md
+
+# --- 秘密情報（API キー・証明書など） ---
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.mobileprovision
+secrets/
+
+# --- 育成データのバックアップ（なまえ等を含むため公開しない） ---
+backup/
+backups/
+*.backup.txt
+punipuni-backup*
+
+# --- ブラウザテストの出力（スクリーンショット・ログ） ---
+.playwright-mcp/
+playwright-report/
+test-results/
+screenshots/
+*.log
+
+# --- Node.js（開発用の道具。アプリ本体の依存ではない） ---
+node_modules/
+package-lock.json
+
+# --- OS・エディタ ---
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~
+
+# --- 一時ファイル ---
+tmp/
+*.tmp

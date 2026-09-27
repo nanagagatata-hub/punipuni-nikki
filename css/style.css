@@ -1,31 +1,40 @@
+/* ぷにぷに にっき — 「えにっき帳」
+   うえ に え の わく、した に マスめ の かみ。なまえ は げんこうようし の マス に かく。
+   iPad mini（744×1133 / 1133×744）で スクロール なし に おさまるよう、
+   のびちぢみ するのは ぺっと の え だけ に している。 */
 :root{
-  --bg:#FFE8F0; --dot:#FFD3E2; --shell:#FF9CBE; --shell-dk:#E97AA2; --screen:#E4F6EC;
-  --ink:#5B3A55; --soft:#8E6F88; --card:#FFFFFF; --lemon:#FFF1A6; --lav:#E6DDFF;
-  --accent:#FF6F9C; --sil:#D9CCD6; --line:#F6D2E0;
-  box-sizing:border-box;
-  padding-top:env(safe-area-inset-top,0px);
-  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#FFF7FA; --grid:#F6DCE7; --ink:#5B3A55; --soft:#8E6F88;
+  --card:#FFFFFF; --frame:#E4F6EC; --frame-line:#7A5A74; --line:#EFC6D7;
+  --accent:#FF6F9C; --accent-dk:#DE4F7E; --lemon:#FFF1A6; --lav:#E6DDFF;
+  --sil:#D9CCD6; --bg:var(--paper);
+  --night:#3B3F63; --night-ink:#F7E8F1;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#2A2238; --dot:#352A48; --shell:#B85C86; --shell-dk:#8E4468; --screen:#2F4540;
-    --ink:#F7E8F1; --soft:#CBB3C6; --card:#362C4A; --lemon:#5B5230; --lav:#443A66;
-    --accent:#FF8FB3; --sil:#5C5070; --line:#4A3E60;
+    --paper:#2A2238; --grid:#352A48; --ink:#F7E8F1; --soft:#CBB3C6;
+    --card:#362C4A; --frame:#2F4540; --frame-line:#CBB3C6; --line:#4F4266;
+    --accent:#FF8FB3; --accent-dk:#C75E86; --lemon:#5B5230; --lav:#443A66;
+    --sil:#5C5070;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#2A2238; --dot:#352A48; --shell:#B85C86; --shell-dk:#8E4468; --screen:#2F4540;
-  --ink:#F7E8F1; --soft:#CBB3C6; --card:#362C4A; --lemon:#5B5230; --lav:#443A66;
-  --accent:#FF8FB3; --sil:#5C5070; --line:#4A3E60;
+  --paper:#2A2238; --grid:#352A48; --ink:#F7E8F1; --soft:#CBB3C6;
+  --card:#362C4A; --frame:#2F4540; --frame-line:#CBB3C6; --line:#4F4266;
+  --accent:#FF8FB3; --accent-dk:#C75E86; --lemon:#5B5230; --lav:#443A66;
+  --sil:#5C5070;
 }
 *,*::before,*::after{box-sizing:border-box}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%}
 body{
-  margin:0; color:var(--ink); background:var(--bg);
-  background-image:radial-gradient(var(--dot) 2.5px, transparent 2.6px);
-  background-size:26px 26px;
+  margin:0; color:var(--ink); background-color:var(--paper);
+  /* マスめ の かみ */
+  background-image:
+    linear-gradient(var(--grid) 1.5px, transparent 1.5px),
+    linear-gradient(90deg, var(--grid) 1.5px, transparent 1.5px);
+  background-size:28px 28px; background-position:-1px -1px;
   font-family:'Hiragino Maru Gothic ProN','Hiragino Sans',sans-serif;
   font-weight:700; -webkit-tap-highlight-color:transparent;
+  overscroll-behavior:none;
 }
 [hidden]{display:none!important}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -33,101 +42,207 @@ button{cursor:pointer}
 :focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 img,svg{max-width:100%}
 
-.top{max-width:1100px;margin:0 auto;padding:14px 18px 0;display:flex;align-items:center;justify-content:space-between}
-.title{display:flex;align-items:baseline;gap:10px}
-.title b{font-size:28px;font-weight:900;letter-spacing:.02em}
-.title small{font-size:16px;color:var(--soft)}
-.gear{width:48px;height:48px;border-radius:50%;border:3px solid var(--line);background:var(--card);font-size:22px;touch-action:none;user-select:none;-webkit-user-select:none}
-
-.layout{max-width:1100px;margin:0 auto;padding:14px 16px 28px;display:grid;gap:22px}
-@media (min-width:820px){.layout{grid-template-columns:minmax(380px,1.05fr) minmax(320px,1fr);align-items:start}}
-
-.shell{
-  position:relative;background:var(--shell);
-  border-radius:200px 200px 52px 52px;
-  padding:46px 22px 24px;
-  box-shadow:inset 0 -10px 0 var(--shell-dk), 0 10px 0 rgba(0,0,0,.05);
+/* ---------- がめん ぜんたい：1がめん に おさめる ---------- */
+.app{
+  height:100vh; height:100dvh;
+  max-width:1180px; margin:0 auto;
+  display:flex; flex-direction:column;
+  padding:
+    calc(10px + env(safe-area-inset-top,0px))
+    calc(16px + env(safe-area-inset-right,0px))
+    calc(12px + env(safe-area-inset-bottom,0px))
+    calc(16px + env(safe-area-inset-left,0px));
+  gap:12px;
 }
-.shell::before{content:"";position:absolute;top:16px;left:50%;width:22px;height:22px;margin-left:-11px;border-radius:50%;background:var(--bg);box-shadow:inset 0 3px 0 rgba(0,0,0,.1)}
-.screen{
-  position:relative;background:var(--screen);border-radius:30px;padding:14px 14px 16px;
-  box-shadow:inset 0 5px 0 rgba(0,0,0,.07);border:5px solid var(--shell-dk);
+
+/* ---------- ひょうだい（げんこうようし の マス） ---------- */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none}
+.title{min-width:0}
+.name{display:flex;flex-wrap:nowrap}
+.masu{
+  width:38px;height:38px;display:grid;place-items:center;
+  font-size:24px;font-weight:900;line-height:1;
+  background:var(--card);
+  border:2px solid var(--frame-line);
+}
+.masu+.masu{border-left-width:0}
+.meta{margin:5px 0 0;display:flex;gap:14px;font-size:15px;color:var(--soft)}
+.meta small{font-size:inherit}
+.tools{display:flex;align-items:center;gap:10px;flex:none}
+.pill{
+  height:48px;border:2.5px solid var(--frame-line);background:var(--card);
+  border-radius:999px;padding:0 18px;font-size:17px;white-space:nowrap;
+  box-shadow:0 3px 0 var(--line);
+}
+.pill:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line)}
+.gear{
+  width:48px;height:48px;border-radius:50%;border:2.5px solid var(--line);
+  background:var(--card);font-size:22px;
+  touch-action:none;user-select:none;-webkit-user-select:none;
+}
+
+/* ---------- ならびかた（たて：1れつ / よこ：2れつ） ---------- */
+.layout{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px}
+.side-pet{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px}
+.side-note{flex:none;display:flex;flex-direction:column;gap:12px}
+
+@media (orientation:landscape) and (min-width:900px){
+  .layout{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .side-note{min-height:0;justify-content:center;gap:22px}
+}
+
+/* ---------- え の わく ---------- */
+.frame{
+  position:relative;flex:1;min-height:210px;
+  display:flex;flex-direction:column;
+  background:var(--frame);
+  border:3.5px solid var(--frame-line);border-radius:18px;
+  /* クレヨン で 2かい なぞった ような ふたえ の せん */
+  box-shadow:0 0 0 4px var(--paper), 0 0 0 6px var(--frame-line);
+  margin:6px;padding:10px 12px 12px;
   transition:background .6s;
 }
-.screen.night{background:#3B3F63;color:#F7E8F1}
-.screen.night::after{content:"🌙";position:absolute;top:52px;right:18px;font-size:30px}
-.gauges{display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:center;min-height:34px;align-items:center}
-.gauge{display:flex;align-items:center;gap:3px}
+.frame.night{background:var(--night);color:var(--night-ink)}
+.frame.night::after{content:"🌙";position:absolute;top:44px;right:16px;font-size:28px}
+.gauges{flex:none;display:flex;flex-wrap:wrap;gap:4px 18px;justify-content:center;min-height:30px;align-items:center}
+.gauge{display:flex;align-items:center;gap:2px}
 .glabel{font-size:15px;margin-right:4px}
-.gi{font-size:22px;opacity:.22;filter:grayscale(1)}
+.gi{font-size:20px;opacity:.22;filter:grayscale(1)}
 .gi.on{opacity:1;filter:none}
-.badges{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;min-height:6px;margin-top:6px}
-.badge{font-size:15px;padding:4px 12px;border-radius:999px;background:var(--lemon);color:#5B3A55}
-.badge.sick{background:#D6ECFA}
-.pet{display:block;margin:4px auto 0;width:min(70vw,300px);aspect-ratio:1;background:none;border:0;padding:0}
-.pet svg{width:100%;height:100%;transform-origin:50% 92%;animation:bob 2.6s ease-in-out infinite}
+.badges{flex:none;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:4px}
+.badge{font-size:14px;padding:3px 12px;border-radius:999px;background:var(--lemon);color:var(--ink)}
+.badge.sick{background:#D6ECFA;color:#5B3A55}
+/* ぺっと：のこり の たかさ を ぜんぶ つかう。svg は まんなか に おさまる */
+.pet{position:relative;flex:1;min-height:110px;width:100%;margin:2px 0;background:none;border:0;padding:0}
+.pet svg{position:absolute;inset:0;width:100%;height:100%;transform-origin:50% 92%;animation:bob 2.6s ease-in-out infinite}
 .pet.wobble svg{animation:wob .5s ease-in-out}
 @keyframes bob{0%,100%{transform:scale(1,1)}50%{transform:scale(1.035,.965)}}
 @keyframes wob{0%,100%{transform:rotate(0)}25%{transform:rotate(-7deg)}75%{transform:rotate(7deg)}}
-.growth{margin-top:6px;font-size:15px;text-align:center}
-.bar{height:14px;border-radius:999px;background:var(--lav);overflow:hidden;margin:6px auto 0;max-width:320px}
+.growth{flex:none;font-size:14px;text-align:center}
+.bar{height:12px;border-radius:999px;background:var(--lav);overflow:hidden;margin:5px auto 0;max-width:300px}
 .bar i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .6s}
 
-.bubble{position:relative;margin:18px 4px 0;background:var(--card);border-radius:24px;padding:14px 60px 14px 18px;min-height:60px}
-.bubble::before{content:"";position:absolute;top:-12px;left:50%;margin-left:-12px;border:12px solid transparent;border-top:0;border-bottom-color:var(--card)}
-.bubble p{margin:0;font-size:19px;line-height:1.6}
-.bubble .zh{font-size:15px;color:var(--soft);margin-top:2px}
-.speak{position:absolute;right:10px;top:50%;margin-top:-22px;width:44px;height:44px;border-radius:50%;border:0;background:var(--lemon);font-size:20px}
+/* ---------- ふきだし と ごはん ---------- */
+.talk{flex:none;display:flex;flex-direction:column;gap:10px}
+.bubble{
+  position:relative;background:var(--card);
+  border:2.5px solid var(--frame-line);border-radius:20px;
+  padding:10px 58px 10px 16px;min-height:58px;
+}
+.bubble::before{
+  content:"";position:absolute;top:-10px;left:50%;width:16px;height:16px;margin-left:-8px;
+  background:var(--card);border-left:2.5px solid var(--frame-line);border-top:2.5px solid var(--frame-line);
+  transform:rotate(45deg);border-radius:3px 0 0 0;
+}
+.bubble p{margin:0;font-size:18px;line-height:1.55}
+.bubble .zh{font-size:15px;color:var(--soft);margin-top:1px}
+.speak{position:absolute;right:8px;top:50%;margin-top:-22px;width:44px;height:44px;border-radius:50%;border:0;background:var(--lemon);font-size:20px}
 
-.tray{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:16px;min-height:72px;align-items:center}
-.tray .empty{font-size:16px;color:#fff;text-align:center;line-height:1.6;padding:0 10px}
-.food{position:relative;width:74px;height:74px;border-radius:24px;border:0;background:var(--card);font-size:38px;box-shadow:0 5px 0 var(--shell-dk)}
-.food:active{transform:translateY(3px);box-shadow:0 2px 0 var(--shell-dk)}
-.food .n{position:absolute;top:-8px;right:-8px;min-width:28px;height:28px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;font-size:16px;line-height:28px}
-.under{display:flex;gap:12px;justify-content:center;margin-top:16px;flex-wrap:wrap}
-.pill{border:3px solid var(--line);background:var(--card);border-radius:999px;padding:10px 20px;font-size:18px}
+.tray{display:flex;flex-wrap:nowrap;gap:10px;justify-content:center;min-height:68px;align-items:center}
+.tray .empty{margin:0;font-size:15px;color:var(--soft);text-align:center;line-height:1.5}
+.food{
+  position:relative;width:64px;height:64px;flex:none;border-radius:20px;
+  border:2.5px solid var(--frame-line);background:var(--card);font-size:34px;
+  box-shadow:0 4px 0 var(--accent-dk);
+}
+.food:active{transform:translateY(3px);box-shadow:0 1px 0 var(--accent-dk)}
+.food .n{position:absolute;top:-9px;right:-9px;min-width:26px;height:26px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;font-size:15px;line-height:26px}
 
-.note{background:var(--card);border-radius:30px;padding:18px 18px 20px;border:3px dashed var(--line)}
-.note+.note{margin-top:18px}
-.note h2{margin:0 0 12px;font-size:21px;font-weight:900}
-.tasks{display:grid;gap:10px}
-.task{display:grid;grid-template-columns:52px 1fr 44px;align-items:center;gap:10px;width:100%;min-height:74px;text-align:left;border:3px solid var(--line);background:var(--bg);border-radius:22px;padding:8px 12px}
-.task:not(:disabled):active{transform:scale(.98)}
-.task:disabled{opacity:.55;cursor:default}
-.ti{font-size:36px;text-align:center}
-.tl{display:block;font-size:19px}
-.td{display:flex;gap:6px;margin-top:4px;font-size:13px;color:var(--soft);flex-wrap:wrap;align-items:center}
-.dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--accent)}
+/* ---------- できたこと（シール） と つよさ ---------- */
+.note h2{
+  display:inline-block;margin:0 0 8px;font-size:18px;font-weight:900;padding:0 4px;
+  /* けいこうペン で なぞった ところ */
+  background:linear-gradient(transparent 55%, var(--lemon) 55%);
+}
+.tasks{display:grid;gap:10px;grid-template-columns:repeat(5,1fr)}
+/* たて：アイコン が うえ の シール */
+.task{
+  position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  gap:4px;min-height:118px;padding:10px 4px 8px;text-align:center;
+  border:2.5px solid var(--frame-line);background:var(--card);border-radius:18px;
+  box-shadow:0 4px 0 var(--line);
+}
+.task:not(:disabled):active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+.task:disabled{cursor:default}
+.task.off{opacity:.5;box-shadow:none;border-style:dashed}
+.ti{font-size:32px;line-height:1.1}
+.tl{display:block;font-size:15px;line-height:1.3;word-break:keep-all;overflow-wrap:anywhere}
+.td{display:flex;gap:4px;font-size:12px;color:var(--soft);flex-wrap:wrap;align-items:center;justify-content:center;line-height:1.3}
+.dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--accent)}
 .dot.on{background:var(--accent)}
-.tf{font-size:28px;text-align:center}
-.params{display:grid;gap:10px}
-.prow{display:grid;grid-template-columns:28px 76px 1fr 36px;align-items:center;gap:8px;font-size:16px}
-.prow .bar{margin:0;max-width:none}
-.prow b{text-align:right;font-weight:700}
+/* もらえる ごはん（みぎうえ）。できたら はなまる を ぽん と おす */
+.tf{position:absolute;top:-10px;right:-8px;font-size:22px;line-height:1}
+.task.done{background:var(--paper)}
+.task.done .tf{top:auto;bottom:-6px;right:-6px;font-size:44px;transform:rotate(-12deg);pointer-events:none}
+.task.done .ti,.task.done .tl,.task.done .td{opacity:.6}
 
+.params{display:grid;gap:8px 14px;grid-template-columns:repeat(4,1fr)}
+.prow{
+  display:grid;grid-template-columns:auto 1fr auto;
+  grid-template-areas:"ic lb vl" "br br br";
+  align-items:center;gap:2px 6px;font-size:15px;
+}
+.prow>:nth-child(1){grid-area:ic}
+.prow>:nth-child(2){grid-area:lb;white-space:nowrap}
+.prow>:nth-child(3){grid-area:br}
+.prow>:nth-child(4){grid-area:vl}
+.prow .bar{margin:2px 0 0;max-width:none}
+.prow b{text-align:right;font-weight:900}
+
+/* よこ：みぎ の れつ は できたこと を 1ぎょう ずつ */
+@media (orientation:landscape) and (min-width:900px){
+  .tasks{grid-template-columns:1fr;gap:10px}
+  .task{
+    flex-direction:row;justify-content:flex-start;gap:12px;
+    min-height:74px;padding:6px 56px 6px 14px;text-align:left;
+  }
+  .ti{width:44px;flex:none;text-align:center}
+  .tl{font-size:18px}
+  .td{justify-content:flex-start;margin-top:2px}
+  .tf{top:50%;right:14px;margin-top:-14px;font-size:28px}
+  .task.done .tf{top:50%;bottom:auto;right:10px;margin-top:0;font-size:50px;transform:translate(0,-50%) rotate(-12deg)}
+  .params{grid-template-columns:1fr 1fr;gap:10px 22px}
+}
+
+/* ちいさい がめん（iPhone など）は むり に おさめず スクロール させる */
+@media (max-width:600px), (max-height:560px){
+  .app{height:auto;min-height:100vh;min-height:100dvh}
+  .layout,.side-pet{flex:none}
+  .frame{flex:none}
+  .pet{flex:none;height:min(62vw,260px)}
+  .tasks{grid-template-columns:1fr 1fr}
+  .params{grid-template-columns:1fr 1fr}
+  .tray{flex-wrap:wrap}
+  .masu{width:32px;height:32px;font-size:20px}
+}
+
+/* ---------- モーダル ---------- */
 .modal{position:fixed;inset:0;background:rgba(60,30,55,.45);display:flex;align-items:center;justify-content:center;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));z-index:20}
-.sheet{background:var(--card);border-radius:30px;padding:24px;width:100%;max-width:560px;max-height:100%;overflow:auto;text-align:center}
+.sheet{background:var(--card);border:3px solid var(--frame-line);border-radius:24px;padding:22px;width:100%;max-width:620px;max-height:100%;overflow:auto;text-align:center}
 .sheet h3{margin:18px 0 8px;font-size:18px;text-align:left}
 .sheet h3:first-child{margin-top:0}
 .big{font-size:80px;line-height:1.1}
-.q{font-size:26px;font-weight:900;margin:12px 0 6px}
+.q{font-size:24px;font-weight:900;margin:8px 0 6px}
 .sub{font-size:15px;color:var(--soft);line-height:1.6;margin:4px 0;text-align:left}
 .center .sub{text-align:center}
 .btns{display:flex;gap:12px;justify-content:center;margin-top:14px;flex-wrap:wrap}
-.btn{border:0;border-radius:999px;padding:14px 30px;font-size:20px;background:var(--accent);color:#fff;box-shadow:0 5px 0 var(--shell-dk)}
-.btn.ghost{background:var(--bg);color:var(--ink);box-shadow:0 5px 0 var(--line)}
+.btn{border:0;border-radius:999px;padding:14px 30px;font-size:20px;background:var(--accent);color:#fff;box-shadow:0 5px 0 var(--accent-dk)}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--accent-dk)}
+.btn.ghost{background:var(--paper);color:var(--ink);box-shadow:0 5px 0 var(--line)}
 .btn.danger{background:#E36464;box-shadow:0 5px 0 #B94545}
 .btn.small{font-size:16px;padding:10px 20px}
 .fl{display:block;text-align:left;font-size:15px;margin-top:10px}
-.fl input,.fl select,.fl textarea,.codeout{display:block;width:100%;margin-top:6px;padding:12px;border-radius:14px;border:3px solid var(--line);background:var(--bg);font-size:17px}
+.fl input,.fl select,.fl textarea,.codeout{display:block;width:100%;margin-top:6px;padding:12px;border-radius:14px;border:3px solid var(--line);background:var(--paper);font-size:17px}
 textarea{min-height:90px;font-size:13px!important;font-family:ui-monospace,monospace!important;word-break:break-all}
 .evo svg{width:220px;height:220px;animation:evo 1.3s ease-out}
 @keyframes evo{0%{transform:scale(.5);filter:brightness(3)}60%{transform:scale(1.12);filter:brightness(1.4)}100%{transform:scale(1);filter:none}}
-.zgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-top:10px}
-.zc{background:var(--bg);border-radius:20px;padding:8px 6px 10px}
-.zc svg{width:100%;height:auto}
-.zc b{display:block;font-size:15px}
-.zc span{display:block;font-size:12px;color:var(--soft);line-height:1.5;margin-top:2px}
+/* ずかん：4×2 で 1がめん に おさめる */
+.zgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px}
+.zc{background:var(--paper);border:2px dashed var(--line);border-radius:16px;padding:6px 4px 8px}
+.zc svg{display:block;width:100%;height:auto;max-height:min(16vh,120px);margin:0 auto}
+.zc b{display:block;font-size:14px}
+.zc span{display:block;font-size:11px;color:var(--soft);line-height:1.45;margin-top:2px}
+@media (max-width:480px){.zgrid{grid-template-columns:repeat(2,1fr)}}
 
 .fx{position:fixed;pointer-events:none;font-size:34px;z-index:30;animation:up 1.2s ease-out forwards}
 @keyframes up{0%{opacity:0;transform:translate(0,0) scale(.6)}20%{opacity:1}100%{opacity:0;transform:translate(var(--dx),-120px) scale(1.2)}}

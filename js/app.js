@@ -353,9 +353,18 @@ function openSettings(){
 /* ---------- render ---------- */
 function renderBubble(){$('#bubbleText').textContent=bubble.ja;$('#bubbleZh').textContent=bubble.zh;$('#bubbleZh').hidden=!bubble.zh;}
 function icons(ic,n){let s='';for(let i=0;i<4;i++)s+=`<span class="gi ${i<n?'on':''}">${ic}</span>`;return s;}
+/* なまえ を えにっき の マス に 1もじずつ（textContent のみ・innerHTML は つかわない） */
+function renderName(){
+  const el=$('#petName');if(el.getAttribute('aria-label')===S.name)return;
+  el.textContent='';el.setAttribute('aria-label',S.name);
+  // 「👨‍👩‍👧」の ような くみあわせ えもじ も 1マス に（Intl.Segmenter が ない ふるい たんまつ は コードポイント で わける）
+  const chars=typeof Intl!=='undefined'&&Intl.Segmenter?Array.from(new Intl.Segmenter('ja',{granularity:'grapheme'}).segment(S.name),x=>x.segment):Array.from(S.name);
+  chars.forEach(c=>{const m=document.createElement('span');m.className='masu';m.setAttribute('aria-hidden','true');m.textContent=c;el.appendChild(m);});
+}
 function render(){
   ensureDay();const now=Date.now();
-  $('#petName').textContent=S.name;$('#genLabel').textContent=S.gen+'だいめ';
+  renderName();$('#genLabel').textContent=S.gen+'だいめ';
+  const td=new Date();$('#dateLine').textContent=(td.getMonth()+1)+'がつ'+td.getDate()+'にち '+WD[td.getDay()];
   const sleeping=S.stage>0&&isNightH(new Date().getHours())&&now-lastInteract>120000;
   let face='normal';
   if(sleeping)face='sleep';else if(S.sick)face='sick';else if(now<happyUntil)face='happy';
@@ -380,7 +389,7 @@ function render(){
     if(t.id==='lesson'){dots=st.off?`${WD[S.lessonDay]} だけ`:(st.ok?'きょうは れっすんの ひ！ ごはん 3ばい':'できたね！');if(st.off)tf='📅';}
     else if(t.id==='hamigaki'){dots=`<span class="dot ${S.cnt.hamigaki_am?'on':''}"></span>あさ <span class="dot ${S.cnt.hamigaki_pm?'on':''}"></span>よる`;}
     else{for(let i=0;i<t.limit;i++)dots+=`<span class="dot ${i<(S.cnt[t.id]||0)?'on':''}"></span>`;}
-    return `<button class="task" data-task="${t.id}" ${st.ok?'':'disabled'}><span class="ti">${t.icon}</span><span><span class="tl">${t.label}</span><span class="td">${dots}</span></span><span class="tf">${tf}</span></button>`;
+    return `<button class="task${st.off?' off':(st.ok?'':' done')}" data-task="${t.id}" ${st.ok?'':'disabled'}><span class="ti">${t.icon}</span><span><span class="tl">${t.label}</span><span class="td">${dots}</span></span><span class="tf">${tf}</span></button>`;
   }).join('');
   const mx=Math.max(10,...PARAMS.map(p=>S.p[p[0]]));
   $('#params').innerHTML=PARAMS.map(p=>`<div class="prow"><span>${p[1]}</span><span>${p[2]}</span><div class="bar"><i data-w="${S.p[p[0]]/mx*100}"></i></div><b>${Math.floor(S.p[p[0]])}</b></div>`).join('');

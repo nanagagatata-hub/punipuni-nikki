@@ -1,7 +1,7 @@
 'use strict';
 // アプリ本体をキャッシュし、オフラインでも起動できるようにする。
 // ファイルを変更したら VERSION を必ず上げること（上げないと端末に古い版が残る）。
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.1.0';
 const CACHE = 'punipuni-' + VERSION;
 const ASSETS = [
   './', './index.html', './css/style.css', './js/app.js', './manifest.webmanifest',

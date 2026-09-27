@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
-<meta name="theme-color" content="#FF9CBE">
+<meta name="theme-color" content="#FFF7FA">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ぷにぷに">
@@ -17,20 +17,28 @@
 <script src="./js/app.js" defer></script>
 </head>
 <body>
+<div class="app">
 <header class="top">
-  <div class="title"><b id="petName"></b><small id="genLabel"></small></div>
-  <button class="gear" id="gear" aria-label="おうちの方の設定（長押し）">⚙️</button>
+  <div class="title">
+    <b class="name" id="petName"></b>
+    <p class="meta"><small id="genLabel"></small><small id="dateLine"></small></p>
+  </div>
+  <div class="tools">
+    <button class="pill" id="zukanBtn">📚 ずかん</button>
+    <button class="pill" id="nextEggBtn" hidden>🥚 つぎの たまご</button>
+    <button class="gear" id="gear" aria-label="おうちの方の設定（長押し）">⚙️</button>
+  </div>
 </header>
 
 <main class="layout">
-  <section>
-    <div class="shell">
-      <div class="screen" id="screen">
-        <div class="gauges" id="gauges"></div>
-        <div class="badges" id="badges"></div>
-        <button class="pet" id="pet" aria-label="なでる"></button>
-        <div class="growth" id="growth"></div>
-      </div>
+  <section class="side-pet">
+    <div class="frame" id="screen">
+      <div class="gauges" id="gauges"></div>
+      <div class="badges" id="badges"></div>
+      <button class="pet" id="pet" aria-label="なでる"></button>
+      <div class="growth" id="growth"></div>
+    </div>
+    <div class="talk">
       <div class="bubble" aria-live="polite">
         <p id="bubbleText"></p>
         <p id="bubbleZh" class="zh"></p>
@@ -38,13 +46,9 @@
       </div>
       <div class="tray" id="tray"></div>
     </div>
-    <div class="under">
-      <button class="pill" id="zukanBtn">📚 ずかん</button>
-      <button class="pill" id="nextEggBtn" hidden>🥚 つぎの たまご</button>
-    </div>
   </section>
 
-  <section>
+  <section class="side-note">
     <div class="note">
       <h2>できたこと を おしえてね</h2>
       <div class="tasks" id="tasks"></div>
@@ -55,6 +59,7 @@
     </div>
   </section>
 </main>
+</div>
 
 <div class="modal" id="modal" hidden><div class="sheet" id="sheet"></div></div>
 

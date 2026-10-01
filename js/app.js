@@ -29,10 +29,6 @@ function decay(now){
   while(S.hAcc>=3*H){S.hAcc-=3*H;S.hunger=Math.max(0,S.hunger-1);}
   while(S.mAcc>=4*H){S.mAcc-=4*H;S.mood=Math.max(0,S.mood-1);}
   S.lastTick=now;
-  if(!S.sick && awakeMs(S.lastCare,now)>=12*H){
-    S.sick=true;S.cure=0;
-    say('なんだか ぐあいが わるいよ… ごはん ちょうだい');
-  }
 }
 
 /* ---------- drawing ---------- */
@@ -69,7 +65,7 @@ $('#modal').addEventListener('click',e=>{if(e.target===$('#modal')&&modalDismiss
 /* ---------- logic ---------- */
 function taskState(t){
   const now=new Date();
-  if(t.id==='lesson'&&now.getDay()!==S.lessonDay) return {ok:false,off:true};
+  if(t.id==='lesson'&&S.lessonDays.indexOf(now.getDay())<0) return {ok:false,off:true};
   if(t.id==='hamigaki'){const slot=now.getHours()<15?'am':'pm';return {ok:!(S.cnt['hamigaki_'+slot]),slot:slot};}
   const used=S.cnt[t.id]||0;return {ok:used<t.limit,used:used};
 }
@@ -93,7 +89,7 @@ function report(t){
 function feed(fid){
   if(!(S.inv[fid]>0))return;
   const f=FOODS[fid],now=Date.now();
-  S.inv[fid]--;S.lastCare=now;lastInteract=now;
+  S.inv[fid]--;lastInteract=now;
   if(S.stage>0){S.hunger=Math.min(4,S.hunger+(fid==='nikuman'?2:1));if(fid==='purin')S.mood=Math.min(4,S.mood+1);}
   if(S.sick){
     S.cure++;
@@ -112,9 +108,9 @@ function feed(fid){
 }
 function checkEvolve(){
   if(S.stage<3&&S.pts>=TH[S.stage+1]){
-    const f=nextForm(S);S.stage++;S.form=f;
+    const f=nextForm(S);S.stage++;S.form=f;if(S.stage===3)S.adultAt=Date.now();
     if(S.zukan.indexOf(f)<0)S.zukan.push(f);
-    if(S.stage===1){const n=Date.now();S.lastCare=n;S.lastTick=n;S.hunger=3;S.mood=3;S.hAcc=0;S.mAcc=0;}
+    if(S.stage===1){const n=Date.now();S.lastTick=n;S.hunger=3;S.mood=3;S.hAcc=0;S.mAcc=0;}
     save();showEvolve();
   }
 }
@@ -141,7 +137,7 @@ function nextEgg(){
     <p class="sub">${esc(S.name)} は ずかん に のこるよ。たび に おくりだそう</p>
     <div class="btns"><button class="btn" data-act="yes">そだてる！</button><button class="btn ghost" data-act="no">まだ いっしょに いる</button></div></div>`,
     act=>{closeModal();if(act!=='yes')return;
-      const keep={gen:S.gen+1,zukan:S.zukan,lessonDay:S.lessonDay,inv:S.inv,day:S.day,cnt:S.cnt,boostUntil:S.boostUntil};
+      const keep={gen:S.gen+1,zukan:S.zukan,lessonDays:S.lessonDays,you:S.you,name:S.name,history:S.history,shinySeen:S.shinySeen,sound:S.sound,inv:S.inv,day:S.day,cnt:S.cnt,boostUntil:S.boostUntil};
       S=Object.assign(DEF(),keep);save();say('あたらしい たまご が きたよ！あたためて あげよう');render();},true);
 }
 function openZukan(){
@@ -151,7 +147,7 @@ function openZukan(){
     <div class="btns"><button class="btn ghost" data-act="close">とじる</button></div>`,()=>closeModal(),true);
 }
 function openSettings(){
-  const wd=WD.map((w,i)=>`<option value="${i}" ${i===S.lessonDay?'selected':''}>${w}</option>`).join('');
+  const wd=WD.map((w,i)=>`<option value="${i}" ${i===S.lessonDays[0]?'selected':''}>${w}</option>`).join('');
   openModal(`<h3>おうちの方の設定</h3>
     <label class="fl">なまえ（8文字まで）<input id="nameIn" maxlength="8" value="${esc(S.name)}"></label>
     <label class="fl">中国語レッスンの曜日<select id="dayIn">${wd}</select></label>
@@ -167,7 +163,7 @@ function openSettings(){
     <div class="btns"><button class="btn ghost" data-act="close">閉じる</button></div>`,
     (act,btn)=>{
       if(act==='close'){closeModal();return;}
-      if(act==='save'){const n=$('#nameIn').value.trim();if(n)S.name=n;S.lessonDay=+$('#dayIn').value;save();render();toast('保存しました');}
+      if(act==='save'){const n=$('#nameIn').value.trim();if(n)S.name=n;S.lessonDays=[+$('#dayIn').value];save();render();toast('保存しました');}
       if(act==='export'){const ta=$('#codeOut');ta.value=encodeState(S);ta.hidden=false;ta.select();
         if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(ta.value).then(()=>toast('コピーしました'),()=>toast('表示されたコードを長押しでコピーしてください'));}
         else toast('表示されたコードを長押しでコピーしてください');}
@@ -204,7 +200,7 @@ function render(){
     `<p class="empty">できたこと を おしえると<br>ごはん が もらえるよ</p>`;
   $('#tasks').innerHTML=TASKS.map(t=>{
     const st=taskState(t);let dots='',tf=st.ok?FOODS[t.food].icon:'💮';
-    if(t.id==='lesson'){dots=st.off?`${WD[S.lessonDay]} だけ`:(st.ok?'きょうは れっすんの ひ！ ごはん 3ばい':'できたね！');if(st.off)tf='📅';}
+    if(t.id==='lesson'){dots=st.off?`${S.lessonDays.map(d=>WD[d]).join(' と ')} だけ`:(st.ok?'きょうは れっすんの ひ！ ごはん 3ばい':'できたね！');if(st.off)tf='📅';}
     else if(t.id==='hamigaki'){dots=`<span class="dot ${S.cnt.hamigaki_am?'on':''}"></span>あさ <span class="dot ${S.cnt.hamigaki_pm?'on':''}"></span>よる`;}
     else{for(let i=0;i<t.limit;i++)dots+=`<span class="dot ${i<(S.cnt[t.id]||0)?'on':''}"></span>`;}
     return `<button class="task" data-task="${t.id}" ${st.ok?'':'disabled'}><span class="ti">${t.icon}</span><span><span class="tl">${t.label}</span><span class="td">${dots}</span></span><span class="tf">${tf}</span></button>`;

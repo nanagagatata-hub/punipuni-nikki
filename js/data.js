@@ -4,6 +4,7 @@ export const TH=[0,3,10,25];
 export const STAGE=['たまご','あかちゃん','こども','おとな'];
 export const WD=['にちようび','げつようび','かようび','すいようび','もくようび','きんようび','どようび'];
 
+/* from/until：受付する時（until は その時ちょうどで締め切り。関数なら日付ごと）。weekdays：受付する曜日 */
 export const TASKS=[
   {id:'lesson', label:'ちゅうごくご れっすん', icon:'🧑‍🏫', food:'nikuman', limit:1},
   {id:'jishu',  label:'ちゅうごくご じしゅう', icon:'📖', food:'kotoba', limit:1},
@@ -11,8 +12,8 @@ export const TASKS=[
   {id:'yasai',  label:'おやさい', icon:'🥦', food:'soup', limit:3},
   {id:'ofuro',  label:'おふろ', icon:'🛁', food:'purin', limit:1},
   {id:'katazuke',label:'おかたづけ', icon:'🧸', food:'cookie', limit:1},
-  {id:'hayane', label:'はやく べっどに はいれた', icon:'🛏️', food:'milk', limit:1},
-  {id:'hayaoki',label:'はやおき', icon:'🌅', food:'pan', limit:1}
+  {id:'hayane', label:'はやく べっどに はいれた', icon:'🛏️', food:'milk', limit:1, from:18, until:d=>d.getDay()>=5?21:20},
+  {id:'hayaoki',label:'はやおき', icon:'🌅', food:'pan', limit:1, from:5, until:7, weekdays:[1,2,3,4,5]}
 ];
 export const FOODS={
   nikuman:{name:'にくまん', icon:'🥟', pt:3, param:'ka', amt:3},
@@ -57,3 +58,10 @@ export const WORDS=[
   ['加油','じゃーよう','がんばれ'],['我爱你','うぉーあいにー','だいすき'],['朋友','ぽんよう','ともだち']
 ];
 
+
+/* セリフ（タスク8で場面と数を増やす） */
+export const LINES={
+  sick:['なんだか ぐあいが わるいよ… ごはん ちょうだい','おなか ぺこぺこで ふらふら…'],
+  sleepTap:['むにゃむにゃ… もう たべられないよぉ…','すぴー… すぴー…'],
+  sleepFeed:['すやすや… あさ に たべるね']
+};

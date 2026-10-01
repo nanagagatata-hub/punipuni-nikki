@@ -1,6 +1,6 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
-import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS} from './data.js';
-import {dayKey,isNight,awakeMs,nextForm} from './rules.js';
+import {H,TH,STAGE,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,LINES} from './data.js';
+import {dayKey,isNight,taskState,taskNote,decay,afterFeed,nextForm} from './rules.js';
 import {KEY,DEF,sanitize,encodeState,decodeState} from './state.js';
 import {petSVG} from './art.js';
 import {speak} from './sound.js';
@@ -22,13 +22,8 @@ let lastInteract=Date.now();
 let happyUntil=0;
 
 function ensureDay(){const k=dayKey(new Date()); if(S.day!==k){S.day=k;S.cnt={};}}
-function decay(now){
-  if(S.stage===0){S.lastTick=now;return;}
-  const a=awakeMs(S.lastTick,now);
-  S.hAcc+=a; S.mAcc+=a;
-  while(S.hAcc>=3*H){S.hAcc-=3*H;S.hunger=Math.max(0,S.hunger-1);}
-  while(S.mAcc>=4*H){S.mAcc-=4*H;S.mood=Math.max(0,S.mood-1);}
-  S.lastTick=now;
+function tick(now){
+  if(decay(S,now).becameSick) say(rnd(LINES.sick));
 }
 
 /* ---------- drawing ---------- */
@@ -63,21 +58,15 @@ $('#sheet').addEventListener('click',e=>{const b=e.target.closest('[data-act]');
 $('#modal').addEventListener('click',e=>{if(e.target===$('#modal')&&modalDismiss)closeModal();});
 
 /* ---------- logic ---------- */
-function taskState(t){
-  const now=new Date();
-  if(t.id==='lesson'&&S.lessonDays.indexOf(now.getDay())<0) return {ok:false,off:true};
-  if(t.id==='hamigaki'){const slot=now.getHours()<15?'am':'pm';return {ok:!(S.cnt['hamigaki_'+slot]),slot:slot};}
-  const used=S.cnt[t.id]||0;return {ok:used<t.limit,used:used};
-}
 function confirmTask(id){
-  const t=TASKS.find(x=>x.id===id);const st=taskState(t);if(!st.ok)return;
+  const t=TASKS.find(x=>x.id===id);const st=taskState(t,S,new Date());if(!st.ok)return;
   const label=t.id==='hamigaki'?(st.slot==='am'?'あさの はみがき':'よるの はみがき'):t.label;
   openModal(`<div class="center"><div class="big">${t.icon}</div><p class="q">${label} できた？</p>
     <div class="btns"><button class="btn" data-act="yes">できた！</button><button class="btn ghost" data-act="no">まだ</button></div></div>`,
     act=>{closeModal();if(act==='yes')report(t);},true);
 }
 function report(t){
-  ensureDay();const st=taskState(t);if(!st.ok)return;
+  ensureDay();const st=taskState(t,S,new Date());if(!st.ok)return;
   const key=t.id==='hamigaki'?'hamigaki_'+st.slot:t.id;
   S.cnt[key]=(S.cnt[key]||0)+1;
   S.inv[t.food]=(S.inv[t.food]||0)+1;
@@ -88,8 +77,9 @@ function report(t){
 }
 function feed(fid){
   if(!(S.inv[fid]>0))return;
-  const f=FOODS[fid],now=Date.now();
-  S.inv[fid]--;lastInteract=now;
+  const f=FOODS[fid],now=Date.now();lastInteract=now;
+  if(isNight(new Date(now))){say(rnd(LINES.sleepFeed));return;}
+  S.inv[fid]--;afterFeed(S);
   if(S.stage>0){S.hunger=Math.min(4,S.hunger+(fid==='nikuman'?2:1));if(fid==='purin')S.mood=Math.min(4,S.mood+1);}
   if(S.sick){
     S.cure++;
@@ -124,6 +114,7 @@ function showEvolve(){
 function petTap(){
   const now=Date.now();lastInteract=now;
   const el=$('#pet');el.classList.remove('wobble');void el.offsetWidth;el.classList.add('wobble');
+  if(isNight(new Date(now))){say(rnd(LINES.sleepTap));return;}
   if(S.stage===0){say('ころころ… なかで なにか うごいてる！');return;}
   if(S.sick){say('うーん… ごはん たべたら げんきに なるかも');render();return;}
   if(now-S.petAt>30*60e3){S.mood=Math.min(4,S.mood+1);S.petAt=now;save();}
@@ -179,7 +170,7 @@ function icons(ic,n){let s='';for(let i=0;i<4;i++)s+=`<span class="gi ${i<n?'on'
 function render(){
   ensureDay();const now=Date.now();
   $('#petName').textContent=S.name;$('#genLabel').textContent=S.gen+'だいめ';
-  const sleeping=S.stage>0&&isNight(new Date())&&now-lastInteract>120000;
+  const sleeping=S.stage>0&&isNight(new Date());
   let face='normal';
   if(sleeping)face='sleep';else if(S.sick)face='sick';else if(now<happyUntil)face='happy';
   else if(S.stage>0&&(S.hunger===0||S.mood===0))face='sad';
@@ -199,8 +190,9 @@ function render(){
   $('#tray').innerHTML=foods.length?foods.map(k=>`<button class="food" data-food="${k}" aria-label="${FOODS[k].name} を あげる">${FOODS[k].icon}<span class="n">${S.inv[k]}</span></button>`).join(''):
     `<p class="empty">できたこと を おしえると<br>ごはん が もらえるよ</p>`;
   $('#tasks').innerHTML=TASKS.map(t=>{
-    const st=taskState(t);let dots='',tf=st.ok?FOODS[t.food].icon:'💮';
-    if(t.id==='lesson'){dots=st.off?`${S.lessonDays.map(d=>WD[d]).join(' と ')} だけ`:(st.ok?'きょうは れっすんの ひ！ ごはん 3ばい':'できたね！');if(st.off)tf='📅';}
+    const st=taskState(t,S,new Date()),note=taskNote(t,S,st);
+    let dots='',tf=st.ok?FOODS[t.food].icon:st.why==='done'?'💮':st.why==='day'?'📅':'⏰';
+    if(note)dots=note;
     else if(t.id==='hamigaki'){dots=`<span class="dot ${S.cnt.hamigaki_am?'on':''}"></span>あさ <span class="dot ${S.cnt.hamigaki_pm?'on':''}"></span>よる`;}
     else{for(let i=0;i<t.limit;i++)dots+=`<span class="dot ${i<(S.cnt[t.id]||0)?'on':''}"></span>`;}
     return `<button class="task" data-task="${t.id}" ${st.ok?'':'disabled'}><span class="ti">${t.icon}</span><span><span class="tl">${t.label}</span><span class="td">${dots}</span></span><span class="tf">${tf}</span></button>`;
@@ -225,14 +217,14 @@ gear.addEventListener('pointerdown',()=>{held=false;holdT=setTimeout(()=>{held=t
 ['pointerup','pointerleave','pointercancel'].forEach(ev=>gear.addEventListener(ev,()=>clearTimeout(holdT)));
 gear.addEventListener('click',()=>{if(!held)toast('おうちの ひと は ながおし してね');});
 gear.addEventListener('contextmenu',e=>e.preventDefault());
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){decay(Date.now());save();render();}});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick(Date.now());save();render();}});
 
 /* ---------- start ---------- */
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(()=>{});}
-decay(Date.now());
-if(S.sick)say('なんだか ぐあいが わるいよ… ごはん ちょうだい');
+tick(Date.now());
+if(S.sick)say(rnd(LINES.sick));
 else if(S.stage===0)say('たまご を あたためよう。できたこと を おしえてね！');
 else say(rnd(['おかえり！きょうも いっしょに がんばろうね','あいたかったよ！','きょうは なにが できたかな？']));
 save();render();
-setInterval(()=>{decay(Date.now());save();render();},30000);
+setInterval(()=>{tick(Date.now());save();render();},30000);

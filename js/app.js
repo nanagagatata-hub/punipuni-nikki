@@ -1,6 +1,6 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
 import {H,TH,STAGE,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,LINES} from './data.js';
-import {dayKey,isNight,taskState,taskNote,decay,afterFeed,chooseForm} from './rules.js';
+import {dayKey,isNight,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady} from './rules.js';
 import {KEY,DEF,sanitize,encodeState,decodeState} from './state.js';
 import {petSVG} from './art.js';
 import {speak} from './sound.js';
@@ -24,6 +24,13 @@ let happyUntil=0;
 function ensureDay(){const k=dayKey(new Date()); if(S.day!==k){S.day=k;S.cnt={};}}
 function tick(now){
   if(decay(S,now).becameSick) say(rnd(LINES.sick));
+  tickLife(now);
+}
+/* おとな→さいごのすがた（朝6時以降）。さいごのすがた を見せたら finalSeenAt を記録（spec §4.1） */
+function tickLife(now){
+  if(!$('#modal').hidden) return;
+  if(S.stage===3&&!isNight(new Date(now))&&now>=finalDue(S)){S.stage=4;S.finalAt=now;save();showEvolve();}
+  else if(S.stage===4&&!S.finalSeenAt&&!isNight(new Date(now))) showEvolve();
 }
 
 /* ---------- drawing ---------- */
@@ -107,16 +114,21 @@ function checkEvolve(){
   }
 }
 function showEvolve(){
-  const msg=S.stage===1?'たまごが かえった！':S.stage===3?'おとなに なった！':'しんか した！';
-  openModal(`<div class="center"><div class="evo">${petSVG(S.form,'happy',{shiny:S.shiny})}</div><p class="q">${msg}</p>
+  const msg=['','たまごが かえった！','しんか した！','おとなに なった！','さいごの すがた に なった！'][S.stage];
+  openModal(`<div class="center"><div class="evo">${petSVG(S.form,'happy',{shiny:S.shiny,final:S.stage===4})}</div><p class="q">${msg}</p>
     <p class="sub">${esc(S.name)} は「${formName()}」に なったよ</p>
     <div class="btns"><button class="btn" data-act="ok">やったー！</button></div></div>`,
-    ()=>{closeModal();say(S.stage===3?'おとなに なったよ！ずかん を みてね':'よろしくね！いっぱい あそぼう');render();checkEvolve();});
+    ()=>{closeModal();
+      if(S.stage===4){if(!S.finalSeenAt)S.finalSeenAt=Date.now();save();say('きらきら ひかってる… さいごの すがた だよ');}
+      else say(S.stage===3?'おとなに なったよ！ずかん を みてね':'よろしくね！いっぱい あそぼう');
+      render();checkEvolve();});
 }
 function petTap(){
   const now=Date.now();lastInteract=now;
   const el=$('#pet');el.classList.remove('wobble');void el.offsetWidth;el.classList.add('wobble');
   if(isNight(new Date(now))){say(rnd(LINES.sleepTap));return;}
+  if(farewellReady(S,now)){startFarewell();return;}
+  if(S.stage===4&&S.sick){say(rnd(LINES.farewellSick));render();return;}
   if(S.stage===0){say('ころころ… なかで なにか うごいてる！');return;}
   if(S.sick){say('うーん… ごはん たべたら げんきに なるかも');render();return;}
   if(now-S.petAt>30*60e3){S.mood=Math.min(4,S.mood+1);S.petAt=now;save();}
@@ -125,15 +137,28 @@ function petTap(){
   else say(rnd(['えへへ、くすぐったい！','なでなで うれしいな','いっしょに いると たのしいね']));
   render();setTimeout(render,2600);
 }
-function nextEgg(){
-  openModal(`<div class="center"><div class="big">🥚</div><p class="q">つぎの たまご を そだてる？</p>
-    <p class="sub">${esc(S.name)} は ずかん に のこるよ。たび に おくりだそう</p>
-    <div class="btns"><button class="btn" data-act="yes">そだてる！</button><button class="btn ghost" data-act="no">まだ いっしょに いる</button></div></div>`,
-    act=>{closeModal();if(act!=='yes')return;
-      const keep={gen:S.gen+1,zukan:S.zukan,lessonDays:S.lessonDays,you:S.you,name:S.name,history:S.history,shinySeen:S.shinySeen,sound:S.sound,inv:S.inv,day:S.day,cnt:S.cnt,boostUntil:S.boostUntil};
-      S=Object.assign(DEF(),keep);save();say('あたらしい たまご が きたよ！あたためて あげよう');render();},true);
+/* おわかれ：あいさつ → たまごを渡す → つぎの世代（spec §4.2）。文言は textContent で入れる */
+const fill=t=>t.split('{you}').join(S.you).split('{name}').join(S.name);
+const pickYou=alts=>fill(alts.find(t=>S.you?t.indexOf('{you}')>=0:t.indexOf('{you}')<0)||alts[0]);
+function startFarewell(){
+  const pages=LINES.farewell.map(pickYou);let i=0;
+  const show=()=>{
+    const last=i>=pages.length;
+    openModal(`<div class="center"><div class="evo">${last?'<div class="big">🥚</div>':petSVG(S.form,i===pages.length-1?'happy':'normal',{shiny:S.shiny,final:true})}</div>
+      <p class="q" id="fwText"></p><div class="btns"><button class="btn" data-act="next">${last?'うけとる':'つぎへ'}</button></div></div>`,
+      ()=>{if(last){closeModal();newGeneration();return;}i++;show();},false);
+    $('#fwText').textContent=last?pickYou(LINES.give):pages[i];
+  };
+  show();
 }
-function formName(){return (S.shiny?'きらきら ':'')+FORMS[S.form].name;}
+function newGeneration(){
+  S.history.push({f:S.form,n:S.name,g:S.gen,s:S.shiny});
+  if(S.history.length>200)S.history=S.history.slice(-200);
+  const keep={name:S.name,you:S.you,gen:Math.min(9999,S.gen+1),zukan:S.zukan,shinySeen:S.shinySeen,history:S.history,
+    lessonDays:S.lessonDays,inv:S.inv,day:S.day,cnt:S.cnt,boostUntil:S.boostUntil,sound:S.sound};
+  S=Object.assign(DEF(),keep);save();say('たまご を もらったよ！あたためて あげよう');render();
+}
+function formName(){return (S.stage===4?'かがやく ':'')+(S.shiny?'きらきら ':'')+FORMS[S.form].name;}
 function zukanCell(f){
   const seen=S.zukan.indexOf(f)>=0,F=FORMS[f];
   if(!seen) return `<div class="zc">${petSVG(f,'normal',{sil:true})}<b>？？？</b><span>${F.hint}</span></div>`;
@@ -184,7 +209,7 @@ function render(){
   let face='normal';
   if(sleeping)face='sleep';else if(S.sick)face='sick';else if(now<happyUntil)face='happy';
   else if(S.stage>0&&(S.hunger===0||S.mood===0))face='sad';
-  $('#pet').innerHTML=petSVG(S.form,face,{pts:S.pts,shiny:S.shiny});
+  $('#pet').innerHTML=petSVG(S.form,face,{pts:S.pts,shiny:S.shiny,final:S.stage===4});
   $('#screen').classList.toggle('night',sleeping);
   $('#gauges').innerHTML=S.stage===0?`<span class="glabel">たまご を あたためよう</span>`:
     `<div class="gauge"><span class="glabel">おなか</span>${icons('🍙',S.hunger)}</div><div class="gauge"><span class="glabel">ごきげん</span>${icons('🌸',S.mood)}</div>`;
@@ -192,10 +217,13 @@ function render(){
   if(now<S.boostUntil)b+=`<span class="badge">🚀 ぐんぐんたいむ あと ${Math.ceil((S.boostUntil-now)/H)}じかん</span>`;
   if(S.sick)b+=`<span class="badge sick">🤒 びょうき：ごはん あと ${2-S.cure}こ で なおる</span>`;
   if(sleeping)b+=`<span class="badge">💤 ねんね ちゅう</span>`;
+  if(farewellReady(S,now))b+=`<span class="badge letter">💌 ${esc(S.name)} が なにか いいたそう</span>`;
   $('#badges').innerHTML=b;
   if(S.stage<3){const pct=Math.min(100,(S.pts-TH[S.stage])/(TH[S.stage+1]-TH[S.stage])*100);
     $('#growth').innerHTML=`${STAGE[S.stage]}　つぎ の しんか まで<div class="bar"><i data-w="${pct}"></i></div>`;}
-  else $('#growth').innerHTML=`おとな　ずかん に のったよ<div class="bar"><i data-w="100"></i></div>`;
+  else if(S.stage===3){const pct=Math.min(100,(now-S.adultAt)/(finalDue(S)-S.adultAt)*100);
+    $('#growth').innerHTML=`おとな　さいごの すがた まで<div class="bar"><i data-w="${pct}"></i></div>`;}
+  else $('#growth').innerHTML=`さいごの すがた<div class="bar"><i data-w="100"></i></div>`;
   const foods=Object.keys(FOODS).filter(k=>S.inv[k]>0);
   $('#tray').innerHTML=foods.length?foods.map(k=>`<button class="food" data-food="${k}" aria-label="${FOODS[k].name} を あげる">${FOODS[k].icon}<span class="n">${S.inv[k]}</span></button>`).join(''):
     `<p class="empty">できたこと を おしえると<br>ごはん が もらえるよ</p>`;
@@ -209,8 +237,7 @@ function render(){
   }).join('');
   const mx=Math.max(10,...PARAMS.map(p=>S.p[p[0]]));
   $('#params').innerHTML=PARAMS.map(p=>`<div class="prow"><span>${p[1]}</span><span>${p[2]}</span><div class="bar"><i data-w="${S.p[p[0]]/mx*100}"></i></div><b>${Math.floor(S.p[p[0]])}</b></div>`).join('');
-  $('#nextEggBtn').hidden=S.stage!==3;
-  document.querySelectorAll('[data-w]').forEach(el=>{el.style.width=Math.max(0,Math.min(100,+el.dataset.w||0))+'%';});
+    document.querySelectorAll('[data-w]').forEach(el=>{el.style.width=Math.max(0,Math.min(100,+el.dataset.w||0))+'%';});
   renderBubble();
 }
 
@@ -219,7 +246,6 @@ $('#tasks').addEventListener('click',e=>{const b=e.target.closest('[data-task]')
 $('#tray').addEventListener('click',e=>{const b=e.target.closest('[data-food]');if(b)feed(b.dataset.food);});
 $('#pet').addEventListener('click',petTap);
 $('#zukanBtn').addEventListener('click',openZukan);
-$('#nextEggBtn').addEventListener('click',nextEgg);
 $('#speakBtn').addEventListener('click',()=>{try{speechSynthesis.cancel();}catch(e){}speak(bubble.ja,'ja-JP');speak(bubble.zh,'zh-CN');});
 let holdT=null,held=false;
 const gear=$('#gear');

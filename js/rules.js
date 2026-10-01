@@ -73,3 +73,10 @@ export function chooseForm(S){
   const pick=[first].concat(rest).find(f=>S.zukan.indexOf(f)<0);
   return pick?{form:pick,shiny:false}:{form:first,shiny:true};
 }
+
+/* 一生の期日（spec §4.1）：ts の日付 + addDays 日の 6:00 */
+export function at6(ts,addDays){const d=new Date(ts);d.setDate(d.getDate()+addDays);d.setHours(6,0,0,0);return +d;}
+export function finalDue(S){return at6(S.adultAt,2);}
+export function farewellReady(S,now){
+  return S.stage===4&&S.finalSeenAt>0&&now>=at6(S.finalSeenAt,1)&&!isNight(new Date(now))&&!S.sick;
+}

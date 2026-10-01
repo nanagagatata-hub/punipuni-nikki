@@ -91,8 +91,14 @@ export function petSVG(form,face,opt){
   const body=`<ellipse cx="33" cy="132" rx="11" ry="15" fill="${col}" stroke="${dk}" stroke-width="3" transform="rotate(25 33 132)"/><ellipse cx="167" cy="132" rx="11" ry="15" fill="${col}" stroke="${dk}" stroke-width="3" transform="rotate(-25 167 132)"/>
     <ellipse cx="74" cy="180" rx="18" ry="9" fill="${dk}"/><ellipse cx="126" cy="180" rx="18" ry="9" fill="${dk}"/>
     <path d="${BODY}" fill="${col}" stroke="${dk}" stroke-width="3.5"/><ellipse cx="100" cy="150" rx="40" ry="24" fill="#fff" opacity=".5"/>`;
+  /* さいごのすがた：うしろの光の輪・小さな羽・きらきら（頭の上は帽子と重なるので輪は体のまわりに置く） */
+  if(opt.final){
+    const wing=x=>`<path d="M${x} 104 q${x<100?-34:34} -30 ${x<100?-30:30} 6 q${x<100?-4:4} 18 ${x<100?22:-22} 14 Z" fill="#FFFFFF" stroke="#E9D9A6" stroke-width="2.5" stroke-linejoin="round"/>`;
+    back=`<ellipse cx="100" cy="112" rx="92" ry="86" fill="#FFF6D6" opacity=".55"/><ellipse cx="100" cy="112" rx="92" ry="86" fill="none" stroke="#FFE08A" stroke-width="4" opacity=".8"/>`+back+wing(44)+wing(156);
+  }
+  const fin=opt.final?sparkle(22,70,8,'#FFE08A')+sparkle(180,66,9,'#FFE08A')+sparkle(170,160,6,'#FFFFFF'):'';
   const shine=opt.shiny?sparkle(26,40,10,'#FFD84D')+sparkle(176,112,8,'#FF9EBB')+sparkle(40,172,7,'#8FD6E8'):'';
   const inner=ears+tuft+body+faceSVG(face)+accSVG(form);
   const g=baby?`<g transform="translate(100 118) scale(.84) translate(-100 -118)">${inner}</g>`:inner;
-  return `<svg viewBox="0 0 200 200" aria-hidden="true">${defs}<ellipse cx="100" cy="190" rx="60" ry="7" fill="rgba(0,0,0,.08)"/>${back}${g}${shine}</svg>`;
+  return `<svg viewBox="0 0 200 200" aria-hidden="true">${defs}<ellipse cx="100" cy="190" rx="60" ry="7" fill="rgba(0,0,0,.08)"/>${back}${g}${shine}${fin}</svg>`;
 }

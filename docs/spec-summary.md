@@ -44,7 +44,7 @@
 | たまご期 | 時間経過なし。エサで pt・パラメータは入る |
 
 ## データ
-- 保存先：`localStorage['punipuni-nikki-v1']`、形式 `v:2`（v1 は読み込み時に移行）
+- 保存先：`localStorage['punipuni-nikki-v2']`、形式 `v:2`（無ければ v1 のキー `punipuni-nikki-v1` を読んで移行。v1 キーには書かない。壊れたデータは `-broken` に退避）
 - バックアップ：出力 `PUNI2:`、入力 `PUNI1:`/`PUNI2:`、Base64(UTF-8 JSON)、40,000 文字まで
 - 読込・復元は必ず `sanitize()`（`js/state.js`）を通す。キー追加時は `DEF()` と `sanitize()` 両方
 - `APP_VERSION`（`js/app.js`）と `VERSION`（`sw.js`）は同じ値

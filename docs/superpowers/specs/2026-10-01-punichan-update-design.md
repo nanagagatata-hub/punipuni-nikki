@@ -192,7 +192,7 @@
   - 版数表示（`app.js` の `APP_VERSION`。`sw.js` の `VERSION` と同じ値にそろえる）
 
 ## 10. データ（保存形式 v2）
-`localStorage` のキーは `punipuni-nikki-v1` のまま（v2 データを書き込む）。
+`localStorage` のキーは `punipuni-nikki-v2`（最終レビューで変更：古い版のタブによる上書きを防ぐため。v1 のキーは読むだけ）。
 
 | キー | 型 | 初期値 | 検証 |
 |---|---|---|---|

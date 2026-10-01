@@ -1,7 +1,7 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
 import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES} from './data.js';
 import {dayKey,band,isNight,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine} from './rules.js';
-import {KEY,DEF,sanitize,encodeState,decodeState} from './state.js';
+import {KEY,DEF,loadState,encodeState,decodeState} from './state.js';
 import {petSVG} from './art.js';
 import {speak,sfx,setSound,unlock} from './sound.js';
 const APP_VERSION='v2.0.0'; // sw.js の VERSION と同じ値にそろえる
@@ -10,10 +10,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rnd=a=>a[Math.floor(Math.random()*a.length)];
 
-function load(){
-  try{const r=localStorage.getItem(KEY); if(r) return sanitize(JSON.parse(r));}catch(e){}
-  return DEF();
-}
+function load(){try{return loadState(localStorage);}catch(e){return DEF();}}
 
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 
@@ -127,13 +124,17 @@ function showEvolve(){
       else say(S.stage===3?'おとなに なったよ！ずかん を みてね':'よろしくね！いっぱい あそぼう');
       render();checkEvolve();});
 }
+/* ゆらす演出は 1 回だけ。終わったらクラスを外してポーズのアニメーションに戻す */
+let wobT=null;
+function wobble(){const el=$('#pet');el.classList.remove('wobble');void el.offsetWidth;el.classList.add('wobble');clearTimeout(wobT);wobT=setTimeout(()=>el.classList.remove('wobble'),700);}
+$('#pet').addEventListener('animationend',e=>{if(e.animationName==='wob')$('#pet').classList.remove('wobble');});
 /* タッチ（spec §6）：kind = head / belly / stroke / hug / mash */
 const TOUCH_LINE={head:'tapHead',belly:'tapBelly',stroke:'stroke',hug:'hug',mash:'dizzy'};
 const TOUCH_SFX={head:'pop',belly:'giggle',stroke:'cry',hug:'hug',mash:'dizzy'};
 const TOUCH_FX={head:'💗',belly:'💗',stroke:'💗',hug:'💞',mash:'💫'};
 function petAct(kind){
   const now=Date.now();lastInteract=now;
-  const el=$('#pet');el.classList.remove('wobble');void el.offsetWidth;el.classList.add('wobble');
+  wobble();
   if(isNight(new Date(now))){sfx('snore');say(line('sleepTap'));return;}
   if(farewellReady(S,now)){startFarewell();return;}
   if(S.stage===4&&S.sick){say(line('farewellSick'));render();return;}
@@ -142,7 +143,7 @@ function petAct(kind){
   if(now-S.petAt>30*60e3){S.mood=Math.min(4,S.mood+1);S.petAt=now;save();}
   setReact(kind==='mash'?'dizzy':kind);fxBurst(TOUCH_FX[kind]);sfx(TOUCH_SFX[kind]);
   if(S.stage>=2&&(kind==='head'||kind==='belly')&&Math.random()<.3)sayWord('えへへ。');
-  else say(rnd(LINES[TOUCH_LINE[kind]]));
+  else say(line(TOUCH_LINE[kind]));
   render();setTimeout(render,2600);
 }
 /* おわかれ：あいさつ → たまごを渡す → つぎの世代（spec §4.2）。文言は textContent で入れる */
@@ -228,7 +229,10 @@ function openSettings(){
       if(act==='export'){const ta=$('#codeOut');ta.value=encodeState(S);ta.hidden=false;ta.select();
         if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(ta.value).then(()=>toast('コピーしました'),()=>toast('表示されたコードを長押しでコピーしてください'));}
         else toast('表示されたコードを長押しでコピーしてください');}
-      if(act==='import'){try{S=decodeState($('#codeIn').value);setSound(S.sound);save();closeModal();say('おかえり！データを もどしたよ');render();toast('復元しました');}catch(e){toast('コードが正しくありません。全体をコピーできているか確認してください');}}
+      if(act==='import'){
+        let next;try{next=decodeState($('#codeIn').value);}catch(e){toast('コードが正しくありません。全体をコピーできているか確認してください');return;}
+        if(!btn.dataset.armed){btn.dataset.armed='1';btn.textContent='今のデータを置き換えます。もう一度タップ';return;}
+        try{S=next;setSound(S.sound);save();closeModal();say('おかえり！データを もどしたよ');render();toast('復元しました');}catch(e){toast('コードが正しくありません。全体をコピーできているか確認してください');}}
       if(act==='reset'){if(!btn.dataset.armed){btn.dataset.armed='1';btn.textContent='本当に消す？もう一度タップ';return;}
         S=DEF();setSound(S.sound);save();closeModal();say('あたらしい たまご が きたよ！');render();toast('リセットしました');}
     },true);
@@ -302,7 +306,8 @@ pet.addEventListener('pointercancel',()=>{clearTimeout(holdT2);ptr=null;});
 pet.addEventListener('click',e=>{if(e.detail===0)petAct('belly');});
 $('#zukanBtn').addEventListener('click',openZukan);
 $('#speakBtn').addEventListener('click',()=>speak(bubble.ja,bubble.zh));
-document.addEventListener('pointerdown',unlock,true);
+/* iPad はタッチの pointerdown では音を有効にできないことがあるので、離した時・click でも試す */
+['pointerdown','pointerup','touchend','click'].forEach(ev=>document.addEventListener(ev,unlock,true));
 let holdT=null,held=false;
 const gear=$('#gear');
 gear.addEventListener('pointerdown',()=>{held=false;holdT=setTimeout(()=>{held=true;openSettings();},1000);});

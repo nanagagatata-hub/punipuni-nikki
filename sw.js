@@ -1,6 +1,7 @@
 'use strict';
 // アプリ本体をキャッシュし、オフラインでも起動できるようにする。
 // ファイルを変更したら VERSION を必ず上げること（上げないと端末に古い版が残る）。
+// install では HTTP キャッシュを通さずに取得する（古い版と新しい版のファイルが混ざらないように）。
 const VERSION = 'v2.0.0';
 const CACHE = 'punipuni-' + VERSION;
 const ASSETS = [
@@ -10,7 +11,7 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {

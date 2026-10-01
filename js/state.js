@@ -1,6 +1,8 @@
 // 保存形式（DEF・sanitize・バックアップコード）
 import {H,TASKS,FOODS,FORMS,ZORDER,ADULT_IDS} from './data.js';
-export const KEY='punipuni-nikki-v1';
+/* v2 から保存キーを分ける：古い版のタブが残っていても v2 のデータを上書きされないように。v1 のキーは読むだけ */
+export const KEY='punipuni-nikki-v2';
+export const LEGACY_KEY='punipuni-nikki-v1';
 const CNT_KEYS=TASKS.filter(t=>t.id!=='hamigaki').map(t=>t.id).concat(['hamigaki_am','hamigaki_pm']);
 const STAGE_FORM={1:'puni',2:'hoshi',3:'hakase',4:'hakase'};
 
@@ -54,6 +56,14 @@ export function sanitize(o){
     .slice(-200).map(h=>({f:h.f,n:str(h.n,8)||'ぷにちゃん',g:int(h.g,1,1,9999),s:h.s===true}));
   d.sound=o.sound!==false;
   return d;
+}
+/* 読み込み：v2 のキー → なければ v1 のキー。壊れていたら元の文字列を KEY-broken に退避してから初期データで始める */
+export function loadState(store){
+  let raw=null;
+  try{raw=store.getItem(KEY);if(raw==null)raw=store.getItem(LEGACY_KEY);}catch(e){return DEF();}
+  if(raw==null)return DEF();
+  try{return sanitize(JSON.parse(raw));}
+  catch(e){try{if(store.getItem(KEY+'-broken')==null)store.setItem(KEY+'-broken',raw);}catch(e2){}return DEF();}
 }
 export function encodeState(S){return 'PUNI2:'+btoa(unescape(encodeURIComponent(JSON.stringify(S))));}
 export function decodeState(code){

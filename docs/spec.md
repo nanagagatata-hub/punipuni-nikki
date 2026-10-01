@@ -15,7 +15,7 @@
 | 端末 | iPad Safari（ホーム画面に追加して standalone 起動）。PC ブラウザでも動作 |
 | 形態 | 静的サイト（HTML/CSS/JS の ES モジュール、依存ライブラリなし、ビルドなし） |
 | 通信 | 外部通信なし。CSP で `'self'` のみ許可。音は端末内で合成 |
-| 保存 | 端末の `localStorage`（キー `punipuni-nikki-v1`、形式 `v:2`） |
+| 保存 | 端末の `localStorage`（キー `punipuni-nikki-v2`、形式 `v:2`。v1 のキーは移行のため読むだけ） |
 | 子ども向け配慮 | キャラは死なない。罰はなく「お世話で回復する」設計。一生の終わりは「たびだち」としてたまごを託す |
 
 ### 基本ループ
@@ -214,7 +214,7 @@
 
 ## 7. 音
 - 効果音・鳴き声は Web Audio API で合成（音声ファイルなし）：ボタン、タスク報告、食事、進化、回復、なでなで（鳴き声 3 種）、笑い声、ぎゅー、れんだ、寝息、たまご、おわかれ。
-- iPad の自動再生制限のため、最初のタッチ（`pointerdown`）で `AudioContext` を作成・再開する。
+- iPad の自動再生制限のため、操作のたび（`pointerdown`・`pointerup`・`touchend`・`click`）に `AudioContext` の作成・再開を試みる。
 - 🔊：Web Speech API で吹き出しの日本語（`ja-JP`、pitch 1.7、rate 1.05）→ 中国語（`zh-CN`、pitch 1.3、rate 0.85）の順に読み上げ。
 - 設定の「音：オフ」で効果音・鳴き声・読み上げをすべて止める。非対応端末では何もしない。
 
@@ -238,7 +238,7 @@
 | 音 | オン／オフ |
 | アプリを更新する | Service Worker に更新を確認させ、新しい版の有効化を最大 8 秒待ってから再読み込み（失敗しても再読み込み）。現在の版を表示 |
 | コードを表示・コピー | `PUNI2:` のバックアップコードを表示し、クリップボードへコピー |
-| コードから復元 | `PUNI1:`／`PUNI2:` を検証して置き換え。失敗時「コードが正しくありません…」 |
+| コードから復元 | `PUNI1:`／`PUNI2:` を検証し、2 回タップで置き換え（1 回目は「今のデータを置き換えます。もう一度タップ」）。失敗時「コードが正しくありません…」 |
 | 最初からやり直す | 2 回タップで全データ初期化（ずかん含む） |
 
 ---
@@ -246,8 +246,10 @@
 ## 10. データ
 
 ### 10.1 保存
-- `localStorage['punipuni-nikki-v1']` に JSON で保存（形式 `v:2`）。操作のたび・30 秒ごとに保存。
-- 起動時に `navigator.storage.persist()` を要求。読み込み失敗・不正データ時は初期データで開始。
+- `localStorage['punipuni-nikki-v2']` に JSON で保存（形式 `v:2`）。操作のたび・30 秒ごとに保存。
+- 読み込み：`punipuni-nikki-v2` → 無ければ v1 の `punipuni-nikki-v1`（移行）。v1 のキーには書き込まない（古い版のタブが残っていても v2 のデータを上書きされない）。
+- 読み込み失敗・不正データ時は、元の文字列を `punipuni-nikki-v2-broken` に退避してから初期データで開始。
+- 起動時に `navigator.storage.persist()` を要求。
 
 ### 10.2 保存形式（`v:2`）
 | キー | 型 | 初期値 | 検証（`sanitize()`） |
@@ -307,7 +309,7 @@
 - 保存データ・復元コードは `sanitize()` で既知のキーと型のみ取り込む。
 
 ### 11.3 Service Worker（`sw.js`）
-- キャッシュ名 `punipuni-<VERSION>`。install で `ASSETS` を事前キャッシュして `skipWaiting`、activate で古い `punipuni-*` を削除して `clients.claim`。
+- キャッシュ名 `punipuni-<VERSION>`。install で `ASSETS` を HTTP キャッシュを通さずに（`cache:'reload'`）事前キャッシュして `skipWaiting`、activate で古い `punipuni-*` を削除して `clients.claim`。
 - fetch：同一オリジンの GET のみ、キャッシュ優先（クエリ無視）→ なければネットワーク。
 - `ASSETS` に含まれるファイルを変えたら `VERSION` と `APP_VERSION` を上げる。端末側は設定の「アプリを更新する」で新版にできる。
 

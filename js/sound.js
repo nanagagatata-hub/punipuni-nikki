@@ -2,12 +2,12 @@
 let on=true,ctx=null,master=null;
 
 export function setSound(v){on=!!v;if(!on){try{speechSynthesis.cancel();}catch(e){}}}
-/* iPad は最初のユーザー操作の中でしか音を鳴らせないので、pointerdown で呼ぶ */
+/* iPad は最初のユーザー操作の中でしか音を鳴らせないので、操作のたびに呼ぶ（2 回目以降は再開だけ） */
 export function unlock(){
   try{
     if(!ctx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
       ctx=new AC();master=ctx.createGain();master.gain.value=.25;master.connect(ctx.destination);}
-    if(ctx.state==='suspended')ctx.resume();
+    if(ctx.state==='suspended'){const p=ctx.resume();if(p&&p.catch)p.catch(()=>{});}
   }catch(e){ctx=null;}
 }
 

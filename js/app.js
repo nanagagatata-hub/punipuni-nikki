@@ -1,9 +1,9 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
-import {H,TH,STAGE,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,LINES} from './data.js';
+import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,LINES} from './data.js';
 import {dayKey,isNight,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look} from './rules.js';
 import {KEY,DEF,sanitize,encodeState,decodeState} from './state.js';
 import {petSVG} from './art.js';
-import {speak} from './sound.js';
+import {speak,sfx,setSound,unlock} from './sound.js';
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -62,7 +62,7 @@ function openModal(html,handler,dismiss){
   const b=$('#sheet [data-act]');if(b)b.focus({preventScroll:true});
 }
 function closeModal(){$('#modal').hidden=true;$('#sheet').innerHTML='';modalHandler=null;}
-$('#sheet').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b&&modalHandler)modalHandler(b.dataset.act,b);});
+$('#sheet').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b&&modalHandler){sfx('pop');modalHandler(b.dataset.act,b);}});
 $('#modal').addEventListener('click',e=>{if(e.target===$('#modal')&&modalDismiss)closeModal();});
 
 /* ---------- logic ---------- */
@@ -81,7 +81,7 @@ function report(t){
   const f=FOODS[t.food];
   if(t.id==='lesson'){S.boostUntil=Date.now()+24*H;say(`すごい！${f.name} を もらったよ。ぐんぐんたいむ が はじまった！`);}
   else say(`${f.name} を もらったよ！した の ${f.icon} を おして あげてね`);
-  lastInteract=Date.now();fxBurst(f.icon);save();render();
+  lastInteract=Date.now();sfx('chime');fxBurst(f.icon);save();render();
 }
 function feed(fid){
   if(!(S.inv[fid]>0))return;
@@ -91,13 +91,13 @@ function feed(fid){
   if(S.stage>0){S.hunger=Math.min(4,S.hunger+(fid==='nikuman'?2:1));if(fid==='purin')S.mood=Math.min(4,S.mood+1);}
   if(S.sick){
     S.cure++;
-    if(S.cure>=2){S.sick=false;S.cure=0;say('げんきに なったよ！ありがとう！');setReact('happy');fxBurst('🌈');}
-    else say('ありがとう… もう ひとつ たべたら なおりそう');
+    if(S.cure>=2){S.sick=false;S.cure=0;say('げんきに なったよ！ありがとう！');setReact('happy');sfx('heal');fxBurst('🌈');}
+    else{sfx('munch');say('ありがとう… もう ひとつ たべたら なおりそう');}
     save();render();return;
   }
   const mul=now<S.boostUntil?1.5:1;
   S.pts+=f.pt*mul;S.p[f.param]+=f.amt*mul;
-  fxBurst(f.icon);setReact('happy');
+  sfx('munch');fxBurst(f.icon);setReact('happy');
   if(S.stage===0) say('たまごが ぽかぽか してきた…！');
   else if(fid==='kotoba'||fid==='nikuman') sayWord('もぐもぐ！');
   else say(rnd(['おいしい！','もぐもぐ… しあわせ〜','ありがとう！だいすき！','ぱくぱく！おなか いっぱい']));
@@ -115,6 +115,7 @@ function checkEvolve(){
   }
 }
 function showEvolve(){
+  sfx('fanfare');
   const msg=['','たまごが かえった！','しんか した！','おとなに なった！','さいごの すがた に なった！'][S.stage];
   openModal(`<div class="center"><div class="evo">${petSVG(S.form,'happy',{shiny:S.shiny,final:S.stage===4})}</div><p class="q">${msg}</p>
     <p class="sub">${esc(S.name)} は「${formName()}」に なったよ</p>
@@ -126,17 +127,18 @@ function showEvolve(){
 }
 /* タッチ（spec §6）：kind = head / belly / stroke / hug / mash */
 const TOUCH_LINE={head:'tapHead',belly:'tapBelly',stroke:'stroke',hug:'hug',mash:'dizzy'};
+const TOUCH_SFX={head:'pop',belly:'giggle',stroke:'cry',hug:'hug',mash:'dizzy'};
 const TOUCH_FX={head:'💗',belly:'💗',stroke:'💗',hug:'💞',mash:'💫'};
 function petAct(kind){
   const now=Date.now();lastInteract=now;
   const el=$('#pet');el.classList.remove('wobble');void el.offsetWidth;el.classList.add('wobble');
-  if(isNight(new Date(now))){say(rnd(LINES.sleepTap));return;}
+  if(isNight(new Date(now))){sfx('snore');say(rnd(LINES.sleepTap));return;}
   if(farewellReady(S,now)){startFarewell();return;}
   if(S.stage===4&&S.sick){say(rnd(LINES.farewellSick));render();return;}
-  if(S.stage===0){say(rnd(LINES.egg));return;}
+  if(S.stage===0){sfx('egg');say(rnd(LINES.egg));return;}
   if(S.sick){say(rnd(LINES.sickTap));render();return;}
   if(now-S.petAt>30*60e3){S.mood=Math.min(4,S.mood+1);S.petAt=now;save();}
-  setReact(kind==='mash'?'dizzy':kind);fxBurst(TOUCH_FX[kind]);
+  setReact(kind==='mash'?'dizzy':kind);fxBurst(TOUCH_FX[kind]);sfx(TOUCH_SFX[kind]);
   if(S.stage>=2&&(kind==='head'||kind==='belly')&&Math.random()<.3)sayWord('えへへ。');
   else say(rnd(LINES[TOUCH_LINE[kind]]));
   render();setTimeout(render,2600);
@@ -145,12 +147,13 @@ function petAct(kind){
 const fill=t=>t.split('{you}').join(S.you).split('{name}').join(S.name);
 const pickYou=alts=>fill(alts.find(t=>S.you?t.indexOf('{you}')>=0:t.indexOf('{you}')<0)||alts[0]);
 function startFarewell(){
+  sfx('farewell');setTimeout(()=>sfx('cry'),1600);
   const pages=LINES.farewell.map(pickYou);let i=0;
   const show=()=>{
     const last=i>=pages.length;
     openModal(`<div class="center"><div class="evo">${last?'<div class="big">🥚</div>':petSVG(S.form,i===pages.length-1?'happy':'normal',{shiny:S.shiny,final:true})}</div>
       <p class="q" id="fwText"></p><div class="btns"><button class="btn" data-act="next">${last?'うけとる':'つぎへ'}</button></div></div>`,
-      ()=>{if(last){closeModal();newGeneration();return;}i++;show();},false);
+      ()=>{if(last){closeModal();sfx('egg');newGeneration();return;}i++;show();},false);
     $('#fwText').textContent=last?pickYou(LINES.give):pages[i];
   };
   show();
@@ -197,7 +200,7 @@ function openSettings(){
       if(act==='export'){const ta=$('#codeOut');ta.value=encodeState(S);ta.hidden=false;ta.select();
         if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(ta.value).then(()=>toast('コピーしました'),()=>toast('表示されたコードを長押しでコピーしてください'));}
         else toast('表示されたコードを長押しでコピーしてください');}
-      if(act==='import'){try{S=decodeState($('#codeIn').value);save();closeModal();say('おかえり！データを もどしたよ');render();toast('復元しました');}catch(e){toast('コードが正しくありません。全体をコピーできているか確認してください');}}
+      if(act==='import'){try{S=decodeState($('#codeIn').value);setSound(S.sound);save();closeModal();say('おかえり！データを もどしたよ');render();toast('復元しました');}catch(e){toast('コードが正しくありません。全体をコピーできているか確認してください');}}
       if(act==='reset'){if(!btn.dataset.armed){btn.dataset.armed='1';btn.textContent='本当に消す？もう一度タップ';return;}
         S=DEF();save();closeModal();say('あたらしい たまご が きたよ！');render();toast('リセットしました');}
     },true);
@@ -270,7 +273,8 @@ pet.addEventListener('pointerup',()=>{
 pet.addEventListener('pointercancel',()=>{clearTimeout(holdT2);ptr=null;});
 pet.addEventListener('click',e=>{if(e.detail===0)petAct('belly');});
 $('#zukanBtn').addEventListener('click',openZukan);
-$('#speakBtn').addEventListener('click',()=>{try{speechSynthesis.cancel();}catch(e){}speak(bubble.ja,'ja-JP');speak(bubble.zh,'zh-CN');});
+$('#speakBtn').addEventListener('click',()=>speak(bubble.ja,bubble.zh));
+document.addEventListener('pointerdown',unlock,true);
 let holdT=null,held=false;
 const gear=$('#gear');
 gear.addEventListener('pointerdown',()=>{held=false;holdT=setTimeout(()=>{held=true;openSettings();},1000);});
@@ -286,5 +290,6 @@ tick(Date.now());
 if(S.sick)say(rnd(LINES.sick));
 else if(S.stage===0)say('たまご を あたためよう。できたこと を おしえてね！');
 else say(rnd(['おかえり！きょうも いっしょに がんばろうね','あいたかったよ！','きょうは なにが できたかな？']));
+setSound(S.sound);
 save();render();
 setInterval(()=>{tick(Date.now());save();render();},30000);

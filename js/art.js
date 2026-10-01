@@ -36,6 +36,32 @@ function faceSVG(face){
   }else if(face==='sad'){
     eyes=ex.map(x=>`<circle cx="${x}" cy="${ey+2}" r="5.5" fill="${ink}"/>`).join('');
     mouth=`<path d="M92 133 Q100 125 108 133" ${st} stroke-width="3.5"/>`;
+  }else if(face==='sparkle'||face==='drool'||face==='shy'||face==='hug'){
+    eyes=ex.map(x=>`<path d="M${x-8} ${ey+3} Q${x} ${ey-8} ${x+8} ${ey+3}" ${st}/>`).join('');
+    mouth=face==='shy'?`<path d="M94 128 Q100 133 106 128" ${st} stroke-width="3"/>`:`<path d="M88 124 Q100 144 112 124 Z" fill="#FF7FA0" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>`;
+    if(face==='sparkle') extra=sparkle(58,92,7,'#FFD84D')+sparkle(146,90,6,'#FFD84D');
+    if(face==='drool') extra=`<path d="M110 132 q4 10 0 14 q-4 -4 0 -14Z" fill="#9FD3F5"/>`;
+    if(face==='shy'||face==='hug') blushCol='#FF7FA0';
+    if(face==='hug') extra=`<path d="M148 70 c-6 -8 -16 0 -8 8 l8 8 l8 -8 c8 -8 -2 -16 -8 -8Z" fill="#FF7FA0"/>`;
+  }else if(face==='pout'){
+    eyes=ex.map(x=>`<circle cx="${x}" cy="${ey+2}" r="6.5" fill="${ink}"/><path d="M${x-9} ${ey-5} L${x+9} ${ey-3}" ${st} stroke-width="3.5"/>`).join('');
+    mouth=`<path d="M94 130 q6 -6 12 0" ${st} stroke-width="3.5"/><circle cx="138" cy="122" r="12" fill="#FFB7CC" opacity=".8"/>`;
+  }else if(face==='tears'){
+    eyes=ex.map(x=>`<circle cx="${x}" cy="${ey+2}" r="6" fill="${ink}"/><circle cx="${x+2}" cy="${ey}" r="2" fill="#fff"/>`).join('');
+    mouth=`<path d="M90 134 q5 -6 10 0 q5 6 10 0" ${st} stroke-width="3"/>`;
+    extra=`<path d="M72 116 q-4 12 0 16 q4 -4 0 -16Z M128 116 q-4 12 0 16 q4 -4 0 -16Z" fill="#9FD3F5"/>`;
+  }else if(face==='hungry'){
+    eyes=ex.map(x=>`<circle cx="${x}" cy="${ey-2}" r="7" fill="${ink}"/><circle cx="${x+2}" cy="${ey-6}" r="2.5" fill="#fff"/>`).join('');
+    mouth=`<ellipse cx="100" cy="131" rx="5" ry="6" fill="#FF7FA0" stroke="${ink}" stroke-width="3"/>`;
+  }else if(face==='giggle'){
+    eyes=`<path d="M70 102 L82 108 L70 114" ${st}/><path d="M130 102 L118 108 L130 114" ${st}/>`;
+    mouth=`<path d="M86 122 Q100 146 114 122 Z" fill="#FF7FA0" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>`;
+  }else if(face==='squint'){
+    eyes=ex.map(x=>`<path d="M${x-8} ${ey} Q${x} ${ey-5} ${x+8} ${ey}" ${st}/>`).join('');
+    mouth=`<path d="M92 127 Q100 134 108 127" ${st} stroke-width="3.5"/>`;
+  }else if(face==='dizzy'){
+    eyes=ex.map(x=>`<path d="M${x} ${ey} m-1 0 a2 2 0 1 1 3 0 a4 4 0 1 1 -6 0 a6 6 0 1 1 9 0" ${st} stroke-width="2.5"/>`).join('');
+    mouth=`<path d="M88 132 q4 -5 8 0 q4 5 8 0 q4 -5 8 0" ${st} stroke-width="3"/>`;
   }else{
     eyes=ex.map(x=>`<circle cx="${x}" cy="${ey}" r="7.5" fill="${ink}"/><circle cx="${x+2.5}" cy="${ey-3}" r="2.6" fill="#fff"/>`).join('');
     mouth=`<path d="M92 127 Q100 135 108 127" ${st} stroke-width="3.5"/>`;
@@ -88,17 +114,21 @@ export function petSVG(form,face,opt){
   }
   const ears=baby?'':`<circle cx="58" cy="62" r="18" fill="${col}" stroke="${dk}" stroke-width="3"/><circle cx="58" cy="62" r="8" fill="#FFB7CC"/><circle cx="142" cy="62" r="18" fill="${col}" stroke="${dk}" stroke-width="3"/><circle cx="142" cy="62" r="8" fill="#FFB7CC"/>`;
   const tuft=form==='puni'?`<path d="M100 42 q-9 -16 5 -21 q11 -2 7 9" fill="none" stroke="${dk}" stroke-width="4" stroke-linecap="round"/>`:'';
-  const body=`<ellipse cx="33" cy="132" rx="11" ry="15" fill="${col}" stroke="${dk}" stroke-width="3" transform="rotate(25 33 132)"/><ellipse cx="167" cy="132" rx="11" ry="15" fill="${col}" stroke="${dk}" stroke-width="3" transform="rotate(-25 167 132)"/>
+  const arm=(x,y,r)=>`<ellipse cx="${x}" cy="${y}" rx="11" ry="15" fill="${col}" stroke="${dk}" stroke-width="3" transform="rotate(${r} ${x} ${y})"/>`;
+  const arms=opt.arms==='up'?arm(30,98,-35)+arm(170,98,35):'';
+  const armsFront=opt.arms==='belly'?arm(78,146,60)+arm(122,146,-60):'';
+  const body=(opt.arms==='up'||opt.arms==='belly'?'':arm(33,132,25)+arm(167,132,-25))+arms+`
     <ellipse cx="74" cy="180" rx="18" ry="9" fill="${dk}"/><ellipse cx="126" cy="180" rx="18" ry="9" fill="${dk}"/>
-    <path d="${BODY}" fill="${col}" stroke="${dk}" stroke-width="3.5"/><ellipse cx="100" cy="150" rx="40" ry="24" fill="#fff" opacity=".5"/>`;
+    <path d="${BODY}" fill="${col}" stroke="${dk}" stroke-width="3.5"/><ellipse cx="100" cy="150" rx="40" ry="24" fill="#fff" opacity=".5"/>`+armsFront;
   /* さいごのすがた：うしろの光の輪・小さな羽・きらきら（頭の上は帽子と重なるので輪は体のまわりに置く） */
   if(opt.final){
     const wing=x=>`<path d="M${x} 104 q${x<100?-34:34} -30 ${x<100?-30:30} 6 q${x<100?-4:4} 18 ${x<100?22:-22} 14 Z" fill="#FFFFFF" stroke="#E9D9A6" stroke-width="2.5" stroke-linejoin="round"/>`;
     back=`<ellipse cx="100" cy="112" rx="92" ry="86" fill="#FFF6D6" opacity=".55"/><ellipse cx="100" cy="112" rx="92" ry="86" fill="none" stroke="#FFE08A" stroke-width="4" opacity=".8"/>`+back+wing(44)+wing(156);
   }
+  const think=opt.think?`<circle cx="150" cy="58" r="4" fill="#fff" stroke="#D9CCD6" stroke-width="2"/><circle cx="160" cy="44" r="6" fill="#fff" stroke="#D9CCD6" stroke-width="2"/><ellipse cx="176" cy="24" rx="20" ry="17" fill="#fff" stroke="#D9CCD6" stroke-width="2"/><text x="176" y="32" text-anchor="middle" font-size="20">${opt.think}</text>`:'';
   const fin=opt.final?sparkle(22,70,8,'#FFE08A')+sparkle(180,66,9,'#FFE08A')+sparkle(170,160,6,'#FFFFFF'):'';
   const shine=opt.shiny?sparkle(26,40,10,'#FFD84D')+sparkle(176,112,8,'#FF9EBB')+sparkle(40,172,7,'#8FD6E8'):'';
   const inner=ears+tuft+body+faceSVG(face)+accSVG(form);
   const g=baby?`<g transform="translate(100 118) scale(.84) translate(-100 -118)">${inner}</g>`:inner;
-  return `<svg viewBox="0 0 200 200" aria-hidden="true">${defs}<ellipse cx="100" cy="190" rx="60" ry="7" fill="rgba(0,0,0,.08)"/>${back}${g}${shine}${fin}</svg>`;
+  return `<svg viewBox="0 0 200 200" aria-hidden="true">${defs}<ellipse cx="100" cy="190" rx="60" ry="7" fill="rgba(0,0,0,.08)"/>${back}${g}${shine}${fin}${think}</svg>`;
 }

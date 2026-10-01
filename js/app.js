@@ -1,6 +1,6 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
 import {H,TH,STAGE,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,LINES} from './data.js';
-import {dayKey,isNight,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady} from './rules.js';
+import {dayKey,isNight,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look} from './rules.js';
 import {KEY,DEF,sanitize,encodeState,decodeState} from './state.js';
 import {petSVG} from './art.js';
 import {speak} from './sound.js';
@@ -19,7 +19,8 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 let S=load();
 let bubble={ja:'',zh:''};
 let lastInteract=Date.now();
-let happyUntil=0;
+let react=null,reactUntil=0;
+function setReact(k){react=k;reactUntil=Date.now()+2500;}
 
 function ensureDay(){const k=dayKey(new Date()); if(S.day!==k){S.day=k;S.cnt={};}}
 function tick(now){
@@ -90,13 +91,13 @@ function feed(fid){
   if(S.stage>0){S.hunger=Math.min(4,S.hunger+(fid==='nikuman'?2:1));if(fid==='purin')S.mood=Math.min(4,S.mood+1);}
   if(S.sick){
     S.cure++;
-    if(S.cure>=2){S.sick=false;S.cure=0;say('げんきに なったよ！ありがとう！');happyUntil=now+2500;fxBurst('🌈');}
+    if(S.cure>=2){S.sick=false;S.cure=0;say('げんきに なったよ！ありがとう！');setReact('happy');fxBurst('🌈');}
     else say('ありがとう… もう ひとつ たべたら なおりそう');
     save();render();return;
   }
   const mul=now<S.boostUntil?1.5:1;
   S.pts+=f.pt*mul;S.p[f.param]+=f.amt*mul;
-  fxBurst(f.icon);happyUntil=now+2500;
+  fxBurst(f.icon);setReact('happy');
   if(S.stage===0) say('たまごが ぽかぽか してきた…！');
   else if(fid==='kotoba'||fid==='nikuman') sayWord('もぐもぐ！');
   else say(rnd(['おいしい！','もぐもぐ… しあわせ〜','ありがとう！だいすき！','ぱくぱく！おなか いっぱい']));
@@ -123,18 +124,21 @@ function showEvolve(){
       else say(S.stage===3?'おとなに なったよ！ずかん を みてね':'よろしくね！いっぱい あそぼう');
       render();checkEvolve();});
 }
-function petTap(){
+/* タッチ（spec §6）：kind = head / belly / stroke / hug / mash */
+const TOUCH_LINE={head:'tapHead',belly:'tapBelly',stroke:'stroke',hug:'hug',mash:'dizzy'};
+const TOUCH_FX={head:'💗',belly:'💗',stroke:'💗',hug:'💞',mash:'💫'};
+function petAct(kind){
   const now=Date.now();lastInteract=now;
   const el=$('#pet');el.classList.remove('wobble');void el.offsetWidth;el.classList.add('wobble');
   if(isNight(new Date(now))){say(rnd(LINES.sleepTap));return;}
   if(farewellReady(S,now)){startFarewell();return;}
   if(S.stage===4&&S.sick){say(rnd(LINES.farewellSick));render();return;}
-  if(S.stage===0){say('ころころ… なかで なにか うごいてる！');return;}
-  if(S.sick){say('うーん… ごはん たべたら げんきに なるかも');render();return;}
+  if(S.stage===0){say(rnd(LINES.egg));return;}
+  if(S.sick){say(rnd(LINES.sickTap));render();return;}
   if(now-S.petAt>30*60e3){S.mood=Math.min(4,S.mood+1);S.petAt=now;save();}
-  fxBurst('💗');happyUntil=now+2500;
-  if(S.stage>=2&&Math.random()<.5)sayWord('えへへ。');
-  else say(rnd(['えへへ、くすぐったい！','なでなで うれしいな','いっしょに いると たのしいね']));
+  setReact(kind==='mash'?'dizzy':kind);fxBurst(TOUCH_FX[kind]);
+  if(S.stage>=2&&(kind==='head'||kind==='belly')&&Math.random()<.3)sayWord('えへへ。');
+  else say(rnd(LINES[TOUCH_LINE[kind]]));
   render();setTimeout(render,2600);
 }
 /* おわかれ：あいさつ → たまごを渡す → つぎの世代（spec §4.2）。文言は textContent で入れる */
@@ -206,10 +210,9 @@ function render(){
   ensureDay();const now=Date.now();
   $('#petName').textContent=S.name;$('#genLabel').textContent=S.gen+'だいめ';
   const sleeping=S.stage>0&&isNight(new Date());
-  let face='normal';
-  if(sleeping)face='sleep';else if(S.sick)face='sick';else if(now<happyUntil)face='happy';
-  else if(S.stage>0&&(S.hunger===0||S.mood===0))face='sad';
-  $('#pet').innerHTML=petSVG(S.form,face,{pts:S.pts,shiny:S.shiny,final:S.stage===4});
+  const L=look(S,{night:sleeping,react:now<reactUntil?react:null});
+  $('#pet').innerHTML=petSVG(S.form,L.face,{pts:S.pts,shiny:S.shiny,final:S.stage===4,arms:L.arms,think:L.think});
+  $('#pet').dataset.pose=L.pose;
   $('#screen').classList.toggle('night',sleeping);
   $('#gauges').innerHTML=S.stage===0?`<span class="glabel">たまご を あたためよう</span>`:
     `<div class="gauge"><span class="glabel">おなか</span>${icons('🍙',S.hunger)}</div><div class="gauge"><span class="glabel">ごきげん</span>${icons('🌸',S.mood)}</div>`;
@@ -244,7 +247,28 @@ function render(){
 /* ---------- events ---------- */
 $('#tasks').addEventListener('click',e=>{const b=e.target.closest('[data-task]');if(b&&!b.disabled)confirmTask(b.dataset.task);});
 $('#tray').addEventListener('click',e=>{const b=e.target.closest('[data-food]');if(b)feed(b.dataset.food);});
-$('#pet').addEventListener('click',petTap);
+/* なでなで＝押したまま合計80px、ぎゅー＝700ms ほぼ動かさない、れんだ＝2.5秒に5回、あたま＝上40% */
+let ptr=null,holdT2=null,taps=[];
+const pet=$('#pet');
+pet.addEventListener('pointerdown',e=>{
+  const r=pet.getBoundingClientRect();
+  ptr={x:e.clientX,y:e.clientY,dist:0,done:false,top:(e.clientY-r.top)/r.height<.4};
+  try{pet.setPointerCapture(e.pointerId);}catch(err){}
+  clearTimeout(holdT2);holdT2=setTimeout(()=>{if(ptr&&!ptr.done&&ptr.dist<12){ptr.done=true;petAct('hug');}},700);
+});
+pet.addEventListener('pointermove',e=>{
+  if(!ptr)return;
+  ptr.dist+=Math.hypot(e.clientX-ptr.x,e.clientY-ptr.y);ptr.x=e.clientX;ptr.y=e.clientY;
+  if(!ptr.done&&ptr.dist>=80){ptr.done=true;clearTimeout(holdT2);petAct('stroke');}
+});
+pet.addEventListener('pointerup',()=>{
+  clearTimeout(holdT2);if(!ptr)return;
+  const p=ptr;ptr=null;if(p.done)return;
+  const now=Date.now();taps=taps.filter(t=>now-t<2500);taps.push(now);
+  if(taps.length>=5){taps=[];petAct('mash');}else petAct(p.top?'head':'belly');
+});
+pet.addEventListener('pointercancel',()=>{clearTimeout(holdT2);ptr=null;});
+pet.addEventListener('click',e=>{if(e.detail===0)petAct('belly');});
 $('#zukanBtn').addEventListener('click',openZukan);
 $('#speakBtn').addEventListener('click',()=>{try{speechSynthesis.cancel();}catch(e){}speak(bubble.ja,'ja-JP');speak(bubble.zh,'zh-CN');});
 let holdT=null,held=false;

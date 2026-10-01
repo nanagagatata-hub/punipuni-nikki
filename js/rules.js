@@ -80,3 +80,22 @@ export function finalDue(S){return at6(S.adultAt,2);}
 export function farewellReady(S,now){
   return S.stage===4&&S.finalSeenAt>0&&now>=at6(S.finalSeenAt,1)&&!isNight(new Date(now))&&!S.sick;
 }
+
+/* 表情とポーズ（spec §5.3）：ねんね ＞ びょうき ＞ リアクション ＞ おなか×ごきげん の表 */
+const REACT={head:['shy','squish','side'],belly:['giggle','bounce','up'],stroke:['squint','sway','side'],
+  hug:['hug','squish','up'],dizzy:['dizzy','spin','side'],happy:['happy','bounce','up']};
+const TABLE={ // [おなか段階][ごきげん段階] = [face, pose]
+  full:{low:['pout','tilt'],mid:['happy','sway'],high:['sparkle','bounce']},
+  some:{low:['sad','droop'],mid:['normal','bob'],high:['happy','sway']},
+  zero:{low:['tears','droop'],mid:['hungry','bob'],high:['drool','bob']}
+};
+export function look(S,ctx){
+  const mk=(face,pose,arms,think)=>({face,pose,arms:arms||'side',think:think||null});
+  if(S.stage===0) return mk('normal','bob');
+  if(ctx.night) return mk('sleep','none');
+  if(S.sick) return mk('sick','droop');
+  if(ctx.react&&REACT[ctx.react]){const x=REACT[ctx.react];return mk(x[0],x[1],x[2]);}
+  const h=S.hunger===0?'zero':S.hunger<=2?'some':'full', m=S.mood<=1?'low':S.mood<=3?'mid':'high';
+  const [face,pose]=TABLE[h][m];
+  return mk(face,pose,face==='hungry'?'belly':face==='sparkle'?'up':'side',h==='zero'&&m!=='low'?'🍙':null);
+}

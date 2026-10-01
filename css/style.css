@@ -123,7 +123,8 @@ img,svg{max-width:100%}
 textarea{min-height:90px;font-size:13px!important;font-family:ui-monospace,monospace!important;word-break:break-all}
 .evo svg{width:220px;height:220px;animation:evo 1.3s ease-out}
 @keyframes evo{0%{transform:scale(.5);filter:brightness(3)}60%{transform:scale(1.12);filter:brightness(1.4)}100%{transform:scale(1);filter:none}}
-.zgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-top:10px}
+.sheet h4.zh{margin:16px 0 0;font-size:17px;text-align:left;color:var(--soft)}
+.zgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:12px;margin-top:10px}
 .zc{background:var(--bg);border-radius:20px;padding:8px 6px 10px}
 .zc svg{width:100%;height:auto}
 .zc b{display:block;font-size:15px}

@@ -1,6 +1,6 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
 import {H,TH,STAGE,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,LINES} from './data.js';
-import {dayKey,isNight,taskState,taskNote,decay,afterFeed,nextForm} from './rules.js';
+import {dayKey,isNight,taskState,taskNote,decay,afterFeed,chooseForm} from './rules.js';
 import {KEY,DEF,sanitize,encodeState,decodeState} from './state.js';
 import {petSVG} from './art.js';
 import {speak} from './sound.js';
@@ -98,16 +98,18 @@ function feed(fid){
 }
 function checkEvolve(){
   if(S.stage<3&&S.pts>=TH[S.stage+1]){
-    const f=nextForm(S);S.stage++;S.form=f;if(S.stage===3)S.adultAt=Date.now();
-    if(S.zukan.indexOf(f)<0)S.zukan.push(f);
+    const c=chooseForm(S);S.stage++;S.form=c.form;S.shiny=c.shiny;
+    if(S.stage===3)S.adultAt=Date.now();
+    if(S.zukan.indexOf(c.form)<0)S.zukan.push(c.form);
+    if(c.shiny&&S.shinySeen.indexOf(c.form)<0)S.shinySeen.push(c.form);
     if(S.stage===1){const n=Date.now();S.lastTick=n;S.hunger=3;S.mood=3;S.hAcc=0;S.mAcc=0;}
     save();showEvolve();
   }
 }
 function showEvolve(){
   const msg=S.stage===1?'たまごが かえった！':S.stage===3?'おとなに なった！':'しんか した！';
-  openModal(`<div class="center"><div class="evo">${petSVG(S.form,'happy')}</div><p class="q">${msg}</p>
-    <p class="sub">${esc(S.name)} は「${FORMS[S.form].name}」に なったよ</p>
+  openModal(`<div class="center"><div class="evo">${petSVG(S.form,'happy',{shiny:S.shiny})}</div><p class="q">${msg}</p>
+    <p class="sub">${esc(S.name)} は「${formName()}」に なったよ</p>
     <div class="btns"><button class="btn" data-act="ok">やったー！</button></div></div>`,
     ()=>{closeModal();say(S.stage===3?'おとなに なったよ！ずかん を みてね':'よろしくね！いっぱい あそぼう');render();checkEvolve();});
 }
@@ -131,10 +133,18 @@ function nextEgg(){
       const keep={gen:S.gen+1,zukan:S.zukan,lessonDays:S.lessonDays,you:S.you,name:S.name,history:S.history,shinySeen:S.shinySeen,sound:S.sound,inv:S.inv,day:S.day,cnt:S.cnt,boostUntil:S.boostUntil};
       S=Object.assign(DEF(),keep);save();say('あたらしい たまご が きたよ！あたためて あげよう');render();},true);
 }
+function formName(){return (S.shiny?'きらきら ':'')+FORMS[S.form].name;}
+function zukanCell(f){
+  const seen=S.zukan.indexOf(f)>=0,F=FORMS[f];
+  if(!seen) return `<div class="zc">${petSVG(f,'normal',{sil:true})}<b>？？？</b><span>${F.hint}</span></div>`;
+  const hist=S.history.filter(h=>h.f===f),last=hist[hist.length-1],shiny=S.shinySeen.indexOf(f)>=0;
+  const mark=(hist.length?'👼':'')+(shiny?'✨':'');
+  const memo=last?`${esc(last.n)}・${last.g}ぴきめ${hist.length>1?`<br>ほか ${hist.length-1}ひき`:''}`:'';
+  return `<div class="zc">${petSVG(f,'normal')}<b>${F.name}${mark?' '+mark:''}</b><span>${memo}</span></div>`;
+}
 function openZukan(){
-  const cells=ZORDER.map(f=>{const seen=S.zukan.indexOf(f)>=0;
-    return `<div class="zc">${petSVG(f,'normal',{sil:!seen})}<b>${seen?FORMS[f].name:'？？？'}</b><span>${seen?'':FORMS[f].hint}</span></div>`;}).join('');
-  openModal(`<p class="q">ずかん（${S.zukan.length} / ${ZORDER.length}）</p><div class="zgrid">${cells}</div>
+  const sec=(st,title)=>`<h4 class="zh">${title}</h4><div class="zgrid">${ZORDER.filter(f=>FORMS[f].stage===st).map(zukanCell).join('')}</div>`;
+  openModal(`<p class="q">ずかん（${S.zukan.length} / ${ZORDER.length}）</p>${sec(1,'あかちゃん')}${sec(2,'こども')}${sec(3,'おとな')}
     <div class="btns"><button class="btn ghost" data-act="close">とじる</button></div>`,()=>closeModal(),true);
 }
 function openSettings(){
@@ -174,7 +184,7 @@ function render(){
   let face='normal';
   if(sleeping)face='sleep';else if(S.sick)face='sick';else if(now<happyUntil)face='happy';
   else if(S.stage>0&&(S.hunger===0||S.mood===0))face='sad';
-  $('#pet').innerHTML=petSVG(S.form,face,{pts:S.pts});
+  $('#pet').innerHTML=petSVG(S.form,face,{pts:S.pts,shiny:S.shiny});
   $('#screen').classList.toggle('night',sleeping);
   $('#gauges').innerHTML=S.stage===0?`<span class="glabel">たまご を あたためよう</span>`:
     `<div class="gauge"><span class="glabel">おなか</span>${icons('🍙',S.hunger)}</div><div class="gauge"><span class="glabel">ごきげん</span>${icons('🌸',S.mood)}</div>`;

@@ -1,5 +1,5 @@
 // DOM に触れない純粋なルール（時間帯・タスク受付・時間経過・分岐）
-import {H,WD} from './data.js';
+import {H,WD,ADULT_IDS} from './data.js';
 
 export function dayKey(d){return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
 /* あさ 6–9 / ひる 10–15 / ゆうがた 16–19 / よる 20–5（よる＝ねんね） */
@@ -48,11 +48,28 @@ export function decay(S,now){
 }
 export function afterFeed(S){S.zeroAcc=0;}
 
-export function nextForm(S){
+const PK=['ka','ki','ge','ho'];
+const BABY={ka:'puni',ki:'shizuku',ge:'koro',ho:'moko'};
+const CHILD={ka:'hoshi',ki:'shabon',ge:'hana',ho:'kumo'};
+const SINGLE={ka:'hakase',ki:'kirara',ge:'morimori',ho:'pokapoka'};
+const PAIR={'ka+ki':'tsukimi','ka+ge':'bouken','ka+ho':'yumemi','ki+ge':'marin','ki+ho':'keki','ge+ho':'ohisama'};
+/* 最大のつよさ（同値は かしこさ→きれい→げんき→ほかほか） */
+function topKey(p){return PK.reduce((a,k)=>p[k]>p[a]?k:a,'ka');}
+/* 進化先：あかちゃん・こどもは最大のつよさ。おとなは 第1候補→相性スコア順で ずかん に無いもの→全部あれば第1候補の色違い（spec §4.3） */
+export function chooseForm(S){
   const p=S.p;
-  if(S.stage===0)return 'puni';
-  if(S.stage===1)return (p.ka+p.ki>=p.ge+p.ho)?'hoshi':'hana';
-  const v=[p.ka,p.ki,p.ge,p.ho],mx=Math.max(...v),mn=Math.min(...v);
-  if(mn>0&&mx/mn<=1.6)return 'niji';
-  return ['hakase','kirara','morimori','pokapoka'][v.indexOf(mx)];
+  if(S.stage===0) return {form:BABY[topKey(p)],shiny:false};
+  if(S.stage===1) return {form:CHILD[topKey(p)],shiny:false};
+  const sorted=PK.slice().sort((a,b)=>p[b]-p[a]||PK.indexOf(a)-PK.indexOf(b));
+  const v1=p[sorted[0]],v2=p[sorted[1]],mn=p[sorted[3]];
+  let first;
+  if(mn>0&&v1/mn<=1.6) first='niji';
+  else if(v2>0&&v2>=v1*.75) first=PAIR[[sorted[0],sorted[1]].sort((a,b)=>PK.indexOf(a)-PK.indexOf(b)).join('+')];
+  else first=SINGLE[sorted[0]];
+  const score={niji:mn*1.6};
+  PK.forEach(k=>{score[SINGLE[k]]=p[k];});
+  Object.keys(PAIR).forEach(k=>{const [a,b]=k.split('+');score[PAIR[k]]=(p[a]+p[b])/2;});
+  const rest=ADULT_IDS.filter(f=>f!==first).sort((a,b)=>score[b]-score[a]||ADULT_IDS.indexOf(a)-ADULT_IDS.indexOf(b));
+  const pick=[first].concat(rest).find(f=>S.zukan.indexOf(f)<0);
+  return pick?{form:pick,shiny:false}:{form:first,shiny:true};
 }

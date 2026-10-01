@@ -14,7 +14,7 @@ function eggSVG(pts){
 }
 const BODY='M100 40 C150 40 175 80 175 125 C175 165 145 180 100 180 C55 180 25 165 25 125 C25 80 50 40 100 40 Z';
 function silSVG(form){
-  const ears=form==='puni'?'':`<circle cx="58" cy="62" r="18" fill="var(--sil)"/><circle cx="142" cy="62" r="18" fill="var(--sil)"/>`;
+  const ears=FORMS[form].stage===1?'':`<circle cx="58" cy="62" r="18" fill="var(--sil)"/><circle cx="142" cy="62" r="18" fill="var(--sil)"/>`;
   return `<svg viewBox="0 0 200 200" aria-hidden="true">${ears}<path d="${BODY}" fill="var(--sil)"/><text x="100" y="138" text-anchor="middle" font-size="56" font-weight="900" fill="var(--card)">？</text></svg>`;
 }
 function faceSVG(face){
@@ -56,26 +56,43 @@ function accSVG(form){
     case 'morimori': return `<path d="M100 44 C100 30 110 18 130 15 C128 32 117 42 100 44 Z" fill="#6CC47A" stroke="#4E9E5C" stroke-width="2.5"/><path d="M100 44 C99 34 92 26 78 24 C80 36 88 43 100 44 Z" fill="#8DD394" stroke="#4E9E5C" stroke-width="2.5"/>`;
     case 'pokapoka': return `<path d="M70 50 Q100 26 130 50 L126 60 Q100 42 74 60 Z" fill="#FFFFFF" stroke="#EFA078" stroke-width="2.5" stroke-linejoin="round"/><path d="M84 40 v10 M100 35 v10 M116 40 v10" stroke="#FFB7A0" stroke-width="3" stroke-linecap="round"/>`+
       `<path d="M34 58 q-8 -9 0 -17 q8 -8 0 -17" stroke="#EFA078" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".7"/><path d="M168 64 q-8 -9 0 -17 q8 -8 0 -17" stroke="#EFA078" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".7"/>`;
+    case 'shizuku': return `<path d="M100 14 C108 28 114 34 114 42 a14 14 0 0 1 -28 0 C86 34 92 28 100 14Z" fill="#9FD8F7" stroke="#6FB6E0" stroke-width="2.5"/><ellipse cx="95" cy="38" rx="3" ry="5" fill="#fff" opacity=".8"/>`;
+    case 'koro': return `<path d="M70 48 Q100 6 130 48 Z" fill="#C98E5A" stroke="#A06A3C" stroke-width="2.5" stroke-linejoin="round"/><path d="M76 44 h48 M82 34 h36" stroke="#A06A3C" stroke-width="2" opacity=".6"/><path d="M100 18 v-8" stroke="#A06A3C" stroke-width="4" stroke-linecap="round"/>`;
+    case 'moko': return [[60,52],[80,40],[100,36],[120,40],[140,52]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="13" fill="#FBF4FF" stroke="#C9A8EC" stroke-width="2.5"/>`).join('');
+    case 'shabon': return [[30,56,13],[170,48,10],[178,86,7],[22,94,6]].map(([x,y,r])=>`<circle cx="${x}" cy="${y}" r="${r}" fill="#E6FBFF" fill-opacity=".55" stroke="#8FD3D3" stroke-width="2"/><circle cx="${x-r*.35}" cy="${y-r*.35}" r="${r*.25}" fill="#fff"/>`).join('');
+    case 'kumo': return `<g fill="#FFFFFF" stroke="#B9BEDC" stroke-width="2.5"><circle cx="80" cy="36" r="14"/><circle cx="120" cy="36" r="14"/><circle cx="100" cy="26" r="18"/></g><path d="M68 44 H132" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round"/>`;
+    case 'tsukimi': return `<path d="M136 22 a18 18 0 1 0 12 30 a14 14 0 1 1 -12 -30Z" fill="#FFE07A" stroke="#E4B32E" stroke-width="2"/><path d="M84 42 l-16 -10 v20 Z M84 42 l16 -10 v20 Z" fill="#B3A6EC" stroke="#8C7CD6" stroke-width="2" stroke-linejoin="round"/><circle cx="84" cy="42" r="5" fill="#8C7CD6"/>`;
+    case 'bouken': return `<ellipse cx="100" cy="44" rx="56" ry="9" fill="#C9A36A" stroke="#9C7A45" stroke-width="2.5"/><path d="M68 44 Q70 16 100 16 Q130 16 132 44 Z" fill="#D9B77E" stroke="#9C7A45" stroke-width="2.5"/><path d="M70 38 H130" stroke="#7DA35A" stroke-width="6"/>`+sparkle(164,150,8,'#FFD84D');
+    case 'yumemi': return `<path d="M64 48 Q84 8 128 18 Q150 24 158 50" fill="#A8A0E0" stroke="#7F76C6" stroke-width="2.5"/><path d="M64 48 Q100 36 136 48" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/><circle cx="160" cy="54" r="9" fill="#FFFFFF" stroke="#7F76C6" stroke-width="2"/><polygon points="${starPts(92,30,7,3)}" fill="#FFE07A"/>`;
+    case 'marin': return `<path d="M64 48 Q66 18 100 16 Q134 18 136 48 Z" fill="#FFFFFF" stroke="#4E8FD0" stroke-width="3" stroke-linejoin="round"/><path d="M66 40 Q100 32 134 40" stroke="#4E8FD0" stroke-width="6" fill="none"/><path d="M100 22 v-6" stroke="#4E8FD0" stroke-width="5" stroke-linecap="round"/><path d="M28 150 v14 M22 154 h12 M22 162 q6 6 12 0" stroke="#4E8FD0" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    case 'keki': return `<rect x="74" y="28" width="52" height="18" rx="6" fill="#FFF6E8" stroke="#F0A9C0" stroke-width="2.5"/><path d="M74 34 q6.5 6 13 0 q6.5 6 13 0 q6.5 6 13 0 q6.5 6 13 0" stroke="#FF9EBB" stroke-width="3" fill="none"/><path d="M100 26 c-8 -2 -10 -14 0 -16 c10 2 8 14 0 16Z" fill="#FF6F8E"/><path d="M96 12 l4 -5 l4 5" stroke="#6CC47A" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+    case 'ohisama': return [0,30,60,90,120,150,180,210,240,270,300,330].map(a=>{const r=a*Math.PI/180;return `<path d="M${(100+30*Math.cos(r)).toFixed(1)} ${(30+30*Math.sin(r)).toFixed(1)} L${(100+40*Math.cos(r)).toFixed(1)} ${(30+40*Math.sin(r)).toFixed(1)}" stroke="#F7B733" stroke-width="5" stroke-linecap="round"/>`;}).join('')+`<circle cx="100" cy="30" r="22" fill="#FFD84D" stroke="#F2C55C" stroke-width="2.5"/>`;
     case 'niji': return `<polygon points="${starPts(100,28,14,6)}" fill="#FFD84D" stroke="#E4B32E" stroke-width="2"/>`;
   }
   return '';
 }
+const RAINBOW=['#FFB3C7','#FFD9A8','#FFF2A8','#C2F0D6','#BCD8FF','#DCC8FF'];
 export function petSVG(form,face,opt){
   opt=opt||{};
   if(form==='egg') return eggSVG(opt.pts||0);
   if(opt.sil) return silSVG(form);
-  const F=FORMS[form],col=F.color,dk=F.dark,baby=form==='puni';
+  const F=FORMS[form],dk=F.dark,baby=F.stage===1;
+  let defs='',col=F.color;
+  if(opt.shiny){
+    const id='rb-'+form;col=`url(#${id})`;
+    defs=`<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">${RAINBOW.map((c,i)=>`<stop offset="${(i/(RAINBOW.length-1)).toFixed(2)}" stop-color="${c}"/>`).join('')}</linearGradient></defs>`;
+  }
   let back='';
   if(form==='niji'){
     back=['#FF9AA2','#FFD28C','#FFF3A0','#B5EAD7','#A7C7FF','#CDB4FF'].map((c,i)=>{const r=80-i*7;return `<path d="M${100-r} 126 A${r} ${r} 0 0 1 ${100+r} 126" fill="none" stroke="${c}" stroke-width="7" stroke-linecap="round"/>`;}).join('');
   }
   const ears=baby?'':`<circle cx="58" cy="62" r="18" fill="${col}" stroke="${dk}" stroke-width="3"/><circle cx="58" cy="62" r="8" fill="#FFB7CC"/><circle cx="142" cy="62" r="18" fill="${col}" stroke="${dk}" stroke-width="3"/><circle cx="142" cy="62" r="8" fill="#FFB7CC"/>`;
-  const tuft=baby?`<path d="M100 42 q-9 -16 5 -21 q11 -2 7 9" fill="none" stroke="${dk}" stroke-width="4" stroke-linecap="round"/>`:'';
+  const tuft=form==='puni'?`<path d="M100 42 q-9 -16 5 -21 q11 -2 7 9" fill="none" stroke="${dk}" stroke-width="4" stroke-linecap="round"/>`:'';
   const body=`<ellipse cx="33" cy="132" rx="11" ry="15" fill="${col}" stroke="${dk}" stroke-width="3" transform="rotate(25 33 132)"/><ellipse cx="167" cy="132" rx="11" ry="15" fill="${col}" stroke="${dk}" stroke-width="3" transform="rotate(-25 167 132)"/>
     <ellipse cx="74" cy="180" rx="18" ry="9" fill="${dk}"/><ellipse cx="126" cy="180" rx="18" ry="9" fill="${dk}"/>
     <path d="${BODY}" fill="${col}" stroke="${dk}" stroke-width="3.5"/><ellipse cx="100" cy="150" rx="40" ry="24" fill="#fff" opacity=".5"/>`;
+  const shine=opt.shiny?sparkle(26,40,10,'#FFD84D')+sparkle(176,112,8,'#FF9EBB')+sparkle(40,172,7,'#8FD6E8'):'';
   const inner=ears+tuft+body+faceSVG(face)+accSVG(form);
   const g=baby?`<g transform="translate(100 118) scale(.84) translate(-100 -118)">${inner}</g>`:inner;
-  return `<svg viewBox="0 0 200 200" aria-hidden="true"><ellipse cx="100" cy="190" rx="60" ry="7" fill="rgba(0,0,0,.08)"/>${back}${g}</svg>`;
+  return `<svg viewBox="0 0 200 200" aria-hidden="true">${defs}<ellipse cx="100" cy="190" rx="60" ry="7" fill="rgba(0,0,0,.08)"/>${back}${g}${shine}</svg>`;
 }
-

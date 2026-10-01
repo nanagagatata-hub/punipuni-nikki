@@ -4,16 +4,16 @@ export const TH=[0,3,10,25];
 export const STAGE=['たまご','あかちゃん','こども','おとな'];
 export const WD=['にちようび','げつようび','かようび','すいようび','もくようび','きんようび','どようび'];
 
-/* from/until：受付する時（until は その時ちょうどで締め切り。関数なら日付ごと）。weekdays：受付する曜日 */
+/* short：タイルに出す短い名前。from/until：受付する時（until は その時ちょうどで締め切り。関数なら日付ごと）。weekdays：受付する曜日 */
 export const TASKS=[
-  {id:'lesson', label:'ちゅうごくご れっすん', icon:'🧑‍🏫', food:'nikuman', limit:1},
-  {id:'jishu',  label:'ちゅうごくご じしゅう', icon:'📖', food:'kotoba', limit:1},
-  {id:'hamigaki',label:'はみがき', icon:'🪥', food:'ame', limit:2},
-  {id:'yasai',  label:'おやさい', icon:'🥦', food:'soup', limit:3},
-  {id:'ofuro',  label:'おふろ', icon:'🛁', food:'purin', limit:1},
-  {id:'katazuke',label:'おかたづけ', icon:'🧸', food:'cookie', limit:1},
-  {id:'hayane', label:'はやく べっどに はいれた', icon:'🛏️', food:'milk', limit:1, from:18, until:d=>d.getDay()>=5?21:20},
-  {id:'hayaoki',label:'はやおき', icon:'🌅', food:'pan', limit:1, from:5, until:7, weekdays:[1,2,3,4,5]}
+  {id:'lesson', label:'ちゅうごくご れっすん', short:'れっすん', icon:'🧑‍🏫', food:'nikuman', limit:1},
+  {id:'jishu',  label:'ちゅうごくご じしゅう', short:'じしゅう', icon:'📖', food:'kotoba', limit:1},
+  {id:'hamigaki',label:'はみがき', short:'はみがき', icon:'🪥', food:'ame', limit:2},
+  {id:'yasai',  label:'おやさい', short:'おやさい', icon:'🥦', food:'soup', limit:3},
+  {id:'ofuro',  label:'おふろ', short:'おふろ', icon:'🛁', food:'purin', limit:1},
+  {id:'katazuke',label:'おかたづけ', short:'おかたづけ', icon:'🧸', food:'cookie', limit:1},
+  {id:'hayane', label:'はやく べっどに はいれた', short:'はやね', icon:'🛏️', food:'milk', limit:1, from:18, until:d=>d.getDay()>=5?21:20},
+  {id:'hayaoki',label:'はやおき', short:'はやおき', icon:'🌅', food:'pan', limit:1, from:5, until:7, weekdays:[1,2,3,4,5]}
 ];
 export const FOODS={
   nikuman:{name:'にくまん', icon:'🥟', pt:3, param:'ka', amt:3},

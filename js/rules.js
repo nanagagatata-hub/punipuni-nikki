@@ -26,7 +26,7 @@ export function taskState(t,S,d){
 }
 export function taskNote(t,S,st){
   if(st.why==='day') return S.lessonDays.map(x=>WD[x]).join(' と ')+' だけ';
-  if(t.id==='lesson') return st.ok?'きょうは れっすんの ひ！ ごはん 3ばい':'できたね！';
+  if(t.id==='lesson') return st.ok?'きょうは ごはん 3ばい！':'できたね！';
   if(t.id==='hayaoki'&&st.why&&st.why!=='done') return 'へいじつ あさ 5じ〜7じ';
   if(t.id==='hayane'&&st.why==='early') return '18じ から';
   if(st.why==='late') return 'きょうは おしまい';

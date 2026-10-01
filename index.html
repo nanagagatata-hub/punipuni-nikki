@@ -19,11 +19,14 @@
 <body>
 <header class="top">
   <div class="title"><b id="petName"></b><small id="genLabel"></small></div>
-  <button class="gear" id="gear" aria-label="おうちの方の設定（長押し）">⚙️</button>
+  <div class="topbtns">
+    <button class="pill" id="zukanBtn">📚 ずかん</button>
+    <button class="gear" id="gear" aria-label="おうちの方の設定（長押し）">⚙️</button>
+  </div>
 </header>
 
 <main class="layout">
-  <section>
+  <section class="maincol">
     <div class="shell">
       <div class="screen" id="screen">
         <div class="gauges" id="gauges"></div>
@@ -38,17 +41,14 @@
       </div>
       <div class="tray" id="tray"></div>
     </div>
-    <div class="under">
-      <button class="pill" id="zukanBtn">📚 ずかん</button>
-    </div>
   </section>
 
-  <section>
+  <section class="sidecol">
     <div class="note">
       <h2>できたこと を おしえてね</h2>
       <div class="tasks" id="tasks"></div>
     </div>
-    <div class="note">
+    <div class="note pnote">
       <h2>つよさ</h2>
       <div class="params" id="params"></div>
     </div>

@@ -1,5 +1,5 @@
 // DOM に触れない純粋なルール（時間帯・タスク受付・時間経過・分岐）
-import {H,WD,ADULT_IDS} from './data.js';
+import {H,WD,ADULT_IDS,LINES} from './data.js';
 
 export function dayKey(d){return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
 /* あさ 6–9 / ひる 10–15 / ゆうがた 16–19 / よる 20–5（よる＝ねんね） */
@@ -98,4 +98,19 @@ export function look(S,ctx){
   const h=S.hunger===0?'zero':S.hunger<=2?'some':'full', m=S.mood<=1?'low':S.mood<=3?'mid':'high';
   const [face,pose]=TABLE[h][m];
   return mk(face,pose,face==='hungry'?'belly':face==='sparkle'?'up':'side',h==='zero'&&m!=='low'?'🍙':null);
+}
+
+/* セリフ選び：時間帯と状態で候補を絞り、よびかた が無ければ {you} 入りを除く */
+export function pickLine(key,S,d,rnd){
+  rnd=rnd||Math.random;
+  const b=band(d);let list;
+  if(key==='idle'){
+    if(S.hunger===0) list=LINES.hungry;
+    else if(S.mood<=1) list=LINES.pout;
+    else if(S.mood===4&&S.hunger>=3) list=LINES.happy;
+    else list=LINES.idle[b]||LINES.idle.hiru;
+  }else{const v=LINES[key];list=Array.isArray(v)?v:(v[b]||[]);}
+  const ok=list.filter(t=>S.you?true:t.indexOf('{you}')<0);
+  const t=ok[Math.floor(rnd()*ok.length)]||'';
+  return t.split('{you}').join(S.you||'');
 }

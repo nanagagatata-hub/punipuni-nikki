@@ -1,6 +1,6 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
-import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,LINES} from './data.js';
-import {dayKey,isNight,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look} from './rules.js';
+import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES} from './data.js';
+import {dayKey,isNight,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine} from './rules.js';
 import {KEY,DEF,sanitize,encodeState,decodeState} from './state.js';
 import {petSVG} from './art.js';
 import {speak,sfx,setSound,unlock} from './sound.js';
@@ -24,7 +24,7 @@ function setReact(k){react=k;reactUntil=Date.now()+2500;}
 
 function ensureDay(){const k=dayKey(new Date()); if(S.day!==k){S.day=k;S.cnt={};}}
 function tick(now){
-  if(decay(S,now).becameSick) say(rnd(LINES.sick));
+  if(decay(S,now).becameSick) say(line('sick'));
   tickLife(now);
 }
 /* おとな→さいごのすがた（朝6時以降）。さいごのすがた を見せたら finalSeenAt を記録（spec §4.1） */
@@ -37,7 +37,8 @@ function tickLife(now){
 /* ---------- drawing ---------- */
 /* ---------- speech & fx ---------- */
 function say(ja,zh){bubble={ja:ja,zh:zh||''};renderBubble();}
-function sayWord(pre){const w=rnd(WORDS);say(`${pre}「${w[1]}」は ちゅうごくごで「${w[2]}」だよ！`,w[0]);}
+const line=k=>pickLine(k,S,new Date());
+function sayWord(pre){const w=Math.random()<.5?rnd(WORDS):rnd(PHRASES);say(`${pre}「${w[1]}」は ちゅうごくごで「${w[2]}」だよ！`,w[0]);}
 function fxBurst(icon){
   const r=$('#pet').getBoundingClientRect();
   for(let i=0;i<5;i++){
@@ -86,7 +87,7 @@ function report(t){
 function feed(fid){
   if(!(S.inv[fid]>0))return;
   const f=FOODS[fid],now=Date.now();lastInteract=now;
-  if(isNight(new Date(now))){say(rnd(LINES.sleepFeed));return;}
+  if(isNight(new Date(now))){say(line('sleepFeed'));return;}
   S.inv[fid]--;afterFeed(S);
   if(S.stage>0){S.hunger=Math.min(4,S.hunger+(fid==='nikuman'?2:1));if(fid==='purin')S.mood=Math.min(4,S.mood+1);}
   if(S.sick){
@@ -100,7 +101,7 @@ function feed(fid){
   sfx('munch');fxBurst(f.icon);setReact('happy');
   if(S.stage===0) say('たまごが ぽかぽか してきた…！');
   else if(fid==='kotoba'||fid==='nikuman') sayWord('もぐもぐ！');
-  else say(rnd(['おいしい！','もぐもぐ… しあわせ〜','ありがとう！だいすき！','ぱくぱく！おなか いっぱい']));
+  else say(line('eat'));
   save();render();setTimeout(render,2600);
   checkEvolve();
 }
@@ -132,11 +133,11 @@ const TOUCH_FX={head:'💗',belly:'💗',stroke:'💗',hug:'💞',mash:'💫'};
 function petAct(kind){
   const now=Date.now();lastInteract=now;
   const el=$('#pet');el.classList.remove('wobble');void el.offsetWidth;el.classList.add('wobble');
-  if(isNight(new Date(now))){sfx('snore');say(rnd(LINES.sleepTap));return;}
+  if(isNight(new Date(now))){sfx('snore');say(line('sleepTap'));return;}
   if(farewellReady(S,now)){startFarewell();return;}
-  if(S.stage===4&&S.sick){say(rnd(LINES.farewellSick));render();return;}
-  if(S.stage===0){sfx('egg');say(rnd(LINES.egg));return;}
-  if(S.sick){say(rnd(LINES.sickTap));render();return;}
+  if(S.stage===4&&S.sick){say(line('farewellSick'));render();return;}
+  if(S.stage===0){sfx('egg');say(line('egg'));return;}
+  if(S.sick){say(line('sickTap'));render();return;}
   if(now-S.petAt>30*60e3){S.mood=Math.min(4,S.mood+1);S.petAt=now;save();}
   setReact(kind==='mash'?'dizzy':kind);fxBurst(TOUCH_FX[kind]);sfx(TOUCH_SFX[kind]);
   if(S.stage>=2&&(kind==='head'||kind==='belly')&&Math.random()<.3)sayWord('えへへ。');
@@ -281,15 +282,27 @@ gear.addEventListener('pointerdown',()=>{held=false;holdT=setTimeout(()=>{held=t
 ['pointerup','pointerleave','pointercancel'].forEach(ev=>gear.addEventListener(ev,()=>clearTimeout(holdT)));
 gear.addEventListener('click',()=>{if(!held)toast('おうちの ひと は ながおし してね');});
 gear.addEventListener('contextmenu',e=>e.preventDefault());
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick(Date.now());save();render();}});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick(Date.now());if(Date.now()-greetAt>=30*60e3)greet();save();render();}});
 
 /* ---------- start ---------- */
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(()=>{});}
+/* あいさつ（起動時と、30分以上たって前面に戻った時） */
+let greetAt=0;
+function greet(){
+  greetAt=Date.now();
+  if(S.sick)say(line('sick'));
+  else if(S.stage===0)say(isNight(new Date())?line('egg'):'たまご を あたためよう。できたこと を おしえてね！');
+  else say(line('greet'));
+}
+/* ひとりごと：起きていて、モーダルが無く、90秒操作が無い時に1回だけ（操作すると数え直し） */
+let idleFor=-1;
+function idle(now){
+  if(S.stage===0||S.sick||isNight(new Date(now))||!$('#modal').hidden)return;
+  if(now-lastInteract>=90e3&&idleFor!==lastInteract){idleFor=lastInteract;say(line('idle'));}
+}
 tick(Date.now());
-if(S.sick)say(rnd(LINES.sick));
-else if(S.stage===0)say('たまご を あたためよう。できたこと を おしえてね！');
-else say(rnd(['おかえり！きょうも いっしょに がんばろうね','あいたかったよ！','きょうは なにが できたかな？']));
+greet();
 setSound(S.sound);
 save();render();
-setInterval(()=>{tick(Date.now());save();render();},30000);
+setInterval(()=>{const n=Date.now();tick(n);idle(n);save();render();},30000);

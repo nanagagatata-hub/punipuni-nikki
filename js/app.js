@@ -199,7 +199,7 @@ function openSettings(){
   const opts=(sel,none)=>(none?`<option value="" ${sel==null?'selected':''}>なし</option>`:'')+WD.map((w,i)=>`<option value="${i}" ${i===sel?'selected':''}>${w}</option>`).join('');
   openModal(`<h3>おうちの方の設定</h3>
     <label class="fl">なまえ（8文字まで）<input id="nameIn" maxlength="8" value="${esc(S.name)}"></label>
-    <label class="fl">よびかた（お子さんの呼び名・8文字まで。例：はなちゃん）<input id="youIn" maxlength="8" value="${esc(S.you)}" placeholder="空欄なら呼びかけません"></label>
+    <label class="fl">よびかた（お子さんの呼び名・8文字まで。例：〇〇ちゃん）<input id="youIn" maxlength="8" value="${esc(S.you)}" placeholder="空欄なら呼びかけません"></label>
     <label class="fl">中国語レッスンの曜日（1つめ）<select id="dayIn">${opts(S.lessonDays[0],false)}</select></label>
     <label class="fl">中国語レッスンの曜日（2つめ）<select id="day2In">${opts(S.lessonDays[1],true)}</select></label>
     <label class="fl">音（効果音・鳴き声・読み上げ）<select id="soundIn"><option value="on" ${S.sound?'selected':''}>オン</option><option value="off" ${S.sound?'':'selected'}>オフ</option></select></label>

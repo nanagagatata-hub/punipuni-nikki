@@ -348,7 +348,7 @@ const kanji = /[一-鿿]/;
   d.WORDS.length>=30, d.PHRASES.length>=25, [...d.WORDS,...d.PHRASES].every(w=>w.length===3&&!kanji.test(w[1]+w[2])),
   all.every(s=>!kanji.test(s)),                                     // ひらがな UI（約束 7）
   Array.from({length:50},()=>r.pickLine('greet',{you:''},new Date(2026,9,5,7))).every(s=>!s.includes('{you}')),
-  Array.from({length:50},()=>r.pickLine('greet',{you:'はなちゃん'},new Date(2026,9,5,7))).some(s=>s.includes('はなちゃん'))
+  Array.from({length:50},()=>r.pickLine('greet',{you:'〇〇ちゃん'},new Date(2026,9,5,7))).some(s=>s.includes('〇〇ちゃん'))
 ]
 ```
 

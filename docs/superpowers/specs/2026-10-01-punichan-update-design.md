@@ -17,9 +17,12 @@
 | `js/data.js` | 定数データ：`TASKS`・`FOODS`・`FORMS`・`ZORDER`・中国語（単語・短文）・セリフ |
 | `js/art.js` | SVG 描画：`petSVG(form, look, opt)`・たまご・シルエット・さいごのすがた の装飾・色違い |
 | `js/sound.js` | Web Audio の効果音・鳴き声、Web Speech の読み上げ。音のオン/オフ |
+| `js/rules.js` | DOM に触れない純粋なルール：時間帯・タスク受付・時間経過・分岐・一生の期日・表情の決定 |
+| `js/state.js` | 保存形式：`DEF()`・`sanitize()`（v1→v2 移行を含む）・バックアップコード |
 | `js/app.js` | 状態・保存・移行・時間経過・ロジック・描画・イベント（エントリポイント） |
 
-- `index.html` は `<script type="module" src="./js/app.js">` に変更。`sw.js` の `ASSETS` に 3 ファイルを追加。
+- `index.html` は `<script type="module" src="./js/app.js">` に変更。`sw.js` の `ASSETS` に 5 ファイルを追加。
+- `rules.js`・`state.js` は DOM に依存しないため、Playwright の `browser_evaluate` から `import()` して直接確認できる。
 - 構文チェック：`node --check` は各ファイルに対して実行する（Node 22+ はモジュール構文を自動判別）。
 
 ## 2. 時間帯

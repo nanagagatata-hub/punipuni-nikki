@@ -4,6 +4,7 @@ import {dayKey,band,isNight,taskState,taskNote,decay,afterFeed,chooseForm,finalD
 import {KEY,DEF,sanitize,encodeState,decodeState} from './state.js';
 import {petSVG} from './art.js';
 import {speak,sfx,setSound,unlock} from './sound.js';
+const APP_VERSION='v2.0.0'; // sw.js の VERSION と同じ値にそろえる
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -180,12 +181,31 @@ function openZukan(){
   openModal(`<p class="q">ずかん（${S.zukan.length} / ${ZORDER.length}）</p>${sec(1,'あかちゃん')}${sec(2,'こども')}${sec(3,'おとな')}
     <div class="btns"><button class="btn ghost" data-act="close">とじる</button></div>`,()=>closeModal(),true);
 }
+/* アプリを更新：Service Worker に新しい版を確認させ、入れ替わるのを最大8秒待ってから再読み込み（失敗しても必ず再読み込み） */
+async function updateApp(){
+  toast('更新を確認しています…');
+  try{
+    const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();
+    if(reg){
+      await reg.update();
+      const w=reg.installing||reg.waiting;
+      if(w&&w.state!=='activated') await new Promise(res=>{const t=setTimeout(res,8000);w.addEventListener('statechange',()=>{if(w.state==='activated'||w.state==='redundant'){clearTimeout(t);res();}});});
+    }
+  }catch(e){}
+  location.reload();
+}
 function openSettings(){
-  const wd=WD.map((w,i)=>`<option value="${i}" ${i===S.lessonDays[0]?'selected':''}>${w}</option>`).join('');
+  const opts=(sel,none)=>(none?`<option value="" ${sel==null?'selected':''}>なし</option>`:'')+WD.map((w,i)=>`<option value="${i}" ${i===sel?'selected':''}>${w}</option>`).join('');
   openModal(`<h3>おうちの方の設定</h3>
     <label class="fl">なまえ（8文字まで）<input id="nameIn" maxlength="8" value="${esc(S.name)}"></label>
-    <label class="fl">中国語レッスンの曜日<select id="dayIn">${wd}</select></label>
+    <label class="fl">よびかた（お子さんの呼び名・8文字まで。例：はなちゃん）<input id="youIn" maxlength="8" value="${esc(S.you)}" placeholder="空欄なら呼びかけません"></label>
+    <label class="fl">中国語レッスンの曜日（1つめ）<select id="dayIn">${opts(S.lessonDays[0],false)}</select></label>
+    <label class="fl">中国語レッスンの曜日（2つめ）<select id="day2In">${opts(S.lessonDays[1],true)}</select></label>
+    <label class="fl">音（効果音・鳴き声・読み上げ）<select id="soundIn"><option value="on" ${S.sound?'selected':''}>オン</option><option value="off" ${S.sound?'':'selected'}>オフ</option></select></label>
     <div class="btns"><button class="btn small" data-act="save">保存する</button></div>
+    <h3>アプリの更新</h3>
+    <p class="sub">ホーム画面から開いていて新しい版が反映されないときに押してください。育成データは消えません。（現在の版：${APP_VERSION}）</p>
+    <div class="btns"><button class="btn small ghost" data-act="update">アプリを更新する</button></div>
     <h3>バックアップ</h3>
     <p class="sub">データはこの端末のブラウザ内に保存されています。ブラウザのデータ削除などで消えることがあるため、ときどきコードを控えておくと安心です。</p>
     <div class="btns"><button class="btn small ghost" data-act="export">コードを表示・コピー</button></div>
@@ -197,13 +217,20 @@ function openSettings(){
     <div class="btns"><button class="btn ghost" data-act="close">閉じる</button></div>`,
     (act,btn)=>{
       if(act==='close'){closeModal();return;}
-      if(act==='save'){const n=$('#nameIn').value.trim();if(n)S.name=n;S.lessonDays=[+$('#dayIn').value];save();render();toast('保存しました');}
+      if(act==='save'){
+        const n=$('#nameIn').value.trim().slice(0,8);if(n)S.name=n;
+        S.you=$('#youIn').value.trim().slice(0,8);
+        const d1=+$('#dayIn').value,v2=$('#day2In').value,d2=v2===''?null:+v2;
+        S.lessonDays=d2==null||d2===d1?[d1]:[d1,d2];
+        S.sound=$('#soundIn').value==='on';setSound(S.sound);
+        save();render();toast('保存しました');}
+      if(act==='update'){updateApp();return;}
       if(act==='export'){const ta=$('#codeOut');ta.value=encodeState(S);ta.hidden=false;ta.select();
         if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(ta.value).then(()=>toast('コピーしました'),()=>toast('表示されたコードを長押しでコピーしてください'));}
         else toast('表示されたコードを長押しでコピーしてください');}
       if(act==='import'){try{S=decodeState($('#codeIn').value);setSound(S.sound);save();closeModal();say('おかえり！データを もどしたよ');render();toast('復元しました');}catch(e){toast('コードが正しくありません。全体をコピーできているか確認してください');}}
       if(act==='reset'){if(!btn.dataset.armed){btn.dataset.armed='1';btn.textContent='本当に消す？もう一度タップ';return;}
-        S=DEF();save();closeModal();say('あたらしい たまご が きたよ！');render();toast('リセットしました');}
+        S=DEF();setSound(S.sound);save();closeModal();say('あたらしい たまご が きたよ！');render();toast('リセットしました');}
     },true);
 }
 

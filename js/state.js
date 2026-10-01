@@ -14,7 +14,7 @@ export function DEF(){
 /* 保存データ・復元コードは信頼しない：既知のキーと型だけを取り込む（__proto__等の混入対策）。v1 は v2 に移行する */
 function num(v,d,min,max){v=Number(v);if(!isFinite(v))return d;return Math.min(max,Math.max(min,v));}
 function int(v,d,min,max){return Math.floor(num(v,d,min,max));}
-function str(v,max){return typeof v==='string'?v.trim().slice(0,max):'';}
+function str(v,max){return typeof v==='string'?v.replace(/[\u0000-\u001F\u007F]/g,'').trim().slice(0,max):'';}
 const own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
 const known=(list,a)=>Array.isArray(a)?list.filter(f=>a.indexOf(f)>=0):[];
 export function sanitize(o){

@@ -7,7 +7,12 @@
 ## 構成
 - `index.html` … 画面の骨組みと CSP（Content-Security-Policy）
 - `css/style.css` … 見た目（ライト／ダークのカラートークン）
-- `js/app.js` … ゲームロジック・描画（依存ライブラリなし）
+- `js/` … ES モジュール（依存ライブラリなし・ビルドなし）
+  - `app.js` … 状態・描画・操作（エントリポイント。`APP_VERSION` は `sw.js` の `VERSION` とそろえる）
+  - `data.js` … タスク・エサ・姿・中国語・セリフのデータ
+  - `rules.js` … DOM に触れない純粋なルール（時間帯・受付時間・時間経過・分岐・一生の期日・表情）
+  - `state.js` … 保存形式（`DEF()`・`sanitize()`・v1→v2 移行・バックアップコード）
+  - `art.js` … キャラの SVG ／ `sound.js` … 効果音・鳴き声・読み上げ（Web Audio で合成）
 - `sw.js` … オフライン用キャッシュ（Service Worker）
 - `manifest.webmanifest`, `icons/` … ホーム画面追加用
 
@@ -16,12 +21,12 @@
 2. 外部通信をしない。外部 CDN・フォント・解析タグ・広告を追加しない。CSP の `'self'` 以外の許可を足さない。
 3. インライン `<script>` / `style=""` / `onclick=""` を書かない（CSP で動かなくなる）。幅などは JS から `el.style.x` で設定する。
 4. `innerHTML` に入れる文字列で、利用者が入力した値（なまえ等）は必ず `esc()` を通す。できれば `textContent` を使う。
-5. 保存データと復元コードは信頼しない。読み込みは必ず `sanitize()` を通し、キーを追加したら `sanitize()` にも追加する。
-6. 保存形式（`v:1`）を変える場合は、旧データを読めるように移行処理を書く。娘の育成データを消さないことが最優先。
+5. 保存データと復元コードは信頼しない。読み込みは必ず `sanitize()`（`js/state.js`）を通し、キーを追加したら `DEF()` と `sanitize()` にも追加する。
+6. 保存形式（現在 `v:2`）を変える場合は、旧データを読めるように移行処理を書く。娘の育成データを消さないことが最優先。
 7. UI の文言はひらがなのみ（おうちの方向け設定画面は漢字可）。
 8. 子ども向け配慮：キャラは死なない。罰ではなく「お世話で回復する」設計を維持する。
 9. 既存キャラクター（サンリオ等）の模倣をしない。オリジナルデザインのみ。
-10. `sw.js` 以外のファイルを変更したら、`sw.js` の `VERSION` を上げる。
+10. `sw.js` 以外のファイルを変更したら、`sw.js` の `VERSION` と `js/app.js` の `APP_VERSION` を上げる。
 
 ## 開発環境（Dev Container）
 開発は VS Code の Dev Container（Ubuntu 24.04 / arm64 あり）の中で行う。GUI ブラウザは無いので、ブラウザテストはヘッドレス Chromium を MCP 経由で操作する。
@@ -40,15 +45,23 @@
 - `claude-in-chrome` はホスト側 Chrome 用のため、このコンテナでは使わない。
 - `.devcontainer/`・`.mcp.json`・`CLAUDE.md` など、`sw.js` の `ASSETS` に含まれないファイルだけの変更では `VERSION` を上げなくてよい。
 
+### superpowers プラグイン（お試し運用中・local スコープ）
+`.claude/settings.local.json` で有効化しており、リポジトリには含めない。スキルとこのファイルが食い違う場合は、こちらの「設計上の約束」と「変更時のワークフロー」を優先する。
+- TDD（test-driven-development）は、テストコードを書く代わりに「Playwright MCP での確認手順を計画に書き、実装後にその手順で確認する」ことで満たす。`package.json`・テストランナー・テスト用依存は追加しない。
+- 計画や設計メモ（`docs/superpowers/`）は公開リポジトリに入る。娘のなまえや育成データなどの個人情報は書かない。
+- brainstorming の Visual Companion（ローカルのブラウザ画面）は使わない。画面の外部画像を読み込むため、約束 2 とブラウザテストの方針に反する。
+- worktree や subagent を使う場合も、コミット前にはワークフロー手順 2〜5（security-reviewer・`/security-review`・動作確認・`VERSION` 更新）を必ず行う。
+- やめるときは `claude plugin uninstall superpowers@superpowers-marketplace --scope local` を実行する。
+
 ## 開発コマンド（コンテナ内で実行）
 - ローカル確認: `python3 -m http.server 8000` → ホストのブラウザで http://localhost:8000（VS Code がポート転送する）
   - MCP のブラウザからも同じ `http://localhost:8000` で開ける（同じコンテナ内のため）。
   - iPad 実機で見る場合は同じ Wi-Fi で `http://<PCのIP>:8000`。VS Code の転送はホストの localhost にしか公開されないため、LAN から見るには Docker の `-p 8000:8000` 公開などが別途必要。Service Worker は https か localhost でのみ動作するので、実機でのオフライン確認は GitHub Pages で行う。
-- 構文チェック: `node --check js/app.js`
+- 構文チェック: `for f in js/*.js; do node --check "$f"; done`
 
 ## 変更時のワークフロー（必須）
 1. 変更を実装する。
 2. `security-reviewer` サブエージェントで変更内容をレビューする。
 3. `/security-review` を実行し、指摘があれば修正する。
-4. 動作確認：`node --check js/app.js` のあと、`python3 -m http.server 8000` をバックグラウンドで起動し、Playwright MCP で主要操作（起動・エサやり・設定画面・保存と復元）を確認する。コンソールエラー（特に CSP 違反）が無いことも見る。iPad 相当の表示確認には `browser_resize`（例: 820×1180）を使う。
-5. `sw.js` の VERSION を上げてからコミット・プッシュする。
+4. 動作確認：構文チェック（`js/*.js` すべて）のあと、`python3 -m http.server 8000` をバックグラウンドで起動し、Playwright MCP で主要操作（起動・エサやり・設定画面・保存と復元）を確認する。コンソールエラー（特に CSP 違反）が無いことも見る。iPad 相当の表示確認には `browser_resize`（例: 820×1180）を使う。
+5. `sw.js` の VERSION（と `APP_VERSION`）を上げてからコミット・プッシュする。

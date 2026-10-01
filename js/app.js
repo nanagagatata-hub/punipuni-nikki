@@ -173,7 +173,7 @@ function zukanCell(f){
   const seen=S.zukan.indexOf(f)>=0,F=FORMS[f];
   if(!seen) return `<div class="zc">${petSVG(f,'normal',{sil:true})}<b>？？？</b><span>${F.hint}</span></div>`;
   const hist=S.history.filter(h=>h.f===f),last=hist[hist.length-1],shiny=S.shinySeen.indexOf(f)>=0;
-  const mark=(hist.length?'👼':'')+(shiny?'✨':'');
+  const mark=(hist.length?'🌈':'')+(shiny?'✨':'');
   const memo=last?`${esc(last.n)}・${last.g}ぴきめ${hist.length>1?`<br>ほか ${hist.length-1}ひき`:''}`:'';
   return `<div class="zc">${petSVG(f,'normal')}<b>${F.name}${mark?' '+mark:''}</b><span>${memo}</span></div>`;
 }

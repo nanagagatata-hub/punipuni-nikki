@@ -1,6 +1,6 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
 import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES} from './data.js';
-import {dayKey,isNight,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine} from './rules.js';
+import {dayKey,band,isNight,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine} from './rules.js';
 import {KEY,DEF,sanitize,encodeState,decodeState} from './state.js';
 import {petSVG} from './art.js';
 import {speak,sfx,setSound,unlock} from './sound.js';
@@ -212,12 +212,12 @@ function renderBubble(){$('#bubbleText').textContent=bubble.ja;$('#bubbleZh').te
 function icons(ic,n){let s='';for(let i=0;i<4;i++)s+=`<span class="gi ${i<n?'on':''}">${ic}</span>`;return s;}
 function render(){
   ensureDay();const now=Date.now();
-  $('#petName').textContent=S.name;$('#genLabel').textContent=S.gen+'だいめ';
+  $('#petName').textContent=S.name;$('#genLabel').textContent=S.gen+'ぴきめ';
   const sleeping=S.stage>0&&isNight(new Date());
   const L=look(S,{night:sleeping,react:now<reactUntil?react:null});
   $('#pet').innerHTML=petSVG(S.form,L.face,{pts:S.pts,shiny:S.shiny,final:S.stage===4,arms:L.arms,think:L.think});
   $('#pet').dataset.pose=L.pose;
-  $('#screen').classList.toggle('night',sleeping);
+  $('#screen').className='screen t-'+band(new Date());
   $('#gauges').innerHTML=S.stage===0?`<span class="glabel">たまご を あたためよう</span>`:
     `<div class="gauge"><span class="glabel">おなか</span>${icons('🍙',S.hunger)}</div><div class="gauge"><span class="glabel">ごきげん</span>${icons('🌸',S.mood)}</div>`;
   let b='';

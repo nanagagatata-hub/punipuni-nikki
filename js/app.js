@@ -1,7 +1,7 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
 import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES} from './data.js';
 import {dayKey,band,isNight,asleep,nightKey,clock,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine} from './rules.js';
-import {KEY,DEF,loadState,encodeState,decodeState} from './state.js';
+import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
 import {petSVG} from './art.js';
 import {speak,sfx,setSound,unlock} from './sound.js';
 const APP_VERSION='v2.0.0'; // sw.js の VERSION と同じ値にそろえる
@@ -195,7 +195,11 @@ async function updateApp(){
   }catch(e){}
   location.reload();
 }
+/* 分 ⇔ "HH:MM"（<input type="time"> の値） */
+const hm=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+const toMin=v=>{const x=/^(\d{2}):(\d{2})$/.exec(v||'');return x?(+x[1])*60+(+x[2]):NaN;};
 function openSettings(){
+  const C=S.cfg;
   const opts=(sel,none)=>(none?`<option value="" ${sel==null?'selected':''}>なし</option>`:'')+WD.map((w,i)=>`<option value="${i}" ${i===sel?'selected':''}>${w}</option>`).join('');
   openModal(`<h3>おうちの方の設定</h3>
     <label class="fl">なまえ（8文字まで）<input id="nameIn" maxlength="8" value="${esc(S.name)}"></label>
@@ -203,6 +207,15 @@ function openSettings(){
     <label class="fl">中国語レッスンの曜日（1つめ）<select id="dayIn">${opts(S.lessonDays[0],false)}</select></label>
     <label class="fl">中国語レッスンの曜日（2つめ）<select id="day2In">${opts(S.lessonDays[1],true)}</select></label>
     <label class="fl">音（効果音・鳴き声・読み上げ）<select id="soundIn"><option value="on" ${S.sound?'selected':''}>オン</option><option value="off" ${S.sound?'':'selected'}>オフ</option></select></label>
+    <div class="btns"><button class="btn small" data-act="save">保存する</button></div>
+    <h3>生活リズム</h3>
+    <label class="fl">ぷにちゃんが寝る時刻（このあとはエサをあげられません）<input id="sleepIn" type="time" step="300" value="${hm(C.sleepAt)}"></label>
+    <label class="fl">ぷにちゃんが起きる時刻<input id="wakeIn" type="time" step="300" value="${hm(C.wakeAt)}"></label>
+    <label class="fl">「はやおき」を受け付ける時刻<span class="row2"><input id="hoFrom" type="time" step="300" value="${hm(C.hayaoki.from)}">〜<input id="hoUntil" type="time" step="300" value="${hm(C.hayaoki.until)}"></span></label>
+    <div class="fl">「はやおき」の曜日<span class="days">${WD.map((w,i)=>`<label><input type="checkbox" id="hoDay${i}" ${C.hayaoki.days.indexOf(i)>=0?'checked':''}>${w.slice(0,1)}</label>`).join('')}</span></div>
+    <label class="fl">「はやね」を受け付け始める時刻<input id="hnFrom" type="time" step="300" value="${hm(C.hayane.from)}"></label>
+    <div class="fl">「はやね」の締め切り（曜日ごと）<span class="days">${WD.map((w,i)=>`<label class="dl">${w.slice(0,1)}<input id="hnUntil${i}" type="time" step="300" value="${hm(C.hayane.until[i])}"></label>`).join('')}</span></div>
+    <label class="fl">ねんね中の「ちょっとだけ おきて」ボタン（ひと晩1回・5分だけエサをあげられます）<select id="tempIn"><option value="off" ${C.tempWake?'':'selected'}>出さない</option><option value="on" ${C.tempWake?'selected':''}>出す</option></select></label>
     <div class="btns"><button class="btn small" data-act="save">保存する</button></div>
     <h3>アプリの更新</h3>
     <p class="sub">ホーム画面から開いていて新しい版が反映されないときに押してください。育成データは消えません。（現在の版：${APP_VERSION}）</p>
@@ -224,7 +237,12 @@ function openSettings(){
         const d1=+$('#dayIn').value,v2=$('#day2In').value,d2=v2===''?null:+v2;
         S.lessonDays=d2==null||d2===d1?[d1]:[d1,d2];
         S.sound=$('#soundIn').value==='on';setSound(S.sound);
-        save();render();toast('保存しました');}
+        const cand={sleepAt:toMin($('#sleepIn').value),wakeAt:toMin($('#wakeIn').value),
+          hayaoki:{from:toMin($('#hoFrom').value),until:toMin($('#hoUntil').value),days:[0,1,2,3,4,5,6].filter(i=>$('#hoDay'+i).checked)},
+          hayane:{from:toMin($('#hnFrom').value),until:[0,1,2,3,4,5,6].map(i=>toMin($('#hnUntil'+i).value))},tempWake:$('#tempIn').value==='on'};
+        /* sanitize と同じ検証を通し、1 つでも直されたら保存しない（ほかの設定は保存済み） */
+        if(JSON.stringify(cleanCfg(cand))!==JSON.stringify(cand)){save();render();toast('生活リズムの時刻が正しくありません（寝る 18:00〜23:30・起きる 4:00〜9:00、終わりは始まりより後）。ほかの設定は保存しました');return;}
+        S.cfg=cand;save();render();toast('保存しました');}
       if(act==='update'){updateApp();return;}
       if(act==='export'){const ta=$('#codeOut');ta.value=encodeState(S);ta.hidden=false;ta.select();
         if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(ta.value).then(()=>toast('コピーしました'),()=>toast('表示されたコードを長押しでコピーしてください'));}
@@ -255,6 +273,9 @@ function render(){
   if(now<S.boostUntil)b+=`<span class="badge">🚀 ぐんぐんたいむ あと ${Math.ceil((S.boostUntil-now)/H)}じかん</span>`;
   if(S.sick)b+=`<span class="badge sick">🤒 びょうき：ごはん あと ${2-S.cure}こ で なおる</span>`;
   if(sleeping)b+=`<span class="badge">💤 ねんね ちゅう</span>`;
+  const night=isNight(new Date(now),S.cfg);
+  if(night&&now<S.tempUntil)b+=`<span class="badge">⏰ あと ${Math.ceil((S.tempUntil-now)/60e3)}ぷん おきてるよ</span>`;
+  else if(night&&S.cfg.tempWake&&S.tempNight!==nightKey(now,S.cfg))b+=`<button class="badge wakebtn" id="tempWake">⏰ ちょっとだけ おきて</button>`;
   if(farewellReady(S,now))b+=`<span class="badge letter">💌 ${esc(S.name)} が なにか いいたそう</span>`;
   $('#badges').innerHTML=b;
   if(S.stage<3){const pct=Math.min(100,(S.pts-TH[S.stage])/(TH[S.stage+1]-TH[S.stage])*100);
@@ -280,6 +301,13 @@ function render(){
 }
 
 /* ---------- events ---------- */
+/* ちょっとだけ おきて：ひと晩 1 回、5 分 */
+$('#badges').addEventListener('click',e=>{
+  if(!e.target.closest('#tempWake'))return;
+  const now=Date.now();if(!(S.cfg.tempWake&&isNight(new Date(now),S.cfg)&&S.tempNight!==nightKey(now,S.cfg)))return;
+  S.tempUntil=now+5*60e3;S.tempNight=nightKey(now,S.cfg);lastInteract=now;save();
+  sfx('cry');say(line('tempWake'));render();setTimeout(render,5*60e3+500);
+});
 $('#tasks').addEventListener('click',e=>{const b=e.target.closest('[data-task]');if(b&&!b.disabled)confirmTask(b.dataset.task);});
 $('#tray').addEventListener('click',e=>{const b=e.target.closest('[data-food]');if(b)feed(b.dataset.food);});
 /* なでなで＝押したまま合計80px、ぎゅー＝700ms ほぼ動かさない、れんだ＝2.5秒に5回、あたま＝上40% */

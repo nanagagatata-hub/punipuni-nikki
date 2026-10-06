@@ -1,6 +1,6 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
 import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES} from './data.js';
-import {dayKey,band,isNight,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine} from './rules.js';
+import {dayKey,band,isNight,asleep,nightKey,clock,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine} from './rules.js';
 import {KEY,DEF,loadState,encodeState,decodeState} from './state.js';
 import {petSVG} from './art.js';
 import {speak,sfx,setSound,unlock} from './sound.js';
@@ -28,8 +28,8 @@ function tick(now){
 /* おとな→さいごのすがた（朝6時以降）。さいごのすがた を見せたら finalSeenAt を記録（spec §4.1） */
 function tickLife(now){
   if(!$('#modal').hidden) return;
-  if(S.stage===3&&!isNight(new Date(now))&&now>=finalDue(S)){S.stage=4;S.finalAt=now;save();showEvolve();}
-  else if(S.stage===4&&!S.finalSeenAt&&!isNight(new Date(now))) showEvolve();
+  if(S.stage===3&&!isNight(new Date(now),S.cfg)&&now>=finalDue(S)){S.stage=4;S.finalAt=now;save();showEvolve();}
+  else if(S.stage===4&&!S.finalSeenAt&&!isNight(new Date(now),S.cfg)) showEvolve();
 }
 
 /* ---------- drawing ---------- */
@@ -85,7 +85,7 @@ function report(t){
 function feed(fid){
   if(!(S.inv[fid]>0))return;
   const f=FOODS[fid],now=Date.now();lastInteract=now;
-  if(isNight(new Date(now))){say(line('sleepFeed'));return;}
+  if(asleep(S,now)){say(line('sleepFeed'));return;}
   S.inv[fid]--;afterFeed(S);
   if(S.stage>0){S.hunger=Math.min(4,S.hunger+(fid==='nikuman'?2:1));if(fid==='purin')S.mood=Math.min(4,S.mood+1);}
   if(S.sick){
@@ -135,7 +135,7 @@ const TOUCH_FX={head:'💗',belly:'💗',stroke:'💗',hug:'💞',mash:'💫'};
 function petAct(kind){
   const now=Date.now();lastInteract=now;
   wobble();
-  if(isNight(new Date(now))){sfx('snore');say(line('sleepTap'));return;}
+  if(asleep(S,now)){sfx('snore');say(line('sleepTap'));return;}
   if(farewellReady(S,now)){startFarewell();return;}
   if(S.stage===4&&S.sick){say(line('farewellSick'));render();return;}
   if(S.stage===0){sfx('egg');say(line('egg'));return;}
@@ -244,11 +244,11 @@ function icons(ic,n){let s='';for(let i=0;i<4;i++)s+=`<span class="gi ${i<n?'on'
 function render(){
   ensureDay();const now=Date.now();
   $('#petName').textContent=S.name;$('#genLabel').textContent=S.gen+'ぴきめ';
-  const sleeping=S.stage>0&&isNight(new Date());
+  const sleeping=S.stage>0&&asleep(S,now);
   const L=look(S,{night:sleeping,react:now<reactUntil?react:null});
   $('#pet').innerHTML=petSVG(S.form,L.face,{pts:S.pts,shiny:S.shiny,final:S.stage===4,arms:L.arms,think:L.think});
   $('#pet').dataset.pose=L.pose;
-  $('#screen').className='screen t-'+band(new Date());
+  $('#screen').className='screen t-'+band(new Date(),S.cfg);
   $('#gauges').innerHTML=S.stage===0?`<span class="glabel">たまご を あたためよう</span>`:
     `<div class="gauge"><span class="glabel">おなか</span>${icons('🍙',S.hunger)}</div><div class="gauge"><span class="glabel">ごきげん</span>${icons('🌸',S.mood)}</div>`;
   let b='';
@@ -324,13 +324,13 @@ let greetAt=0;
 function greet(){
   greetAt=Date.now();
   if(S.sick)say(line('sick'));
-  else if(S.stage===0)say(isNight(new Date())?line('egg'):'たまご を あたためよう。できたこと を おしえてね！');
+  else if(S.stage===0)say(isNight(new Date(),S.cfg)?line('egg'):'たまご を あたためよう。できたこと を おしえてね！');
   else say(line('greet'));
 }
 /* ひとりごと：起きていて、モーダルが無く、90秒操作が無い時に1回だけ（操作すると数え直し） */
 let idleFor=-1;
 function idle(now){
-  if(S.stage===0||S.sick||isNight(new Date(now))||!$('#modal').hidden)return;
+  if(S.stage===0||S.sick||asleep(S,now)||!$('#modal').hidden)return;
   if(now-lastInteract>=90e3&&idleFor!==lastInteract){idleFor=lastInteract;say(line('idle'));}
 }
 tick(Date.now());

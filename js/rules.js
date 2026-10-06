@@ -1,34 +1,63 @@
 // DOM に触れない純粋なルール（時間帯・タスク受付・時間経過・分岐）
 import {H,WD,ADULT_IDS,LINES} from './data.js';
+import {CFG_DEF} from './state.js';
+const DEFCFG=CFG_DEF();
+const cf=c=>c||DEFCFG;
+const mOf=d=>d.getHours()*60+d.getMinutes();
 
 export function dayKey(d){return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
-/* あさ 6–9 / ひる 10–15 / ゆうがた 16–19 / よる 20–5（よる＝ねんね） */
-export function band(d){const h=d.getHours();return h<6||h>=20?'yoru':h<10?'asa':h<16?'hiru':'yuu';}
-export function isNight(d){return band(d)==='yoru';}
-export function awakeMs(from,to){
+/* よる＝ぷにちゃんの ねんね（寝る時刻〜起きる時刻）／ あさ＝起きる時刻〜10時 ／ ひる 10–16時 ／ ゆうがた＝16時〜寝る時刻 */
+export function isNight(d,cfg){const c=cf(cfg),m=mOf(d);return m>=c.sleepAt||m<c.wakeAt;}
+export function band(d,cfg){if(isNight(d,cfg))return 'yoru';const m=mOf(d);return m<600?'asa':m<960?'hiru':'yuu';}
+/* ねむっているか：夜で、かつ「ちょっとだけ おきて」の 5 分の間ではない */
+export function asleep(S,now){return isNight(new Date(now),S.cfg)&&!(now<(S.tempUntil||0));}
+/* 何日の夜か（起きる時刻より前は前の日の夜） */
+export function nightKey(now,cfg){const d=new Date(now);if(mOf(d)<cf(cfg).wakeAt)d.setDate(d.getDate()-1);return dayKey(d);}
+export function awakeMs(from,to,cfg){
   if(to<=from) return 0;
   from=Math.max(from,to-40*24*H);
   const STEP=5*60e3; let t=from, ms=0;
-  while(t<to){const n=Math.min(t+STEP,to); if(!isNight(new Date(t))) ms+=n-t; t=n;}
+  while(t<to){const n=Math.min(t+STEP,to); if(!isNight(new Date(t),cfg)) ms+=n-t; t=n;}
   return ms;
 }
 
+/* はやおき・はやね の受付（分）は設定から。until はその時刻ちょうどで締め切り */
+function windowOf(t,c,wd){
+  if(t.id==='hayaoki') return {from:c.hayaoki.from,until:c.hayaoki.until,days:c.hayaoki.days};
+  if(t.id==='hayane') return {from:c.hayane.from,until:c.hayane.until[wd]};
+  return null;
+}
 export function taskState(t,S,d){
-  const h=d.getHours(),wd=d.getDay();
+  const h=d.getHours(),m=mOf(d),wd=d.getDay(),w=windowOf(t,cf(S.cfg),wd);
   if(t.id==='lesson'&&S.lessonDays.indexOf(wd)<0) return {ok:false,why:'day'};
-  if(t.weekdays&&t.weekdays.indexOf(wd)<0) return {ok:false,why:'weekday'};
-  if(t.from!=null&&h<t.from) return {ok:false,why:'early'};
-  const until=typeof t.until==='function'?t.until(d):t.until;
-  if(until!=null&&h>=until) return {ok:false,why:'late'};
+  if(w&&w.days&&w.days.indexOf(wd)<0) return {ok:false,why:'weekday'};
+  if(w&&m<w.from) return {ok:false,why:'early'};
+  if(w&&m>=w.until) return {ok:false,why:'late'};
   if(t.id==='hamigaki'){const slot=h<15?'am':'pm';return S.cnt['hamigaki_'+slot]?{ok:false,why:'done',slot:slot}:{ok:true,slot:slot};}
   const used=S.cnt[t.id]||0;
   return used<t.limit?{ok:true,used:used}:{ok:false,why:'done',used:used};
 }
+/* 時刻のひらがな表記：6じ／6じ30ぷん／6じ15ふん */
+export function clock(min){
+  const h=Math.floor(min/60),m=min%60;if(!m)return h+'じ';
+  return h+'じ'+m+([2,5,7,9].indexOf(m%10)>=0?'ふん':'ぷん');
+}
+const WS=['にち','げつ','か','すい','もく','きん','ど'];
+/* 曜日の並び：3 つ以上つづくところは「げつ〜きん」、7 つなら「まいにち」 */
+export function daysLabel(days){
+  if(days.length===7)return 'まいにち';
+  if(!days.length)return 'おやすみ';
+  const out=[];let i=0;
+  while(i<days.length){let j=i;while(j+1<days.length&&days[j+1]===days[j]+1)j++;
+    if(j-i>=2)out.push(WS[days[i]]+'〜'+WS[days[j]]);else for(let k=i;k<=j;k++)out.push(WS[days[k]]);i=j+1;}
+  return out.join('・');
+}
 export function taskNote(t,S,st){
   if(st.why==='day') return S.lessonDays.map(x=>WD[x]).join(' と ')+' だけ';
   if(t.id==='lesson') return st.ok?'きょうは ごはん 3ばい！':'できたね！';
-  if(t.id==='hayaoki'&&st.why&&st.why!=='done') return 'へいじつ あさ 5じ〜7じ';
-  if(t.id==='hayane'&&st.why==='early') return '18じ から';
+  const c=cf(S.cfg);
+  if(t.id==='hayaoki'&&st.why&&st.why!=='done') return daysLabel(c.hayaoki.days)+' あさ '+clock(c.hayaoki.from)+'〜'+clock(c.hayaoki.until);
+  if(t.id==='hayane'&&st.why==='early') return clock(c.hayane.from)+' から';
   if(st.why==='late') return 'きょうは おしまい';
   return '';
 }
@@ -36,7 +65,7 @@ export function taskNote(t,S,st){
 /* 起きている時間だけ おなか・ごきげん が減る。おなか0 が起きている時間で3時間続くと びょうき */
 export function decay(S,now){
   if(S.stage===0){S.lastTick=now;return {becameSick:false};}
-  const a=awakeMs(S.lastTick,now);
+  const a=awakeMs(S.lastTick,now,S.cfg);
   if(S.hunger===0) S.zeroAcc+=a;
   else{const toZero=S.hunger*3*H-S.hAcc; if(a>toZero) S.zeroAcc+=a-toZero;}
   S.hAcc+=a; S.mAcc+=a;
@@ -74,11 +103,12 @@ export function chooseForm(S){
   return pick?{form:pick,shiny:false}:{form:first,shiny:true};
 }
 
-/* 一生の期日（spec §4.1）：ts の日付 + addDays 日の 6:00 */
-export function at6(ts,addDays){const d=new Date(ts);d.setDate(d.getDate()+addDays);d.setHours(6,0,0,0);return +d;}
-export function finalDue(S){return at6(S.adultAt,2);}
+/* 一生の期日（spec §4.1）：ts の日付 + addDays 日の、ぷにちゃんが起きる時刻 */
+export function atWake(ts,addDays,cfg){const w=cf(cfg).wakeAt,d=new Date(ts);d.setDate(d.getDate()+addDays);d.setHours(Math.floor(w/60),w%60,0,0);return +d;}
+export const at6=(ts,addDays)=>atWake(ts,addDays,DEFCFG);
+export function finalDue(S){return atWake(S.adultAt,2,S.cfg);}
 export function farewellReady(S,now){
-  return S.stage===4&&S.finalSeenAt>0&&now>=at6(S.finalSeenAt,1)&&!isNight(new Date(now))&&!S.sick;
+  return S.stage===4&&S.finalSeenAt>0&&now>=atWake(S.finalSeenAt,1,S.cfg)&&!isNight(new Date(now),S.cfg)&&!S.sick;
 }
 
 /* 表情とポーズ（spec §5.3）：ねんね ＞ びょうき ＞ リアクション ＞ おなか×ごきげん の表 */
@@ -103,7 +133,7 @@ export function look(S,ctx){
 /* セリフ選び：時間帯と状態で候補を絞り、よびかた が無ければ {you} 入りを除く */
 export function pickLine(key,S,d,rnd){
   rnd=rnd||Math.random;
-  const b=band(d);let list;
+  const b=band(d,S.cfg);let list;
   if(key==='idle'){
     if(S.hunger===0) list=LINES.hungry;
     else if(S.mood<=1) list=LINES.pout;

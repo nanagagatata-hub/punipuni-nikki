@@ -38,9 +38,11 @@ export function taskState(t,S,d){
   return used<t.limit?{ok:true,used:used}:{ok:false,why:'done',used:used};
 }
 /* 時刻のひらがな表記：6じ／6じ30ぷん／6じ15ふん */
+/* 分のよみ：2・5・7・9 で終わる数は「ふん」、それ以外は「ぷん」 */
+export function minLabel(n){return n+([2,5,7,9].indexOf(n%10)>=0?'ふん':'ぷん');}
 export function clock(min){
-  const h=Math.floor(min/60),m=min%60;if(!m)return h+'じ';
-  return h+'じ'+m+([2,5,7,9].indexOf(m%10)>=0?'ふん':'ぷん');
+  const h=Math.floor(min/60),m=min%60;
+  return m?h+'じ'+minLabel(m):h+'じ';
 }
 const WS=['にち','げつ','か','すい','もく','きん','ど'];
 /* 曜日の並び：3 つ以上つづくところは「げつ〜きん」、7 つなら「まいにち」 */
@@ -56,6 +58,7 @@ export function taskNote(t,S,st){
   if(st.why==='day') return S.lessonDays.map(x=>WD[x]).join(' と ')+' だけ';
   if(t.id==='lesson') return st.ok?'きょうは ごはん 3ばい！':'できたね！';
   const c=cf(S.cfg);
+  if(t.id==='hayaoki'&&st.why&&st.why!=='done'&&!c.hayaoki.days.length) return 'おやすみ';
   if(t.id==='hayaoki'&&st.why&&st.why!=='done') return daysLabel(c.hayaoki.days)+' あさ '+clock(c.hayaoki.from)+'〜'+clock(c.hayaoki.until);
   if(t.id==='hayane'&&st.why==='early') return clock(c.hayane.from)+' から';
   if(st.why==='late') return 'きょうは おしまい';

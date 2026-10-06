@@ -1,6 +1,6 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
 import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES} from './data.js';
-import {dayKey,band,isNight,asleep,nightKey,clock,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine} from './rules.js';
+import {dayKey,band,isNight,asleep,nightKey,minLabel,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine} from './rules.js';
 import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
 import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
@@ -276,7 +276,7 @@ function render(){
   if(S.sick)b+=`<span class="badge sick">🤒 びょうき：ごはん あと ${2-S.cure}こ で なおる</span>`;
   if(sleeping)b+=`<span class="badge">💤 ねんね ちゅう</span>`;
   const night=isNight(new Date(now),S.cfg);
-  if(night&&now<S.tempUntil)b+=`<span class="badge">⏰ あと ${Math.ceil((S.tempUntil-now)/60e3)}ぷん おきてるよ</span>`;
+  if(night&&now<S.tempUntil)b+=`<span class="badge">⏰ あと ${minLabel(Math.ceil((S.tempUntil-now)/60e3))} おきてるよ</span>`;
   else if(night&&S.cfg.tempWake&&S.tempNight!==nightKey(now,S.cfg))b+=`<button class="badge wakebtn" id="tempWake">⏰ ちょっとだけ おきて</button>`;
   if(farewellReady(S,now))b+=`<span class="badge letter">💌 ${esc(S.name)} が なにか いいたそう</span>`;
   $('#badges').innerHTML=b;

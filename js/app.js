@@ -5,7 +5,7 @@ import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
 import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
 import {speak,sfx,setSound,unlock} from './sound.js';
-const APP_VERSION='v2.0.0'; // sw.js の VERSION と同じ値にそろえる
+const APP_VERSION='v2.1.0'; // sw.js の VERSION と同じ値にそろえる
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

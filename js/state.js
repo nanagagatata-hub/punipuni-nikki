@@ -6,12 +6,35 @@ export const LEGACY_KEY='punipuni-nikki-v1';
 const CNT_KEYS=TASKS.filter(t=>t.id!=='hamigaki').map(t=>t.id).concat(['hamigaki_am','hamigaki_pm']);
 const STAGE_FORM={1:'puni',2:'hoshi',3:'hakase',4:'hakase'};
 
+/* 生活リズムの設定（時刻は 0 時からの分）。初期値は v2.0.0 の固定値と同じ */
+export function CFG_DEF(){
+  return {sleepAt:1200,wakeAt:360,hayaoki:{from:300,until:420,days:[1,2,3,4,5]},
+    hayane:{from:1080,until:[1200,1200,1200,1200,1200,1260,1260]},tempWake:false};
+}
+const mins=(v,d,min,max)=>Number.isInteger(v)&&v>=min&&v<=max?v:d;
+/* 設定は項目ごとに検証し、おかしい項目だけ初期値に戻す（ほかの項目は残す） */
+export function cleanCfg(c){
+  const d=CFG_DEF();
+  if(!c||typeof c!=='object')return d;
+  d.sleepAt=mins(c.sleepAt,d.sleepAt,1080,1410);
+  d.wakeAt=mins(c.wakeAt,d.wakeAt,240,540);
+  const a=(c.hayaoki&&typeof c.hayaoki==='object')?c.hayaoki:{};
+  const af=mins(a.from,-1,240,600),au=mins(a.until,-1,245,660);
+  if(af>=0&&au>af){d.hayaoki.from=af;d.hayaoki.until=au;}
+  if(Array.isArray(a.days))d.hayaoki.days=[0,1,2,3,4,5,6].filter(x=>a.days.indexOf(x)>=0);
+  const b=(c.hayane&&typeof c.hayane==='object')?c.hayane:{};
+  const bf=mins(b.from,-1,960,1380);
+  if(bf>=0&&Array.isArray(b.until)&&b.until.length===7&&b.until.every(u=>mins(u,-1,bf+5,1439)>=0)){d.hayane.from=bf;d.hayane.until=b.until.slice();}
+  else if(bf>=0&&d.hayane.until.every(u=>u>bf))d.hayane.from=bf;
+  d.tempWake=c.tempWake===true;
+  return d;
+}
 export function DEF(){
   const now=Date.now();
   return {v:2,name:'ぷにちゃん',you:'',gen:1,stage:0,form:'egg',shiny:false,pts:0,p:{ka:0,ki:0,ge:0,ho:0},
     hunger:3,mood:3,hAcc:0,mAcc:0,zeroAcc:0,sick:false,cure:0,lastTick:now,petAt:0,boostUntil:0,
     adultAt:0,finalAt:0,finalSeenAt:0,inv:{},day:'',cnt:{},lessonDays:[6],
-    zukan:[],shinySeen:[],history:[],sound:true};
+    zukan:[],shinySeen:[],history:[],sound:true,cfg:CFG_DEF(),tempUntil:0,tempNight:''};
 }
 /* 保存データ・復元コードは信頼しない：既知のキーと型だけを取り込む（__proto__等の混入対策）。v1 は v2 に移行する */
 function num(v,d,min,max){v=Number(v);if(!isFinite(v))return d;return Math.min(max,Math.max(min,v));}
@@ -55,6 +78,9 @@ export function sanitize(o){
   d.history=(Array.isArray(o.history)?o.history:[]).filter(h=>h&&typeof h==='object'&&typeof h.f==='string'&&ADULT_IDS.indexOf(h.f)>=0)
     .slice(-200).map(h=>({f:h.f,n:str(h.n,8)||'ぷにちゃん',g:int(h.g,1,1,9999),s:h.s===true}));
   d.sound=o.sound!==false;
+  d.cfg=cleanCfg(o.cfg);
+  d.tempUntil=num(o.tempUntil,0,0,now+5*60e3);
+  d.tempNight=str(o.tempNight,12);
   return d;
 }
 /* 読み込み：v2 のキー → なければ v1 のキー。壊れていたら元の文字列を KEY-broken に退避してから初期データで始める */

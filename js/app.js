@@ -166,7 +166,7 @@ function newGeneration(){
   S.history.push({f:S.form,n:S.name,g:S.gen,s:S.shiny});
   if(S.history.length>200)S.history=S.history.slice(-200);
   const keep={name:S.name,you:S.you,gen:Math.min(9999,S.gen+1),zukan:S.zukan,shinySeen:S.shinySeen,history:S.history,
-    lessonDays:S.lessonDays,inv:S.inv,day:S.day,cnt:S.cnt,boostUntil:S.boostUntil,sound:S.sound};
+    lessonDays:S.lessonDays,inv:S.inv,day:S.day,cnt:S.cnt,boostUntil:S.boostUntil,sound:S.sound,cfg:S.cfg,tempNight:S.tempNight};
   S=Object.assign(DEF(),keep);save();say('たまご を もらったよ！あたためて あげよう');render();
 }
 function formName(){return (S.stage===4?'かがやく ':'')+(S.shiny?'きらきら ':'')+FORMS[S.form].name;}

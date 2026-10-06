@@ -22,7 +22,7 @@
 - しきい値：たまご 0 → あかちゃん **3** → こども **10** → おとな **25**（累計 pt）
 - おとな → **さいごのすがた**（stage 4）：`adultAt` の日付 +2 日の起きる時刻以降
 - おわかれ：`finalSeenAt`（さいごのすがた のモーダルを閉じた時）の日付 +1 日の 6:00 以降・夜でない・病気でない時にキャラをタッチ → あいさつ 3 ページ → たまごを受け取る → 次の世代
-- 引き継ぐ：なまえ、よびかた、gen+1、zukan・shinySeen・history、lessonDays、inv、day/cnt、boostUntil、sound
+- 引き継ぐ：なまえ、よびかた、gen+1、zukan・shinySeen・history、lessonDays、inv、day/cnt、boostUntil、sound、cfg、tempNight
 
 ## 分岐（ずかん 19 種）
 - あかちゃん（最大のつよさ）：ka ぷにぷに / ki しずく / ge ころ / ho もこ

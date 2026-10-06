@@ -2,7 +2,8 @@
 import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES} from './data.js';
 import {dayKey,band,isNight,asleep,nightKey,clock,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine} from './rules.js';
 import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
-import {petSVG} from './art.js';
+import {petSVG,sceneSVG} from './art.js';
+let sceneBand='';
 import {speak,sfx,setSound,unlock} from './sound.js';
 const APP_VERSION='v2.0.0'; // sw.js の VERSION と同じ値にそろえる
 
@@ -266,7 +267,8 @@ function render(){
   const L=look(S,{night:sleeping,react:now<reactUntil?react:null});
   $('#pet').innerHTML=petSVG(S.form,L.face,{pts:S.pts,shiny:S.shiny,final:S.stage===4,arms:L.arms,think:L.think});
   $('#pet').dataset.pose=L.pose;
-  $('#screen').className='screen t-'+band(new Date(),S.cfg);
+  const bd=band(new Date(),S.cfg);$('#screen').className='screen t-'+bd;
+  if(sceneBand!==bd){$('#scene').innerHTML=sceneSVG(bd);sceneBand=bd;}
   $('#gauges').innerHTML=S.stage===0?`<span class="glabel">たまご を あたためよう</span>`:
     `<div class="gauge"><span class="glabel">おなか</span>${icons('🍙',S.hunger)}</div><div class="gauge"><span class="glabel">ごきげん</span>${icons('🌸',S.mood)}</div>`;
   let b='';

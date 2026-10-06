@@ -132,3 +132,29 @@ export function petSVG(form,face,opt){
   const g=baby?`<g transform="translate(100 118) scale(.84) translate(-100 -118)">${inner}</g>`:inner;
   return `<svg viewBox="0 0 200 200" aria-hidden="true">${defs}<ellipse cx="100" cy="190" rx="60" ry="7" fill="rgba(0,0,0,.08)"/>${back}${g}${shine}${fin}${think}</svg>`;
 }
+
+/* 時間帯の景色（絵本のページのうしろの絵）。band：asa / hiru / yuu / yoru。ID は band ごとに分けて重複を避ける */
+const SCENE={
+  asa:{sky:['#FFC9C2','#FFE6C7','#FFF6D8'],hill:['#CDEFC4','#B2E2A8'],ink:'#5B4150'},
+  hiru:{sky:['#7FC8FF','#B9E3FF','#E3F5FF'],hill:['#A6E09A','#82CC7A'],ink:'#4A3A48'},
+  yuu:{sky:['#FF8E6E','#FFB98C','#D7A6E8'],hill:['#B88BB0','#93698F'],ink:'#4A2F45'},
+  yoru:{sky:['#2F356F','#4A4690','#6B59A6'],hill:['#3D4A7C','#2C3864'],ink:'#FFF6E8'}
+};
+function cloud(x,y,s,c){return `<g fill="${c}"><ellipse cx="${x}" cy="${y}" rx="${26*s}" ry="${13*s}"/><circle cx="${x-12*s}" cy="${y-8*s}" r="${12*s}"/><circle cx="${x+9*s}" cy="${y-12*s}" r="${15*s}"/></g>`;}
+export function sceneSVG(band){
+  const S=SCENE[band]||SCENE.hiru,id='sk-'+band;
+  const sky=`<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">${S.sky.map((c,i)=>`<stop offset="${i/(S.sky.length-1)}" stop-color="${c}"/>`).join('')}</linearGradient></defs><rect width="400" height="300" fill="url(#${id})"/>`;
+  const hills=`<path d="M-20 238 Q70 196 170 226 T420 214 V320 H-20Z" fill="${S.hill[0]}"/><path d="M-20 262 Q110 230 230 258 T420 250 V320 H-20Z" fill="${S.hill[1]}"/>`;
+  let deco='';
+  if(band==='asa') deco=`<circle cx="92" cy="226" r="46" fill="#FFD08A" opacity=".55"/><circle cx="92" cy="226" r="32" fill="#FFB86B"/>`+cloud(300,70,1,'#FFFFFF')+cloud(190,46,.7,'#FFEFF2')+
+    `<path d="M250 120 q8 -8 16 0 q8 -8 16 0 M300 100 q6 -6 12 0 q6 -6 12 0" fill="none" stroke="#7D6273" stroke-width="3" stroke-linecap="round"/>`;
+  else if(band==='hiru') deco=[0,45,90,135,180,225,270,315].map(a=>{const r=a*Math.PI/180;return `<path d="M${(338+36*Math.cos(r)).toFixed(1)} ${(58+36*Math.sin(r)).toFixed(1)} L${(338+48*Math.cos(r)).toFixed(1)} ${(58+48*Math.sin(r)).toFixed(1)}" stroke="#FFD84D" stroke-width="6" stroke-linecap="round"/>`;}).join('')+`<circle cx="338" cy="58" r="28" fill="#FFD84D"/>`+cloud(90,62,1.1,'#FFFFFF')+cloud(220,40,.8,'#FFFFFF')+
+    [[60,250,'#FF9EBB'],[118,262,'#FFD84D'],[300,246,'#FFFFFF'],[352,262,'#FF9EBB']].map(([x,y,c])=>`<circle cx="${x}" cy="${y}" r="5" fill="${c}"/><circle cx="${x}" cy="${y}" r="2" fill="#F7B733"/>`).join('');
+  else if(band==='yuu') deco=`<circle cx="290" cy="222" r="70" fill="#FFB27A" opacity=".45"/><circle cx="290" cy="222" r="48" fill="#FF7F50"/>`+cloud(110,80,1,'#FFC9B0')+cloud(220,52,.6,'#F3C1E0')+
+    `<path d="M70 40 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3Z" fill="#FFF3B0"/>`;
+  else deco=[[40,40,2],[90,90,1.5],[150,30,2.2],[210,80,1.4],[260,36,1.8],[120,140,1.2],[330,120,1.4],[370,40,1.6]].map(([x,y,r])=>`<circle cx="${x}" cy="${y}" r="${r}" fill="#FFF8D6"/>`).join('')+
+    `<path d="M328 46 a30 30 0 1 0 22 52 a24 24 0 1 1 -22 -52Z" fill="#FFF3B0"/>`;
+  const front=band==='yoru'?`<g transform="translate(40 212)"><rect x="0" y="12" width="40" height="28" rx="3" fill="#F2D3B8"/><path d="M-6 14 L20 -8 L46 14Z" fill="#C97E8E"/><rect x="14" y="20" width="12" height="11" rx="2" fill="#FFD27A"/></g>`:'';
+  return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true" data-band="${band}">${sky}${deco}${hills}${front}</svg>`;
+}
+export const sceneInk=band=>(SCENE[band]||SCENE.hiru).ink;

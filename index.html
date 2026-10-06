@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
-<meta name="theme-color" content="#F7B5CF">
+<meta name="theme-color" content="#FFF8EE">
+<meta name="color-scheme" content="light">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ぷにぷに">
@@ -27,20 +28,21 @@
 
 <main class="layout">
   <section class="maincol">
-    <div class="shell">
+    <div class="frame">
       <div class="screen" id="screen">
+        <div class="scene" id="scene"></div>
         <div class="gauges" id="gauges"></div>
         <div class="badges" id="badges"></div>
         <button class="pet" id="pet" aria-label="なでる"></button>
         <div class="growth" id="growth"></div>
       </div>
-      <div class="bubble" aria-live="polite">
-        <p id="bubbleText"></p>
-        <p id="bubbleZh" class="zh"></p>
-        <button class="speak" id="speakBtn" aria-label="よみあげ">🔊</button>
-      </div>
-      <div class="tray" id="tray"></div>
     </div>
+    <div class="bubble" aria-live="polite">
+      <p id="bubbleText"></p>
+      <p id="bubbleZh" class="zh"></p>
+      <button class="speak" id="speakBtn" aria-label="よみあげ">🔊</button>
+    </div>
+    <div class="tray" id="tray"></div>
   </section>
 
   <section class="sidecol">

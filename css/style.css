@@ -64,7 +64,7 @@ img,svg{max-width:100%}
 .fl input[type=checkbox]{display:inline-block;width:22px;height:22px;margin:0;padding:0}
 .fl .days label{display:flex;align-items:center;gap:3px;font-size:15px}
 .fl .days .dl{flex-direction:column;gap:2px}
-.fl .days .dl input{width:96px;margin-top:0;padding:6px}
+.fl .days .dl input{width:128px;margin-top:0;padding:6px}
 .badge.letter{background:#FFE3EE}
 .badge.sick{background:#D6ECFA}
 .pet{touch-action:none;user-select:none;-webkit-user-select:none;display:block;margin:4px auto 0;width:min(70vw,300px);aspect-ratio:1;background:none;border:0;padding:0}

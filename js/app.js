@@ -197,6 +197,7 @@ async function updateApp(){
   location.reload();
 }
 /* 分 ⇔ "HH:MM"（<input type="time"> の値） */
+const WDK='日月火水木金土';
 const hm=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
 const toMin=v=>{const x=/^(\d{2}):(\d{2})$/.exec(v||'');return x?(+x[1])*60+(+x[2]):NaN;};
 function openSettings(){
@@ -213,9 +214,9 @@ function openSettings(){
     <label class="fl">ぷにちゃんが寝る時刻（このあとはエサをあげられません）<input id="sleepIn" type="time" step="300" value="${hm(C.sleepAt)}"></label>
     <label class="fl">ぷにちゃんが起きる時刻<input id="wakeIn" type="time" step="300" value="${hm(C.wakeAt)}"></label>
     <label class="fl">「はやおき」を受け付ける時刻<span class="row2"><input id="hoFrom" type="time" step="300" value="${hm(C.hayaoki.from)}">〜<input id="hoUntil" type="time" step="300" value="${hm(C.hayaoki.until)}"></span></label>
-    <div class="fl">「はやおき」の曜日<span class="days">${WD.map((w,i)=>`<label><input type="checkbox" id="hoDay${i}" ${C.hayaoki.days.indexOf(i)>=0?'checked':''}>${w.slice(0,1)}</label>`).join('')}</span></div>
+    <div class="fl">「はやおき」の曜日<span class="days">${WD.map((w,i)=>`<label><input type="checkbox" id="hoDay${i}" ${C.hayaoki.days.indexOf(i)>=0?'checked':''}>${WDK[i]}</label>`).join('')}</span></div>
     <label class="fl">「はやね」を受け付け始める時刻<input id="hnFrom" type="time" step="300" value="${hm(C.hayane.from)}"></label>
-    <div class="fl">「はやね」の締め切り（曜日ごと）<span class="days">${WD.map((w,i)=>`<label class="dl">${w.slice(0,1)}<input id="hnUntil${i}" type="time" step="300" value="${hm(C.hayane.until[i])}"></label>`).join('')}</span></div>
+    <div class="fl">「はやね」の締め切り（曜日ごと）<span class="days">${WD.map((w,i)=>`<label class="dl">${WDK[i]}<input id="hnUntil${i}" type="time" step="300" value="${hm(C.hayane.until[i])}"></label>`).join('')}</span></div>
     <label class="fl">ねんね中の「ちょっとだけ おきて」ボタン（ひと晩1回・5分だけエサをあげられます）<select id="tempIn"><option value="off" ${C.tempWake?'':'selected'}>出さない</option><option value="on" ${C.tempWake?'selected':''}>出す</option></select></label>
     <div class="btns"><button class="btn small" data-act="save">保存する</button></div>
     <h3>アプリの更新</h3>

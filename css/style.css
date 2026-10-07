@@ -198,6 +198,8 @@ textarea{min-height:90px;font-size:13px!important;font-family:ui-monospace,monos
 @media (prefers-reduced-motion:reduce){
   /* 端末の「視差効果を減らす」では、すべての動きを止める */
   *,*::before,*::after{animation:none!important;transition:none!important}
+  /* 動かないまま残ってしまう はじける絵文字・飛ぶエサ は出さない */
+  .fx,.flyfood{display:none}
 }
 
 /* iPad（縦・横）では 1 画面に収める：キャラの絵だけが残りの高さに合わせて伸び縮みする */

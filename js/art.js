@@ -67,7 +67,9 @@ function faceSVG(face){
     mouth=`<path d="M92 127 Q100 135 108 127" ${st} stroke-width="3.5"/>`;
   }
   const blush=`<ellipse cx="60" cy="124" rx="10" ry="5.5" fill="${blushCol}" opacity=".75"/><ellipse cx="140" cy="124" rx="10" ry="5.5" fill="${blushCol}" opacity=".75"/>`;
-  return blush+eyes+mouth+extra;
+  /* 目が開いている表情だけ まばたきする（.blink-on） */
+  const blink=['normal','hungry','sad','tears','pout'].indexOf(face)>=0;
+  return blush+`<g class="eyes${blink?' blink-on':''}">${eyes}</g>`+mouth+extra;
 }
 function accSVG(form){
   switch(form){

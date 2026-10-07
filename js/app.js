@@ -5,7 +5,7 @@ import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
 import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
 import {speak,sfx,setSound,unlock} from './sound.js';
-const APP_VERSION='v2.1.0'; // sw.js の VERSION と同じ値にそろえる
+const APP_VERSION='v2.2.0'; // sw.js の VERSION と同じ値にそろえる
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -35,13 +35,16 @@ function tickLife(now){
 
 /* ---------- drawing ---------- */
 /* ---------- speech & fx ---------- */
-function say(ja,zh){bubble={ja:ja,zh:zh||''};renderBubble();}
+function say(ja,zh){bubble={ja:ja,zh:zh||''};renderBubble();replay($('.bubble'),'talk');}
+/* 同じ動きをもう一度最初から（クラスを付けなおす） */
+function replay(el,cls){if(!el)return;el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);}
 const line=k=>pickLine(k,S,new Date());
 function sayWord(pre){const w=Math.random()<.5?rnd(WORDS):rnd(PHRASES);say(`${pre}「${w[1]}」は ちゅうごくごで「${w[2]}」だよ！`,w[0]);}
-function fxBurst(icon){
-  const r=$('#pet').getBoundingClientRect();
+/* 星やハートがはじける。from を省くと ぷにちゃんの所から */
+function fxBurst(icon,from){
+  const r=(from||$('#pet')).getBoundingClientRect(),list=Array.isArray(icon)?icon:[icon];
   for(let i=0;i<5;i++){
-    const s=document.createElement('span');s.className='fx';s.textContent=icon;
+    const s=document.createElement('span');s.className='fx';s.textContent=list[i%list.length];
     s.style.left=(r.left+r.width/2-17+(Math.random()*80-40))+'px';
     s.style.top=(r.top+r.height*.45)+'px';
     s.style.setProperty('--dx',(Math.random()*120-60)+'px');
@@ -81,13 +84,14 @@ function report(t){
   const f=FOODS[t.food];
   if(t.id==='lesson'){S.boostUntil=Date.now()+24*H;say(`すごい！${f.name} を もらったよ。ぐんぐんたいむ が はじまった！`);}
   else say(`${f.name} を もらったよ！した の ${f.icon} を おして あげてね`);
-  lastInteract=Date.now();sfx('chime');fxBurst(f.icon);save();render();
+  lastInteract=Date.now();sfx('chime');fxBurst(f.icon);mark={task:t.id,food:t.food};save();render();
+  fxBurst(['⭐','✨','💖'],document.querySelector(`[data-task="${t.id}"]`));
 }
 function feed(fid){
   if(!(S.inv[fid]>0))return;
   const f=FOODS[fid],now=Date.now();lastInteract=now;
   if(asleep(S,now)){say(line('sleepFeed'));return;}
-  S.inv[fid]--;afterFeed(S);
+  flyFood(fid);S.inv[fid]--;afterFeed(S);
   if(S.stage>0){S.hunger=Math.min(4,S.hunger+(fid==='nikuman'?2:1));if(fid==='purin')S.mood=Math.min(4,S.mood+1);}
   if(S.sick){
     S.cure++;
@@ -115,7 +119,7 @@ function checkEvolve(){
   }
 }
 function showEvolve(){
-  sfx('fanfare');
+  sfx('fanfare');setTimeout(()=>{fxBurst(['🎉','⭐','✨','💖','🌈']);fxBurst(['⭐','✨']);},250);
   const msg=['','たまごが かえった！','しんか した！','おとなに なった！','さいごの すがた に なった！'][S.stage];
   openModal(`<div class="center"><div class="evo">${petSVG(S.form,'happy',{shiny:S.shiny,final:S.stage===4})}</div><p class="q">${msg}</p>
     <p class="sub">${esc(S.name)} は「${formName()}」に なったよ</p>
@@ -182,6 +186,7 @@ function openZukan(){
   const sec=(st,title)=>`<h4 class="zh">${title}</h4><div class="zgrid">${ZORDER.filter(f=>FORMS[f].stage===st).map(zukanCell).join('')}</div>`;
   openModal(`<p class="q">ずかん（${S.zukan.length} / ${ZORDER.length}）</p>${sec(1,'あかちゃん')}${sec(2,'こども')}${sec(3,'おとな')}
     <div class="btns"><button class="btn ghost" data-act="close">とじる</button></div>`,()=>closeModal(),true);
+  document.querySelectorAll('#sheet .zc').forEach((c,n)=>c.style.setProperty('--d',(n*35)+'ms'));
 }
 /* アプリを更新：Service Worker に新しい版を確認させ、入れ替わるのを最大8秒待ってから再読み込み（失敗しても必ず再読み込み） */
 async function updateApp(){
@@ -260,7 +265,18 @@ function openSettings(){
 
 /* ---------- render ---------- */
 function renderBubble(){$('#bubbleText').textContent=bubble.ja;$('#bubbleZh').textContent=bubble.zh;$('#bubbleZh').hidden=!bubble.zh;}
-function icons(ic,n){let s='';for(let i=0;i<4;i++)s+=`<span class="gi ${i<n?'on':''}">${ic}</span>`;return s;}
+/* ゲージ：前より ふえた所に boing を付ける */
+function icons(ic,n,prev){let s='';for(let i=0;i<4;i++)s+=`<span class="gi ${i<n?'on':''} ${i>=prev&&i<n?'boing':''}">${ic}</span>`;return s;}
+/* できたこと・エサ の動きの目印（1 回の描画で使って消す）と、前回のゲージ・ポイント */
+let mark={},lastG=null,lastPts=null;
+/* エサが トレイから ぷにちゃんへ飛んでいく */
+function flyFood(fid){
+  const b=document.querySelector(`#tray [data-food="${fid}"]`);if(!b)return;
+  const r=b.getBoundingClientRect(),p=$('#pet').getBoundingClientRect(),s=document.createElement('span');
+  s.className='flyfood';s.textContent=FOODS[fid].icon;s.style.left=(r.left+r.width/2-20)+'px';s.style.top=(r.top+r.height/2-24)+'px';
+  s.style.setProperty('--tx',(p.left+p.width/2-r.left-r.width/2)+'px');s.style.setProperty('--ty',(p.top+p.height*.55-r.top-r.height/2)+'px');
+  document.body.appendChild(s);setTimeout(()=>s.remove(),700);
+}
 function render(){
   ensureDay();const now=Date.now();
   $('#petName').textContent=S.name;$('#genLabel').textContent=S.gen+'ぴきめ';
@@ -271,7 +287,8 @@ function render(){
   const bd=band(new Date(),S.cfg);$('#screen').className='screen t-'+bd;
   if(sceneBand!==bd){$('#scene').innerHTML=sceneSVG(bd);sceneBand=bd;}
   $('#gauges').innerHTML=S.stage===0?`<span class="glabel">たまご を あたためよう</span>`:
-    `<div class="gauge"><span class="glabel">おなか</span>${icons('🍙',S.hunger)}</div><div class="gauge"><span class="glabel">ごきげん</span>${icons('🌸',S.mood)}</div>`;
+    `<div class="gauge"><span class="glabel">おなか</span>${icons('🍙',S.hunger,lastG?lastG.h:S.hunger)}</div><div class="gauge"><span class="glabel">ごきげん</span>${icons('🌸',S.mood,lastG?lastG.m:S.mood)}</div>`;
+  lastG={h:S.hunger,m:S.mood};
   let b='';
   if(now<S.boostUntil)b+=`<span class="badge">🚀 ぐんぐんたいむ あと ${Math.ceil((S.boostUntil-now)/H)}じかん</span>`;
   if(S.sick)b+=`<span class="badge sick">🤒 びょうき：ごはん あと ${2-S.cure}こ で なおる</span>`;
@@ -286,8 +303,10 @@ function render(){
   else if(S.stage===3){const pct=Math.min(100,(now-S.adultAt)/(finalDue(S)-S.adultAt)*100);
     $('#growth').innerHTML=`おとな　さいごの すがた まで<div class="bar"><i data-w="${pct}"></i></div>`;}
   else $('#growth').innerHTML=`さいごの すがた<div class="bar"><i data-w="100"></i></div>`;
+  if(lastPts!=null&&S.pts>lastPts)replay($('#growth .bar'),'shine');
+  lastPts=S.pts;
   const foods=Object.keys(FOODS).filter(k=>S.inv[k]>0);
-  $('#tray').innerHTML=foods.length?foods.map(k=>`<button class="food" data-food="${k}" aria-label="${FOODS[k].name} を あげる">${FOODS[k].icon}<span class="n">${S.inv[k]}</span></button>`).join(''):
+  $('#tray').innerHTML=foods.length?foods.map(k=>`<button class="food${k===mark.food?' popin':''}" data-food="${k}" aria-label="${FOODS[k].name} を あげる">${FOODS[k].icon}<span class="n">${S.inv[k]}</span></button>`).join(''):
     `<p class="empty">できたこと を おしえると<br>ごはん が もらえるよ</p>`;
   $('#tasks').innerHTML=TASKS.map(t=>{
     const st=taskState(t,S,new Date()),note=taskNote(t,S,st);
@@ -295,8 +314,9 @@ function render(){
     if(note)dots=note;
     else if(t.id==='hamigaki'){dots=`<span class="dot ${S.cnt.hamigaki_am?'on':''}"></span>あさ <span class="dot ${S.cnt.hamigaki_pm?'on':''}"></span>よる`;}
     else{for(let i=0;i<t.limit;i++)dots+=`<span class="dot ${i<(S.cnt[t.id]||0)?'on':''}"></span>`;}
-    return `<button class="task" data-task="${t.id}" aria-label="${t.label}" ${st.ok?'':'disabled'}><span class="tf">${tf}</span><span class="ti">${t.icon}</span><span class="tl">${t.short}</span><span class="td">${dots}</span></button>`;
+    return `<button class="task" data-task="${t.id}" aria-label="${t.label}" ${st.ok?'':'disabled'}><span class="tf${t.id===mark.task?' stamp':''}">${tf}</span><span class="ti">${t.icon}</span><span class="tl">${t.short}</span><span class="td">${dots}</span></button>`;
   }).join('');
+  mark={};
   const mx=Math.max(10,...PARAMS.map(p=>S.p[p[0]]));
   $('#params').innerHTML=PARAMS.map(p=>`<div class="prow"><span>${p[1]}</span><span>${p[2]}</span><div class="bar"><i data-w="${S.p[p[0]]/mx*100}"></i></div><b>${Math.floor(S.p[p[0]])}</b></div>`).join('');
     document.querySelectorAll('[data-w]').forEach(el=>{el.style.width=Math.max(0,Math.min(100,+el.dataset.w||0))+'%';});

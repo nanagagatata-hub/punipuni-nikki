@@ -1,9 +1,9 @@
 :root{
   /* 絵本のページ：生成りの紙・やさしいパステル。端末がダークモードでも明るいまま（color-scheme:light） */
   color-scheme:light;
-  --bg:#FFF8EE; --dot:#F5E6D3; --frame:#F9CFDD; --frame-dk:#E6A9BF; --screen:#EAF7F1;
-  --ink:#5B4150; --soft:#7D6273; --card:#FFFDF8; --lemon:#FFF3C4; --lav:#EDE4FA;
-  --accent:#F2A0BE; --btn:#D46A97; --btn-ink:#FFFFFF; --sil:#E6DAD3; --line:#EBD9C6;
+  --bg:#F2DCC6; --dot:#E8CDB2; --frame:#F9CFDD; --frame-dk:#E6A9BF; --screen:#EAF7F1;
+  --ink:#4E3442; --soft:#6E5262; --card:#FFFCF7; --tile:#FFF6EC; --shadow:#CFA584; --lemon:#FFF3C4; --lav:#EDE4FA;
+  --accent:#F2A0BE; --btn:#D46A97; --btn-ink:#FFFFFF; --sil:#E6DAD3; --line:#E2C3A6;
   --mint:#D9F2E6; --sky:#DDEFFF; --peach:#FFE3D3;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
@@ -29,7 +29,7 @@ img,svg{max-width:100%}
 .title{display:flex;align-items:baseline;gap:10px}
 .title b{font-size:28px;font-weight:900;letter-spacing:.02em}
 .title small{font-size:16px;color:var(--soft)}
-.gear{width:48px;height:48px;border-radius:50%;border:3px solid var(--line);background:var(--card);font-size:22px;touch-action:none;user-select:none;-webkit-user-select:none}
+.gear{width:48px;height:48px;border-radius:50%;border:2px solid var(--line);background:var(--card);box-shadow:0 3px 0 var(--shadow);font-size:22px;touch-action:none;user-select:none;-webkit-user-select:none}
 
 .layout{max-width:1100px;margin:0 auto;padding:14px 16px 28px;display:grid;gap:22px}
 @media (orientation:landscape) and (min-width:820px){.layout{grid-template-columns:minmax(380px,1.05fr) minmax(320px,1fr);align-items:start}}
@@ -90,27 +90,26 @@ img,svg{max-width:100%}
 .bar{height:14px;border-radius:999px;background:var(--lav);overflow:hidden;margin:6px auto 0;max-width:320px}
 .bar i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .6s}
 
-.bubble{position:relative;margin:18px 4px 0;background:var(--card);border-radius:24px;border:2px dashed var(--line);padding:14px 60px 14px 18px;min-height:60px}
-.bubble::before{content:"";position:absolute;top:-13px;left:50%;margin-left:-12px;border:12px solid transparent;border-top:0;border-bottom-color:var(--card)}
+.bubble{position:relative;margin:18px 4px 0;background:var(--card);border-radius:24px;border:2px solid var(--line);box-shadow:0 5px 0 var(--shadow),0 10px 18px rgba(120,70,40,.12);padding:14px 60px 14px 18px;min-height:60px}
+.bubble::before{content:"";position:absolute;top:-14px;left:50%;margin-left:-13px;border:13px solid transparent;border-top:0;border-bottom-color:var(--line)}
+.bubble::after{content:"";position:absolute;top:-10px;left:50%;margin-left:-11px;border:11px solid transparent;border-top:0;border-bottom-color:var(--card)}
 .bubble p{margin:0;font-size:19px;line-height:1.6}
 .bubble .zh{font-size:15px;color:var(--soft);margin-top:2px}
 .speak{position:absolute;right:10px;top:50%;margin-top:-22px;width:44px;height:44px;border-radius:50%;border:0;background:var(--lemon);font-size:20px}
 
 .tray{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:16px;min-height:72px;align-items:center}
 .tray .empty{font-size:16px;color:var(--ink);text-align:center;line-height:1.6;padding:0 10px}
-.food{position:relative;width:74px;height:74px;border-radius:24px;border:2px dashed var(--line);background:var(--card);font-size:38px;box-shadow:0 4px 0 var(--line)}
-.food:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+.food{position:relative;width:74px;height:74px;border-radius:24px;border:2px solid var(--line);background:var(--card);font-size:38px;box-shadow:0 4px 0 var(--shadow)}
 .food .n{position:absolute;top:-8px;right:-8px;min-width:28px;height:28px;padding:0 6px;border-radius:999px;background:var(--btn);color:var(--btn-ink);font-size:16px;line-height:28px}
-.pill{border:3px solid var(--line);background:var(--card);border-radius:999px;padding:8px 18px;font-size:17px}
+.pill{border:2px solid var(--line);background:var(--card);box-shadow:0 3px 0 var(--shadow);border-radius:999px;padding:8px 18px;font-size:17px}
 
-.note{background:var(--card);border-radius:30px;padding:18px 18px 20px;border:3px dashed var(--line)}
+.note{background:var(--card);border-radius:28px;padding:18px 18px 20px;border:2px solid var(--line);box-shadow:0 5px 0 var(--shadow),0 12px 22px rgba(120,70,40,.14)}
 .note{padding:12px 14px 14px}
-.note+.note{margin-top:12px}
+.note+.note{margin-top:14px}
 .note h2{margin:0 0 10px;font-size:18px;font-weight:900}
 .tasks{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-.task{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:100%;min-height:92px;text-align:center;border:2px solid var(--line);background:var(--bg);border-radius:20px;padding:8px 4px 6px;box-shadow:0 3px 0 var(--line)}
-.task:not(:disabled):active{transform:scale(.98)}
-.task:disabled{opacity:.55;cursor:default}
+.task{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:100%;min-height:92px;text-align:center;border:2px solid var(--line);background:var(--tile);border-radius:20px;padding:8px 4px 6px;box-shadow:0 4px 0 var(--shadow)}
+.task:disabled{opacity:.6;cursor:default;box-shadow:0 2px 0 var(--line)}
 .ti{font-size:32px;line-height:1.1}
 .tl{display:block;font-size:16px;line-height:1.2}
 .td{display:flex;gap:4px;justify-content:center;font-size:11px;line-height:1.3;color:var(--soft);flex-wrap:wrap;align-items:center;min-height:15px}
@@ -122,8 +121,8 @@ img,svg{max-width:100%}
 .prow .bar{grid-column:1/-1;order:1;margin:0;max-width:none;height:10px}
 .prow b{text-align:right;font-weight:700}
 
-.modal{position:fixed;inset:0;background:rgba(90,60,90,.35);display:flex;align-items:center;justify-content:center;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));z-index:20}
-.sheet{background:var(--card);border-radius:30px;padding:24px;width:100%;max-width:560px;max-height:100%;overflow:auto;text-align:center}
+.modal{position:fixed;inset:0;background:rgba(80,50,60,.38);animation:fadeIn .2s ease-out;display:flex;align-items:center;justify-content:center;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));z-index:20}
+.sheet{background:var(--card);border:2px solid var(--line);box-shadow:0 8px 0 var(--shadow),0 20px 40px rgba(80,40,30,.25);border-radius:30px;padding:24px;width:100%;max-width:560px;max-height:100%;overflow:auto;text-align:center}
 .sheet h3{margin:18px 0 8px;font-size:18px;text-align:left}
 .sheet h3:first-child{margin-top:0}
 .big{font-size:80px;line-height:1.1}
@@ -131,8 +130,8 @@ img,svg{max-width:100%}
 .sub{font-size:15px;color:var(--soft);line-height:1.6;margin:4px 0;text-align:left}
 .center .sub{text-align:center}
 .btns{display:flex;gap:12px;justify-content:center;margin-top:14px;flex-wrap:wrap}
-.btn{border:0;border-radius:999px;padding:14px 30px;font-size:20px;background:var(--btn);color:var(--btn-ink);box-shadow:0 4px 0 var(--line)}
-.btn.ghost{background:var(--bg);color:var(--ink);box-shadow:0 5px 0 var(--line)}
+.btn{border:0;border-radius:999px;padding:14px 30px;font-size:20px;background:var(--btn);color:var(--btn-ink);box-shadow:0 5px 0 #A94F78}
+.btn.ghost{background:var(--card);color:var(--ink);border:2px solid var(--line);box-shadow:0 5px 0 var(--shadow)}
 .btn.danger{background:#D9534F;color:#fff;box-shadow:0 5px 0 #A94442}
 .btn.small{font-size:16px;padding:10px 20px}
 .fl{display:block;text-align:left;font-size:15px;margin-top:10px}
@@ -142,7 +141,7 @@ textarea{min-height:90px;font-size:13px!important;font-family:ui-monospace,monos
 @keyframes evo{0%{transform:scale(.5);filter:brightness(3)}60%{transform:scale(1.12);filter:brightness(1.4)}100%{transform:scale(1);filter:none}}
 .sheet h4.zh{margin:16px 0 0;font-size:17px;text-align:left;color:var(--soft)}
 .zgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:12px;margin-top:10px}
-.zc{background:var(--bg);border-radius:20px;padding:8px 6px 10px}
+.zc{background:var(--tile);border:2px solid var(--line);border-radius:20px;padding:8px 6px 10px}
 .zc svg{width:100%;height:auto}
 .zc b{display:block;font-size:15px}
 .zc span{display:block;font-size:12px;color:var(--soft);line-height:1.5;margin-top:2px}
@@ -150,9 +149,55 @@ textarea{min-height:90px;font-size:13px!important;font-family:ui-monospace,monos
 .fx{position:fixed;pointer-events:none;font-size:34px;z-index:30;animation:up 1.2s ease-out forwards}
 @keyframes up{0%{opacity:0;transform:translate(0,0) scale(.6)}20%{opacity:1}100%{opacity:0;transform:translate(var(--dx),-120px) scale(1.2)}}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--card);padding:12px 22px;border-radius:999px;font-size:16px;z-index:40;max-width:90vw;text-align:center}
+/* ---------- マイクロインタラクション ---------- */
+/* 押すと ぷにっと へこみ、はなすと ぽよんと戻る */
+.task,.food,.pill,.gear,.btn,.speak,.badge.wakebtn{transition:transform .32s cubic-bezier(.34,1.7,.6,1),box-shadow .18s}
+.task:not(:disabled):active,.food:active,.pill:active,.gear:active,.btn:active,.speak:active,.badge.wakebtn:active{transform:translateY(3px) scale(.93);box-shadow:0 1px 0 var(--shadow);transition-duration:.08s}
+#sheet{animation:sheetIn .42s cubic-bezier(.34,1.56,.64,1)}
+@keyframes sheetIn{0%{transform:translateY(40px) scale(.86);opacity:0}100%{transform:none;opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+/* できたこと：スタンプがぽんと押される */
+.tf.stamp{animation:stamp .6s cubic-bezier(.34,1.56,.64,1)}
+@keyframes stamp{0%{transform:scale(2.6) rotate(-25deg);opacity:0}60%{transform:scale(.9) rotate(6deg);opacity:1}100%{transform:none}}
+/* エサ：トレイに ぽんと出る／ぷにちゃんへ飛んでいく */
+.food.popin{animation:popin .5s cubic-bezier(.34,1.7,.6,1)}
+@keyframes popin{0%{transform:scale(0)}100%{transform:scale(1)}}
+.flyfood{position:fixed;pointer-events:none;font-size:40px;z-index:30;animation:fly .6s cubic-bezier(.5,-.3,.7,1) forwards}
+@keyframes fly{0%{transform:translate(0,0) scale(1)}50%{transform:translate(calc(var(--tx)*.5),calc(var(--ty)*.5 - 80px)) scale(1.3)}100%{transform:translate(var(--tx),var(--ty)) scale(.3);opacity:.2}}
+/* ゲージ：ふえた所が ぼよん */
+.gi.boing{animation:boing .6s cubic-bezier(.34,1.7,.6,1)}
+@keyframes boing{0%{transform:scale(.3)}60%{transform:scale(1.4)}100%{transform:scale(1)}}
+/* 吹き出し：しゃべると ぽよん */
+.bubble.talk{animation:talk .35s cubic-bezier(.34,1.56,.64,1)}
+@keyframes talk{0%{transform:scale(.94)}100%{transform:none}}
+/* せいちょうバー：ふえると きらっ */
+.bar i{position:relative;overflow:hidden}
+.bar.shine i::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.85) 50%,transparent 80%);animation:shine .9s ease-out}
+@keyframes shine{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+/* ぷにちゃんの まばたき */
+.pet svg .eyes{transform-box:fill-box;transform-origin:center}
+.pet svg .eyes.blink-on{animation:blink 4.6s infinite}
+@keyframes blink{0%,93%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+/* まっているあいだの小さな動き */
+#zukanBtn{animation:nudge 7s ease-in-out infinite}
+@keyframes nudge{0%,90%,100%{transform:rotate(0)}92%{transform:rotate(-6deg)}94%{transform:rotate(6deg)}96%{transform:rotate(-3deg)}}
+.badge.wakebtn{animation:glow 1.8s ease-in-out infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(242,197,92,.6)}50%{box-shadow:0 0 0 8px rgba(242,197,92,0)}}
+.badge.letter{animation:hopb 1.4s ease-in-out infinite}
+@keyframes hopb{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.tray .empty{animation:floaty 3s ease-in-out infinite}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+/* しんか：うしろで光が回る */
+.evo{position:relative;display:inline-block}
+.evo::before{content:"";position:absolute;inset:-30px;border-radius:50%;background:repeating-conic-gradient(rgba(255,216,77,.45) 0 12deg,transparent 12deg 30deg);animation:spinr 6s linear infinite;z-index:-1}
+@keyframes spinr{to{transform:rotate(360deg)}}
+/* ずかん：じゅんばんに ぽん */
+.zc{animation:popin .45s cubic-bezier(.34,1.7,.6,1) both;animation-delay:var(--d,0ms)}
+.toast{animation:toastIn .4s cubic-bezier(.34,1.56,.64,1)}
+@keyframes toastIn{from{transform:translate(-50%,30px);opacity:0}to{transform:translateX(-50%);opacity:1}}
 @media (prefers-reduced-motion:reduce){
-  .pet svg,.pet[data-pose] svg,.pet.wobble svg,.evo svg{animation:none}
-  .fx{animation-duration:.01s}
+  /* 端末の「視差効果を減らす」では、すべての動きを止める */
+  *,*::before,*::after{animation:none!important;transition:none!important}
 }
 
 /* iPad（縦・横）では 1 画面に収める：キャラの絵だけが残りの高さに合わせて伸び縮みする */

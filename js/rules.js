@@ -147,3 +147,19 @@ export function pickLine(key,S,d,rnd){
   const t=ok[Math.floor(rnd()*ok.length)]||'';
   return t.split('{you}').join(S.you||'');
 }
+
+/* できたこと の取り消し：その日の報告で、もらったエサがまだトレイにあるときだけ（最後の 1 回分を戻す） */
+function lastUndo(S,tid){
+  const u=S.undo||[];
+  for(let i=u.length-1;i>=0;i--) if(u[i].t===tid) return (S.inv[u[i].f]||0)>0?i:-1;
+  return -1;
+}
+export function canUndo(S,tid){return lastUndo(S,tid)>=0;}
+export function undoReport(S,tid){
+  const i=lastUndo(S,tid);if(i<0)return false;
+  const u=S.undo[i];S.undo.splice(i,1);
+  if((S.cnt[u.k]||0)>1)S.cnt[u.k]--;else delete S.cnt[u.k];
+  if(S.inv[u.f]>1)S.inv[u.f]--;else delete S.inv[u.f];
+  if(u.t==='lesson')S.boostUntil=u.b;
+  return true;
+}

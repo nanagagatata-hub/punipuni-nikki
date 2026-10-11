@@ -110,6 +110,10 @@ img,svg{max-width:100%}
 .tasks{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
 .task{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:100%;min-height:92px;text-align:center;border:2px solid var(--line);background:var(--tile);border-radius:20px;padding:8px 4px 6px;box-shadow:0 4px 0 var(--shadow)}
 .task:disabled{opacity:.6;cursor:default;box-shadow:0 2px 0 var(--line)}
+/* 済んだけれど取り消せるタイル：見た目は済んだまま、押せる */
+.task.done{opacity:.6;box-shadow:0 2px 0 var(--line)}
+.task.unpop{animation:unpop .45s cubic-bezier(.34,1.56,.64,1)}
+@keyframes unpop{0%{transform:scale(.9) rotate(-4deg)}60%{transform:scale(1.05) rotate(2deg)}100%{transform:none}}
 .ti{font-size:32px;line-height:1.1}
 .tl{display:block;font-size:16px;line-height:1.2}
 .td{display:flex;gap:4px;justify-content:center;font-size:11px;line-height:1.3;color:var(--soft);flex-wrap:wrap;align-items:center;min-height:15px}

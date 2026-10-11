@@ -1,11 +1,11 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
 import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES} from './data.js';
-import {dayKey,band,isNight,asleep,nightKey,minLabel,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine} from './rules.js';
+import {dayKey,band,isNight,asleep,nightKey,minLabel,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine,canUndo,undoReport} from './rules.js';
 import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
 import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
 import {speak,sfx,setSound,unlock} from './sound.js';
-const APP_VERSION='v2.2.0'; // sw.js の VERSION と同じ値にそろえる
+const APP_VERSION='v2.3.0'; // sw.js の VERSION と同じ値にそろえる
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -21,7 +21,7 @@ let lastInteract=Date.now();
 let react=null,reactUntil=0;
 function setReact(k){react=k;reactUntil=Date.now()+2500;}
 
-function ensureDay(){const k=dayKey(new Date()); if(S.day!==k){S.day=k;S.cnt={};}}
+function ensureDay(){const k=dayKey(new Date()); if(S.day!==k){S.day=k;S.cnt={};S.undo=[];save();}}
 function tick(now){
   if(decay(S,now).becameSick) say(line('sick'));
   tickLife(now);
@@ -70,17 +70,35 @@ $('#modal').addEventListener('click',e=>{if(e.target===$('#modal')&&modalDismiss
 
 /* ---------- logic ---------- */
 function confirmTask(id){
-  const t=TASKS.find(x=>x.id===id);const st=taskState(t,S,new Date());if(!st.ok)return;
+  ensureDay();
+  const t=TASKS.find(x=>x.id===id);const st=taskState(t,S,new Date()),undo=canUndo(S,t.id);
+  if(!st.ok&&!undo)return;
+  /* もう報告できない（済んだ）けれど、エサがまだトレイにある → 取り消しだけ聞く */
+  if(!st.ok){
+    openModal(`<div class="center"><div class="big">${t.icon}</div><p class="q">まちがえちゃった？</p>
+      <p class="sub">${t.label} を もどすと、もらった ${FOODS[t.food].icon} も もどるよ</p>
+      <div class="btns"><button class="btn" data-act="undo">↩️ もどす</button><button class="btn ghost" data-act="no">そのまま</button></div></div>`,
+      act=>{closeModal();if(act==='undo')cancelReport(t);},true);
+    return;
+  }
   const label=t.id==='hamigaki'?(st.slot==='am'?'あさの はみがき':'よるの はみがき'):t.label;
   openModal(`<div class="center"><div class="big">${t.icon}</div><p class="q">${label} できた？</p>
-    <div class="btns"><button class="btn" data-act="yes">できた！</button><button class="btn ghost" data-act="no">まだ</button></div></div>`,
-    act=>{closeModal();if(act==='yes')report(t);},true);
+    <div class="btns"><button class="btn" data-act="yes">できた！</button><button class="btn ghost" data-act="no">まだ</button></div>
+    ${undo?'<div class="btns"><button class="btn small ghost" data-act="undo">↩️ まちがえた（もどす）</button></div>':''}</div>`,
+    act=>{closeModal();if(act==='yes')report(t);else if(act==='undo')cancelReport(t);},true);
+}
+/* 取り消し：その日の最後の報告を戻し、もらったエサも 1 つ戻す（エサをあげる前だけ） */
+function cancelReport(t){
+  ensureDay();if(!undoReport(S,t.id))return;
+  lastInteract=Date.now();sfx('pop');say(line('undo'));save();render();
+  replay(document.querySelector(`[data-task="${t.id}"]`),'unpop');
 }
 function report(t){
   ensureDay();const st=taskState(t,S,new Date());if(!st.ok)return;
   const key=t.id==='hamigaki'?'hamigaki_'+st.slot:t.id;
   S.cnt[key]=(S.cnt[key]||0)+1;
   S.inv[t.food]=(S.inv[t.food]||0)+1;
+  S.undo.push({t:t.id,k:key,f:t.food,b:S.boostUntil});if(S.undo.length>30)S.undo.shift();
   const f=FOODS[t.food];
   if(t.id==='lesson'){S.boostUntil=Date.now()+24*H;say(`すごい！${f.name} を もらったよ。ぐんぐんたいむ が はじまった！`);}
   else say(`${f.name} を もらったよ！した の ${f.icon} を おして あげてね`);
@@ -314,7 +332,9 @@ function render(){
     if(note)dots=note;
     else if(t.id==='hamigaki'){dots=`<span class="dot ${S.cnt.hamigaki_am?'on':''}"></span>あさ <span class="dot ${S.cnt.hamigaki_pm?'on':''}"></span>よる`;}
     else{for(let i=0;i<t.limit;i++)dots+=`<span class="dot ${i<(S.cnt[t.id]||0)?'on':''}"></span>`;}
-    return `<button class="task" data-task="${t.id}" aria-label="${t.label}" ${st.ok?'':'disabled'}><span class="tf${t.id===mark.task?' stamp':''}">${tf}</span><span class="ti">${t.icon}</span><span class="tl">${t.short}</span><span class="td">${dots}</span></button>`;
+    /* 済んでいても、取り消せる間は押せる（見た目は済んだまま） */
+    const off=!st.ok&&!canUndo(S,t.id);
+    return `<button class="task${!st.ok&&!off?' done':''}" data-task="${t.id}" aria-label="${t.label}" ${off?'disabled':''}><span class="tf${t.id===mark.task?' stamp':''}">${tf}</span><span class="ti">${t.icon}</span><span class="tl">${t.short}</span><span class="td">${dots}</span></button>`;
   }).join('');
   mark={};
   const mx=Math.max(10,...PARAMS.map(p=>S.p[p[0]]));

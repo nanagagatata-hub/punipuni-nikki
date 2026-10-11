@@ -34,7 +34,7 @@ export function DEF(){
   return {v:2,name:'ぷにちゃん',you:'',gen:1,stage:0,form:'egg',shiny:false,pts:0,p:{ka:0,ki:0,ge:0,ho:0},
     hunger:3,mood:3,hAcc:0,mAcc:0,zeroAcc:0,sick:false,cure:0,lastTick:now,petAt:0,boostUntil:0,
     adultAt:0,finalAt:0,finalSeenAt:0,inv:{},day:'',cnt:{},lessonDays:[6],
-    zukan:[],shinySeen:[],history:[],sound:true,cfg:CFG_DEF(),tempUntil:0,tempNight:''};
+    zukan:[],shinySeen:[],history:[],sound:true,cfg:CFG_DEF(),tempUntil:0,tempNight:'',undo:[]};
 }
 /* 保存データ・復元コードは信頼しない：既知のキーと型だけを取り込む（__proto__等の混入対策）。v1 は v2 に移行する */
 function num(v,d,min,max){v=Number(v);if(!isFinite(v))return d;return Math.min(max,Math.max(min,v));}
@@ -81,6 +81,12 @@ export function sanitize(o){
   d.cfg=cleanCfg(o.cfg);
   d.tempUntil=num(o.tempUntil,0,0,now+5*60e3);
   d.tempNight=str(o.tempNight,12);
+  /* きょうの報告（取り消し用）：t=タスク・k=回数のキー・f=もらったエサ・b=報告前のぐんぐんたいむ。組み合わせが TASKS と合うものだけ */
+  d.undo=(Array.isArray(o.undo)?o.undo:[]).filter(u=>{
+    if(!u||typeof u!=='object')return false;
+    const t=TASKS.find(x=>x.id===u.t);
+    return !!t&&u.f===t.food&&(t.id==='hamigaki'?(u.k==='hamigaki_am'||u.k==='hamigaki_pm'):u.k===t.id);
+  }).slice(-30).map(u=>({t:u.t,k:u.k,f:u.f,b:num(u.b,0,0,now+24*H)}));
   return d;
 }
 /* 読み込み：v2 のキー → なければ v1 のキー。壊れていたら元の文字列を KEY-broken に退避してから初期データで始める */

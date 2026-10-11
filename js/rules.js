@@ -1,5 +1,5 @@
 // DOM に触れない純粋なルール（時間帯・タスク受付・時間経過・分岐）
-import {H,WD,ADULT_IDS,LINES} from './data.js';
+import {H,WD,ADULT_IDS,LINES,TASKS} from './data.js';
 import {CFG_DEF} from './state.js';
 const DEFCFG=CFG_DEF();
 const cf=c=>c||DEFCFG;
@@ -148,11 +148,18 @@ export function pickLine(key,S,d,rnd){
   return t.split('{you}').join(S.you||'');
 }
 
-/* できたこと の取り消し：その日の報告で、もらったエサがまだトレイにあるときだけ（最後の 1 回分を戻す） */
+/* できたこと の取り消し：その日の報告で、もらったエサをまだ食べていないときだけ（最後の 1 回分を戻す）。
+   n＝報告した直後のそのエサの数。いまの数が n より少なければ、同じ種類を食べたので戻さない（前の日の残りがあっても） */
 function lastUndo(S,tid){
   const u=S.undo||[];
-  for(let i=u.length-1;i>=0;i--) if(u[i].t===tid) return (S.inv[u[i].f]||0)>0?i:-1;
+  for(let i=u.length-1;i>=0;i--) if(u[i].t===tid){const have=S.inv[u[i].f]||0;return have>0&&have>=u[i].n?i:-1;}
   return -1;
+}
+/* 戻す回の名前（はみがきは あさ／よる を出す） */
+export function undoLabel(S,tid){
+  const i=lastUndo(S,tid);if(i<0)return '';
+  const k=S.undo[i].k;
+  return k==='hamigaki_am'?'あさの はみがき':k==='hamigaki_pm'?'よるの はみがき':(TASKS.find(t=>t.id===tid)||{}).label||'';
 }
 export function canUndo(S,tid){return lastUndo(S,tid)>=0;}
 export function undoReport(S,tid){

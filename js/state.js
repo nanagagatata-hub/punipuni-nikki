@@ -85,8 +85,8 @@ export function sanitize(o){
   d.undo=(Array.isArray(o.undo)?o.undo:[]).filter(u=>{
     if(!u||typeof u!=='object')return false;
     const t=TASKS.find(x=>x.id===u.t);
-    return !!t&&u.f===t.food&&(t.id==='hamigaki'?(u.k==='hamigaki_am'||u.k==='hamigaki_pm'):u.k===t.id);
-  }).slice(-30).map(u=>({t:u.t,k:u.k,f:u.f,b:num(u.b,0,0,now+24*H)}));
+    return !!t&&u.f===t.food&&(t.id==='hamigaki'?(u.k==='hamigaki_am'||u.k==='hamigaki_pm'):u.k===t.id)&&d.cnt[u.k]>0;
+  }).slice(-30).map(u=>({t:u.t,k:u.k,f:u.f,b:num(u.b,0,0,now+24*H),n:int(u.n,1000,1,1000)}));
   return d;
 }
 /* 読み込み：v2 のキー → なければ v1 のキー。壊れていたら元の文字列を KEY-broken に退避してから初期データで始める */

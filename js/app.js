@@ -1,6 +1,6 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
 import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES} from './data.js';
-import {dayKey,band,isNight,asleep,nightKey,minLabel,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine,canUndo,undoReport} from './rules.js';
+import {dayKey,band,isNight,asleep,nightKey,minLabel,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine,canUndo,undoReport,undoLabel} from './rules.js';
 import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
 import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
@@ -76,7 +76,7 @@ function confirmTask(id){
   /* もう報告できない（済んだ）けれど、エサがまだトレイにある → 取り消しだけ聞く */
   if(!st.ok){
     openModal(`<div class="center"><div class="big">${t.icon}</div><p class="q">まちがえちゃった？</p>
-      <p class="sub">${t.label} を もどすと、もらった ${FOODS[t.food].icon} も もどるよ</p>
+      <p class="sub">${undoLabel(S,t.id)} を もどすと、もらった ${FOODS[t.food].icon} も もどるよ</p>
       <div class="btns"><button class="btn" data-act="undo">↩️ もどす</button><button class="btn ghost" data-act="no">そのまま</button></div></div>`,
       act=>{closeModal();if(act==='undo')cancelReport(t);},true);
     return;
@@ -84,7 +84,7 @@ function confirmTask(id){
   const label=t.id==='hamigaki'?(st.slot==='am'?'あさの はみがき':'よるの はみがき'):t.label;
   openModal(`<div class="center"><div class="big">${t.icon}</div><p class="q">${label} できた？</p>
     <div class="btns"><button class="btn" data-act="yes">できた！</button><button class="btn ghost" data-act="no">まだ</button></div>
-    ${undo?'<div class="btns"><button class="btn small ghost" data-act="undo">↩️ まちがえた（もどす）</button></div>':''}</div>`,
+    ${undo?`<div class="btns"><button class="btn small ghost" data-act="undo">↩️ ${t.id==='hamigaki'?undoLabel(S,t.id)+' を もどす':'まちがえた（もどす）'}</button></div>`:''}</div>`,
     act=>{closeModal();if(act==='yes')report(t);else if(act==='undo')cancelReport(t);},true);
 }
 /* 取り消し：その日の最後の報告を戻し、もらったエサも 1 つ戻す（エサをあげる前だけ） */
@@ -98,7 +98,7 @@ function report(t){
   const key=t.id==='hamigaki'?'hamigaki_'+st.slot:t.id;
   S.cnt[key]=(S.cnt[key]||0)+1;
   S.inv[t.food]=(S.inv[t.food]||0)+1;
-  S.undo.push({t:t.id,k:key,f:t.food,b:S.boostUntil});if(S.undo.length>30)S.undo.shift();
+  S.undo.push({t:t.id,k:key,f:t.food,b:S.boostUntil,n:S.inv[t.food]});if(S.undo.length>30)S.undo.shift();
   const f=FOODS[t.food];
   if(t.id==='lesson'){S.boostUntil=Date.now()+24*H;say(`すごい！${f.name} を もらったよ。ぐんぐんたいむ が はじまった！`);}
   else say(`${f.name} を もらったよ！した の ${f.icon} を おして あげてね`);
@@ -188,7 +188,7 @@ function newGeneration(){
   S.history.push({f:S.form,n:S.name,g:S.gen,s:S.shiny});
   if(S.history.length>200)S.history=S.history.slice(-200);
   const keep={name:S.name,you:S.you,gen:Math.min(9999,S.gen+1),zukan:S.zukan,shinySeen:S.shinySeen,history:S.history,
-    lessonDays:S.lessonDays,inv:S.inv,day:S.day,cnt:S.cnt,boostUntil:S.boostUntil,sound:S.sound,cfg:S.cfg,tempNight:S.tempNight};
+    lessonDays:S.lessonDays,inv:S.inv,day:S.day,cnt:S.cnt,boostUntil:S.boostUntil,sound:S.sound,cfg:S.cfg,tempNight:S.tempNight,undo:S.undo};
   S=Object.assign(DEF(),keep);save();say('たまご を もらったよ！あたためて あげよう');render();
 }
 function formName(){return (S.stage===4?'かがやく ':'')+(S.shiny?'きらきら ':'')+FORMS[S.form].name;}

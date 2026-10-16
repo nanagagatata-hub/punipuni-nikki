@@ -266,3 +266,6 @@ textarea{min-height:90px;font-size:13px!important;font-family:ui-monospace,monos
 @keyframes hue{to{filter:hue-rotate(360deg)}}
 .twinkle{animation:twinkle 1.6s ease-in-out infinite}
 @keyframes twinkle{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* 押せない間のボタン（おわかれの歌の「つぎへ」など）は うすく */
+.btn:disabled{opacity:.45;box-shadow:none;cursor:default}

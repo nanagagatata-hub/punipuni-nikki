@@ -71,6 +71,8 @@ function faceSVG(face){
   const blink=['normal','hungry','sad','tears','pout'].indexOf(face)>=0;
   return blush+`<g class="eyes${blink?' blink-on':''}">${eyes}</g>`+mouth+extra;
 }
+/* 小さな雲（そらいろぷに など） */
+function cloudMini(x,y){return `<g fill="#FFFFFF" stroke="#C9DDF0" stroke-width="1.5"><ellipse cx="${x}" cy="${y}" rx="12" ry="7"/><circle cx="${x-5}" cy="${y-4}" r="6"/><circle cx="${x+4}" cy="${y-6}" r="7"/></g>`;}
 function accSVG(form){
   switch(form){
     case 'puni': return '';
@@ -95,6 +97,26 @@ function accSVG(form){
     case 'marin': return `<path d="M64 48 Q66 18 100 16 Q134 18 136 48 Z" fill="#FFFFFF" stroke="#4E8FD0" stroke-width="3" stroke-linejoin="round"/><path d="M66 40 Q100 32 134 40" stroke="#4E8FD0" stroke-width="6" fill="none"/><path d="M100 22 v-6" stroke="#4E8FD0" stroke-width="5" stroke-linecap="round"/><path d="M28 150 v14 M22 154 h12 M22 162 q6 6 12 0" stroke="#4E8FD0" stroke-width="3" fill="none" stroke-linecap="round"/>`;
     case 'keki': return `<rect x="74" y="28" width="52" height="18" rx="6" fill="#FFF6E8" stroke="#F0A9C0" stroke-width="2.5"/><path d="M74 34 q6.5 6 13 0 q6.5 6 13 0 q6.5 6 13 0 q6.5 6 13 0" stroke="#FF9EBB" stroke-width="3" fill="none"/><path d="M100 26 c-8 -2 -10 -14 0 -16 c10 2 8 14 0 16Z" fill="#FF6F8E"/><path d="M96 12 l4 -5 l4 5" stroke="#6CC47A" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
     case 'ohisama': return [0,30,60,90,120,150,180,210,240,270,300,330].map(a=>{const r=a*Math.PI/180;return `<path d="M${(100+30*Math.cos(r)).toFixed(1)} ${(30+30*Math.sin(r)).toFixed(1)} L${(100+40*Math.cos(r)).toFixed(1)} ${(30+40*Math.sin(r)).toFixed(1)}" stroke="#F7B733" stroke-width="5" stroke-linecap="round"/>`;}).join('')+`<circle cx="100" cy="30" r="22" fill="#FFD84D" stroke="#F2C55C" stroke-width="2.5"/>`;
+    /* v2.4 あかちゃん */
+    case 'kirapuni': return `<polygon points="${starPts(100,26,13,5.5)}" fill="#FFE07A" stroke="#E4B32E" stroke-width="2"/>`+sparkle(70,40,6,'#FFD84D')+sparkle(132,38,5,'#FFB3C7');
+    case 'pyonpuni': return `<path d="M100 44 q-6 -6 0 -10 q6 -4 0 -10 q-6 -4 0 -10" fill="none" stroke="#7CC48A" stroke-width="3.5" stroke-linecap="round"/><circle cx="100" cy="12" r="7" fill="#9FD48C" stroke="#6FB06A" stroke-width="2"/>`;
+    case 'nukupuni': return `<path d="M64 50 Q100 4 136 50 Z" fill="#F7B79C" stroke="#E0907A" stroke-width="2.5"/><path d="M66 48 H134" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/><circle cx="100" cy="14" r="9" fill="#FFFFFF" stroke="#E0907A" stroke-width="2"/>`;
+    case 'kazepuni': return `<path d="M30 70 q20 -14 40 0 q14 10 28 -2" fill="none" stroke="#8FD0C6" stroke-width="3.5" stroke-linecap="round"/><path d="M140 64 q14 -10 30 0" fill="none" stroke="#8FD0C6" stroke-width="3.5" stroke-linecap="round"/><path d="M100 44 C100 30 112 22 124 22 C120 34 110 42 100 44 Z" fill="#9FD48C" stroke="#6FB06A" stroke-width="2"/>`;
+    case 'awapuni': return [[82,38,9],[100,30,11],[118,38,9],[92,22,6],[110,20,5]].map(([x,y,r])=>`<circle cx="${x}" cy="${y}" r="${r}" fill="#FFFFFF" stroke="#B7A6E8" stroke-width="2"/>`).join('')+`<circle cx="96" cy="26" r="2.5" fill="#DCC8FF"/>`;
+    case 'potapuni': return `<path d="M74 46 Q100 20 126 46 Z" fill="#FFD27A" stroke="#E8C26C" stroke-width="2.5"/><circle cx="100" cy="24" r="5" fill="#E8A94C"/><path d="M84 18 q-4 -6 0 -12 M100 12 q-4 -6 0 -12 M116 18 q-4 -6 0 -12" stroke="#E0B88A" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+    case 'maruppuni': return `<circle cx="100" cy="30" r="12" fill="#FF9EBB" stroke="#E07A9C" stroke-width="2.5"/>`+[[64,120],[136,120],[82,150],[118,150],[100,96]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="5" fill="#FFFFFF" opacity=".8"/>`).join('');
+    /* v2.4 こども */
+    case 'hanabi': return [[60,28,'#FF9EBB'],[140,24,'#8FD6E8'],[100,10,'#FFD84D']].map(([x,y,c])=>[0,45,90,135,180,225,270,315].map(a=>{const r=a*Math.PI/180;return `<path d="M${(x+5*Math.cos(r)).toFixed(1)} ${(y+5*Math.sin(r)).toFixed(1)} L${(x+13*Math.cos(r)).toFixed(1)} ${(y+13*Math.sin(r)).toFixed(1)}" stroke="${c}" stroke-width="3" stroke-linecap="round"/>`;}).join('')).join('');
+    case 'tanken': return `<path d="M66 50 Q68 22 100 20 Q132 22 134 50 Z" fill="#9CC46A" stroke="#6E9A45" stroke-width="2.5"/><path d="M60 50 H150" stroke="#6E9A45" stroke-width="7" stroke-linecap="round"/><circle cx="100" cy="34" r="5" fill="#FFD84D"/>`;
+    case 'hon': return `<path d="M68 40 L100 30 L132 40 L132 50 L100 42 L68 50 Z" fill="#FFFFFF" stroke="#8C7CD6" stroke-width="2.5" stroke-linejoin="round"/><path d="M100 30 V42" stroke="#8C7CD6" stroke-width="2"/><path d="M76 40 h16 M108 40 h16" stroke="#C9BFF0" stroke-width="2"/>`;
+    case 'mizutama': return [[66,112],[134,108],[78,146],[124,150],[100,164],[52,140],[148,140]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="6" fill="#FFFFFF" opacity=".85"/>`).join('')+`<path d="M150 26 a22 22 0 0 1 44 0 Z" fill="#8EBDE6" stroke="#5E9ACC" stroke-width="2"/><path d="M172 26 v24 q0 6 -6 6" stroke="#5E9ACC" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    case 'ribon': return `<path d="M100 36 L70 20 Q62 36 70 52 Z" fill="#FF8FB3" stroke="#E0709A" stroke-width="2.5" stroke-linejoin="round"/><path d="M100 36 L130 20 Q138 36 130 52 Z" fill="#FF8FB3" stroke="#E0709A" stroke-width="2.5" stroke-linejoin="round"/><circle cx="100" cy="36" r="8" fill="#FFB3C7" stroke="#E0709A" stroke-width="2.5"/>`;
+    case 'donguri': return `<path d="M100 44 C100 30 112 20 128 18 C124 32 114 42 100 44 Z" fill="#86CF8E" stroke="#4E9E5C" stroke-width="2"/>`+[[24,150],[176,150]].map(([x,y])=>`<ellipse cx="${x}" cy="${y+6}" rx="9" ry="11" fill="#C98E5A" stroke="#A06A3C" stroke-width="2"/><path d="M${x-10} ${y} Q${x} ${y-10} ${x+10} ${y} Z" fill="#8E6238"/>`).join('');
+    case 'sorairo': return `<path d="M76 36 L130 18 L108 46 L100 36 Z" fill="#FFFFFF" stroke="#9CC9EE" stroke-width="2.5" stroke-linejoin="round"/><path d="M100 36 L108 46 L104 34" fill="#DDF0FF" stroke="#9CC9EE" stroke-width="2"/>`+cloudMini(160,60)+cloudMini(36,58);
+    /* スーパーシークレット：星の王冠 */
+    case 'yumeniji': return `<g class="crown"><path d="M64 48 L70 18 L84 34 L100 8 L116 34 L130 18 L136 48 Z" fill="#FFE07A" stroke="#E4B32E" stroke-width="2.5" stroke-linejoin="round"/>`+
+      [[70,18],[100,8],[130,18]].map(([x,y])=>`<polygon points="${starPts(x,y,7,3)}" fill="#FFF6C2" stroke="#E4B32E" stroke-width="1.5"/>`).join('')+
+      `<circle cx="86" cy="40" r="4" fill="#FF9EBB"/><circle cx="100" cy="38" r="4.5" fill="#8FD6E8"/><circle cx="114" cy="40" r="4" fill="#C6A8F0"/></g>`;
     case 'niji': return `<polygon points="${starPts(100,28,14,6)}" fill="#FFD84D" stroke="#E4B32E" stroke-width="2"/>`;
   }
   return '';
@@ -106,8 +128,9 @@ export function petSVG(form,face,opt){
   if(opt.sil) return silSVG(form);
   const F=FORMS[form],dk=F.dark,baby=F.stage===1;
   let defs='',col=F.color;
-  if(opt.shiny){
-    const id='rb-'+form;col=`url(#${id})`;
+  /* スーパーシークレット は いつも にじ色の お肌（CSS で ゆっくり色が回る） */
+  if(opt.shiny||F.secret){
+    const id='rb-'+form+(F.secret?'-s':'');col=`url(#${id})`;
     defs=`<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">${RAINBOW.map((c,i)=>`<stop offset="${(i/(RAINBOW.length-1)).toFixed(2)}" stop-color="${c}"/>`).join('')}</linearGradient></defs>`;
   }
   let back='';
@@ -130,9 +153,13 @@ export function petSVG(form,face,opt){
   const think=opt.think?`<circle cx="150" cy="58" r="4" fill="#fff" stroke="#D9CCD6" stroke-width="2"/><circle cx="160" cy="44" r="6" fill="#fff" stroke="#D9CCD6" stroke-width="2"/><ellipse cx="176" cy="24" rx="20" ry="17" fill="#fff" stroke="#D9CCD6" stroke-width="2"/><text x="176" y="32" text-anchor="middle" font-size="20">${opt.think}</text>`:'';
   const fin=opt.final?sparkle(22,70,8,'#FFE08A')+sparkle(180,66,9,'#FFE08A')+sparkle(170,160,6,'#FFFFFF'):'';
   const shine=opt.shiny?sparkle(26,40,10,'#FFD84D')+sparkle(176,112,8,'#FF9EBB')+sparkle(40,172,7,'#8FD6E8'):'';
-  const inner=ears+tuft+body+faceSVG(face)+accSVG(form);
+  const skin=ears+tuft+body;
+  const inner=(F.secret?`<g class="secret-skin">${skin}</g>`:skin)+faceSVG(face)+accSVG(form);
+  /* シークレット：まわりに ふわふわした光の粒 */
+  const glow=F.secret?`<ellipse cx="100" cy="116" rx="96" ry="90" fill="#FFF6FF" opacity=".55"/>`:'';
+  const tw=F.secret?`<g class="twinkle">${[[18,60,7,'#FFD84D'],[184,52,8,'#FFB3C7'],[24,150,6,'#BCD8FF'],[178,150,7,'#C2F0D6'],[100,6,5,'#FFF2A8']].map(([x,y,r,c])=>sparkle(x,y,r,c)).join('')}</g>`:'';
   const g=baby?`<g transform="translate(100 118) scale(.84) translate(-100 -118)">${inner}</g>`:inner;
-  return `<svg viewBox="0 0 200 200" aria-hidden="true">${defs}<ellipse cx="100" cy="190" rx="60" ry="7" fill="rgba(0,0,0,.08)"/>${back}${g}${shine}${fin}${think}</svg>`;
+  return `<svg viewBox="0 0 200 200" aria-hidden="true">${defs}<ellipse cx="100" cy="190" rx="60" ry="7" fill="rgba(0,0,0,.08)"/>${glow}${back}${g}${shine}${fin}${tw}${think}</svg>`;
 }
 
 /* 時間帯の景色（絵本のページのうしろの絵）。band：asa / hiru / yuu / yoru。ID は band ごとに分けて重複を避ける */

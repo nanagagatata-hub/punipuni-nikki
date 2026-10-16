@@ -146,7 +146,9 @@ function checkEvolve(){
 }
 function showEvolve(){
   sfx('fanfare');setTimeout(()=>{fxBurst(['🎉','⭐','✨','💖','🌈']);fxBurst(['⭐','✨']);},250);
-  const msg=['','たまごが かえった！','しんか した！','おとなに なった！','さいごの すがた に なった！'][S.stage];
+  const secret=FORMS[S.form].secret&&S.stage===3;
+  const msg=secret?'✨ すーぱー しーくれっと！ ✨':['','たまごが かえった！','しんか した！','おとなに なった！','さいごの すがた に なった！'][S.stage];
+  if(secret){sfx('chord');for(let i=1;i<4;i++)setTimeout(()=>fxBurst(['🌈','✨','💖','⭐','👑']),i*700);}
   openModal(`<div class="center"><div class="evo">${petSVG(S.form,'happy',{shiny:S.shiny,final:S.stage===4})}</div><p class="q">${msg}</p>
     <p class="sub">${esc(S.name)} は「${formName()}」に なったよ</p>
     <div class="btns"><button class="btn" data-act="ok">やったー！</button></div></div>`,

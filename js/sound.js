@@ -12,13 +12,13 @@ export function unlock(){
 }
 
 /* 1 音：f0→f1 へ滑らせる。vib はビブラートの幅（Hz） */
-function tone(f0,f1,dur,type,gain,when,vib){
+function tone(f0,f1,dur,type,gain,when,vib,out){
   const t=ctx.currentTime+(when||0),o=ctx.createOscillator(),g=ctx.createGain();
   o.type=type||'sine';o.frequency.setValueAtTime(f0,t);
   if(f1!==f0)o.frequency.exponentialRampToValueAtTime(f1,t+dur);
   if(vib){const l=ctx.createOscillator(),lg=ctx.createGain();l.frequency.value=7;lg.gain.value=vib;l.connect(lg);lg.connect(o.frequency);l.start(t);l.stop(t+dur);}
   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(gain||.6,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
-  o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.02);
+  o.connect(g);g.connect(out||master);o.start(t);o.stop(t+dur+.02);
 }
 /* 鳴き声「ぷにゅ〜」：上がって下がる三角波＋ビブラート（3 種） */
 /* k：声の高さ（1＝ふつう、あかちゃんは高め） */
@@ -69,13 +69,15 @@ export function speak(ja,zh){
 /* うた：1 行ずつ 鳴き声の音色で うたい、行が かわるたびに onLine(n)、おわったら onEnd()。
    音がオフ・音が出せないときも、同じ間隔で 行だけ すすめる。もどり値は とちゅうで止める関数 */
 export function sing(lines,onLine,onEnd){
-  const BEAT=.42,timers=[];let at=0;
+  const BEAT=.42,timers=[];let at=0,bus=null;
+  /* 歌だけを止められるように、専用の音量つまみ（GainNode）を通す */
+  try{if(on&&ctx){bus=ctx.createGain();bus.gain.value=1;bus.connect(master);}}catch(e){bus=null;}
   const mf=m=>440*Math.pow(2,(m-69)/12);
   lines.forEach((l,n)=>{
     timers.push(setTimeout(()=>onLine(n),at*1000));
-    if(on&&ctx){let b=0;l.notes.forEach(([m,len])=>{try{tone(mf(m),mf(m)*1.01,len*BEAT*.92,'triangle',.55,at+b*BEAT,18);}catch(e){}b+=len;});}
+    if(bus){let b=0;l.notes.forEach(([m,len])=>{try{tone(mf(m),mf(m)*1.01,len*BEAT*.92,'triangle',.55,at+b*BEAT,18,bus);}catch(e){}b+=len;});}
     at+=l.notes.reduce((a,x)=>a+x[1],0)*BEAT+.4;
   });
   timers.push(setTimeout(onEnd,at*1000));
-  return ()=>{timers.forEach(clearTimeout);try{if(ctx){master.disconnect();master=ctx.createGain();master.gain.value=.25;master.connect(ctx.destination);}}catch(e){}};
+  return ()=>{timers.forEach(clearTimeout);try{if(bus)bus.disconnect();}catch(e){}};
 }

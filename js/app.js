@@ -230,7 +230,7 @@ function zukanCell(f){
 /* ずかんで タッチ：見つけた子は ぴょんと跳ねて笑顔になり、その子の声で鳴いて ひとこと。まだの子は ゆれて「まだ あえて ないよ」 */
 $('#sheet').addEventListener('click',e=>{
   const c=e.target.closest('.zc[data-zc]');if(!c)return;
-  const f=c.dataset.zc,F=FORMS[f];if(!F)return;
+  const f=c.dataset.zc;if(ZORDER.indexOf(f)<0)return;const F=FORMS[f];
   const msg=c.querySelector('.zsay');
   if(c.classList.contains('seen')){
     const svg=c.querySelector('svg');if(svg)svg.outerHTML=petSVG(f,'happy');

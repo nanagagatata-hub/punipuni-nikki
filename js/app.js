@@ -1,6 +1,6 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
 import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES,SONG} from './data.js';
-import {dayKey,band,isNight,asleep,nightKey,minLabel,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine,canUndo,undoReport,undoLabel,taskLimit} from './rules.js';
+import {dayKey,band,isNight,asleep,nightKey,minLabel,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine,canUndo,undoReport,undoLabel,taskLimit,secretLeft} from './rules.js';
 import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
 import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
@@ -173,7 +173,8 @@ function petAct(kind){
   if(S.stage===0){sfx('egg');say(line('egg'));return;}
   if(S.sick){say(line('sickTap'));render();return;}
   if(now-S.petAt>30*60e3){S.mood=Math.min(4,S.mood+1);S.petAt=now;save();}
-  setReact(kind==='mash'?'dizzy':kind);fxBurst(TOUCH_FX[kind]);sfx(TOUCH_SFX[kind]);
+  setReact(kind==='mash'?'dizzy':kind);fxBurst(TOUCH_FX[kind]);
+  if(kind==='stroke'&&FORMS[S.form].secret)sfx('chord');else sfx(TOUCH_SFX[kind],FORMS[S.form].voice);
   if(S.stage>=2&&(kind==='head'||kind==='belly')&&Math.random()<.3)sayWord('えへへ。');
   else say(line(TOUCH_LINE[kind]));
   render();setTimeout(render,2600);
@@ -217,16 +218,29 @@ function newGeneration(){
 }
 function formName(){return (S.stage===4?'かがやく ':'')+(S.shiny?'きらきら ':'')+FORMS[S.form].name;}
 function zukanCell(f){
-  const seen=S.zukan.indexOf(f)>=0,F=FORMS[f];
-  if(!seen) return `<div class="zc">${petSVG(f,'normal',{sil:true})}<b>？？？</b><span>${F.hint}</span></div>`;
+  const seen=S.zukan.indexOf(f)>=0,F=FORMS[f],sec=F.secret?' secret':'';
+  if(!seen) return `<div class="zc${sec}" data-zc="${f}">${petSVG(f,'normal',{sil:true})}<b>？？？</b><span>${F.hint}${F.secret?`<br>あと ${secretLeft(S)} しゅるい`:''}</span><i class="zsay"></i></div>`;
   const hist=S.history.filter(h=>h.f===f),last=hist[hist.length-1],shiny=S.shinySeen.indexOf(f)>=0;
   const mark=(hist.length?'🌈':'')+(shiny?'✨':'');
   const memo=last?`${esc(last.n)}・${last.g}ぴきめ${hist.length>1?`<br>ほか ${hist.length-1}ひき`:''}`:'';
-  return `<div class="zc">${petSVG(f,'normal')}<b>${F.name}${mark?' '+mark:''}</b><span>${memo}</span></div>`;
+  return `<div class="zc seen${sec}" data-zc="${f}">${petSVG(f,'normal')}<b>${F.name}${mark?' '+mark:''}</b><span>${memo}</span><i class="zsay"></i></div>`;
 }
+/* ずかんで タッチ：見つけた子は ぴょんと跳ねて笑顔になり、その子の声で鳴いて ひとこと。まだの子は ゆれて「まだ あえて ないよ」 */
+$('#sheet').addEventListener('click',e=>{
+  const c=e.target.closest('.zc[data-zc]');if(!c)return;
+  const f=c.dataset.zc,F=FORMS[f];if(!F)return;
+  const msg=c.querySelector('.zsay');
+  if(c.classList.contains('seen')){
+    const svg=c.querySelector('svg');if(svg)svg.outerHTML=petSVG(f,'happy');
+    replay(c,'zjump');sfx(F.secret?'chord':'cry',F.voice);msg.textContent=rnd(F.say);
+    clearTimeout(c._t);c._t=setTimeout(()=>{msg.textContent='';const s2=c.querySelector('svg');if(s2)s2.outerHTML=petSVG(f,'normal');},2200);
+  }else{replay(c,'nope');sfx('pop');msg.textContent='まだ あえて ないよ';clearTimeout(c._t);c._t=setTimeout(()=>{msg.textContent='';},1600);}
+});
 function openZukan(){
-  const sec=(st,title)=>`<h4 class="zh">${title}</h4><div class="zgrid">${ZORDER.filter(f=>FORMS[f].stage===st).map(zukanCell).join('')}</div>`;
+  const secret=ZORDER.filter(f=>FORMS[f].secret);
+  const sec=(st,title)=>`<h4 class="zh">${title}</h4><div class="zgrid">${ZORDER.filter(f=>FORMS[f].stage===st&&!FORMS[f].secret).map(zukanCell).join('')}</div>`;
   openModal(`<p class="q">ずかん（${S.zukan.length} / ${ZORDER.length}）</p>${sec(1,'あかちゃん')}${sec(2,'こども')}${sec(3,'おとな')}
+    <h4 class="zh">✨ すーぱー しーくれっと ✨</h4><div class="zgrid zsecret">${secret.map(zukanCell).join('')}</div>
     <div class="btns"><button class="btn ghost" data-act="close">とじる</button></div>`,()=>closeModal(),true);
   document.querySelectorAll('#sheet .zc').forEach((c,n)=>c.style.setProperty('--d',(n*35)+'ms'));
 }

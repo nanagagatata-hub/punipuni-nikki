@@ -248,3 +248,15 @@ textarea{min-height:90px;font-size:13px!important;font-family:ui-monospace,monos
 .song .sl.sung{color:var(--ink)}
 .song .sl.on{color:#D46A97;font-size:22px;font-weight:900;transform:scale(1.06)}
 .evo.sing svg{animation:sway 2.4s ease-in-out infinite}
+
+/* ずかんの タッチ */
+.zc{cursor:pointer;position:relative}
+.zc .zsay{display:block;font-style:normal;font-size:12px;line-height:1.4;min-height:0;color:#D46A97;font-weight:900}
+.zc.zjump svg{animation:zjump .6s cubic-bezier(.34,1.7,.6,1)}
+@keyframes zjump{0%{transform:none}35%{transform:translateY(-18px) scale(1.06)}65%{transform:translateY(0) scale(1.08,.92)}100%{transform:none}}
+.zc.nope{animation:nope .4s ease-in-out}
+@keyframes nope{0%,100%{transform:none}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+/* スーパーシークレット の枠 */
+.zsecret{grid-template-columns:minmax(0,260px);justify-content:center}
+.zc.secret{border:3px solid transparent;background:linear-gradient(var(--tile),var(--tile)) padding-box,linear-gradient(135deg,#FFB3C7,#FFD9A8,#FFF2A8,#C2F0D6,#BCD8FF,#DCC8FF) border-box}
+.zc.secret:not(.seen) svg{filter:drop-shadow(0 0 6px rgba(220,200,255,.9))}

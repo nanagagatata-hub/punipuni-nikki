@@ -21,11 +21,17 @@ function tone(f0,f1,dur,type,gain,when,vib){
   o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.02);
 }
 /* 鳴き声「ぷにゅ〜」：上がって下がる三角波＋ビブラート（3 種） */
-function cry(){
-  const v=Math.floor(Math.random()*3);
-  if(v===0){tone(700,1100,.18,'triangle',.7,0,40);tone(1100,800,.3,'triangle',.6,.17,40);}
-  else if(v===1){tone(900,1300,.12,'triangle',.6,0,30);tone(1000,1400,.12,'triangle',.6,.16,30);tone(1300,900,.22,'triangle',.5,.3,40);}
-  else{tone(650,1000,.25,'triangle',.7,0,45);tone(1000,750,.25,'triangle',.5,.24,45);}
+/* k：声の高さ（1＝ふつう、あかちゃんは高め） */
+function cry(k){
+  k=k>0?k:1;const v=Math.floor(Math.random()*3);
+  if(v===0){tone(700*k,1100*k,.18,'triangle',.7,0,40);tone(1100*k,800*k,.3,'triangle',.6,.17,40);}
+  else if(v===1){tone(900*k,1300*k,.12,'triangle',.6,0,30);tone(1000*k,1400*k,.12,'triangle',.6,.16,30);tone(1300*k,900*k,.22,'triangle',.5,.3,40);}
+  else{tone(650*k,1000*k,.25,'triangle',.7,0,45);tone(1000*k,750*k,.25,'triangle',.5,.24,45);}
+}
+/* スーパーシークレット の声：3 つの音を重ねた きれいな和音 */
+function chord(){
+  [[523,784],[659,988],[784,1175]].forEach(([a,b],i)=>{tone(a,b,.5,'sine',.45,i*.04,25);tone(b,a*1.5,.4,'triangle',.3,.45+i*.04,25);});
+  tone(1568,2093,.6,'sine',.2,.2,10);
 }
 const notes=(list,type,len)=>list.forEach((f,i)=>tone(f,f,len||.18,type||'sine',.5,i*(len||.18)*.8));
 const SFX={
@@ -34,7 +40,7 @@ const SFX={
   munch:()=>{tone(300,220,.07,'square',.25);tone(320,240,.07,'square',.25,.12);},
   fanfare:()=>notes([523,659,784,1047,784,1047],'triangle',.16),
   heal:()=>notes([784,988,1175,1568],'sine',.2),
-  cry,
+  cry,chord,
   giggle:()=>[0,1,2,3].forEach(i=>tone(1200,1500,.06,'triangle',.4,i*.08)),
   hug:()=>tone(500,750,.35,'sine',.6,0,20),
   dizzy:()=>{tone(900,400,.4,'sine',.4,0,60);tone(800,350,.4,'sine',.3,.2,60);},
@@ -45,9 +51,9 @@ const SFX={
   dance:()=>{const m=[523,659,784,659,880,784,659,784,1047,988,880,784,659,784,880,1047];
     m.forEach((f,i)=>{tone(f,f,.22,'triangle',.45,i*.3);if(i%2===0)tone(f/2,f/2,.12,'square',.12,i*.3);});}
 };
-export function sfx(name){
+export function sfx(name,arg){
   if(!on||!ctx||!SFX[name])return;
-  try{SFX[name]();}catch(e){}
+  try{SFX[name](arg);}catch(e){}
 }
 /* 読み上げ：日本語は高め（かわいく）、中国語は聞き取りやすさ優先で少しだけ高く */
 export function speak(ja,zh){

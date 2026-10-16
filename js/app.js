@@ -1,10 +1,10 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
-import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES} from './data.js';
+import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES,SONG} from './data.js';
 import {dayKey,band,isNight,asleep,nightKey,minLabel,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine,canUndo,undoReport,undoLabel,taskLimit} from './rules.js';
 import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
 import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
-import {speak,sfx,setSound,unlock} from './sound.js';
+import {speak,sfx,setSound,unlock,sing} from './sound.js';
 const APP_VERSION='v2.3.0'; // sw.js の VERSION と同じ値にそろえる
 
 const $=s=>document.querySelector(s);
@@ -183,13 +183,28 @@ const fill=t=>t.split('{you}').join(S.you).split('{name}').join(S.name);
 const pickYou=alts=>fill(alts.find(t=>S.you?t.indexOf('{you}')>=0:t.indexOf('{you}')<0)||alts[0]);
 function startFarewell(){
   sfx('farewell');setTimeout(()=>sfx('cry'),1600);
-  const pages=LINES.farewell.map(pickYou);let i=0;
+  const pages=LINES.farewell.map(pickYou);let i=0,stop=null;
+  /* あいさつ（3 ページ）→ うた → たまごを わたす */
   const show=()=>{
-    const last=i>=pages.length;
-    openModal(`<div class="center"><div class="evo">${last?'<div class="big">🥚</div>':petSVG(S.form,i===pages.length-1?'happy':'normal',{shiny:S.shiny,final:true})}</div>
+    if(i===pages.length){showSong();return;}
+    const last=i>pages.length;
+    openModal(`<div class="center"><div class="evo">${last?'<div class="big">🥚</div>':petSVG(S.form,'normal',{shiny:S.shiny,final:true})}</div>
       <p class="q" id="fwText"></p><div class="btns"><button class="btn" data-act="next">${last?'うけとる':'つぎへ'}</button></div></div>`,
       ()=>{if(last){closeModal();sfx('egg');newGeneration();return;}i++;show();},false);
     $('#fwText').textContent=last?pickYou(LINES.give):pages[i];
+  };
+  /* おわかれの うた：歌詞が 1 行ずつ ひかる（よびかた が無いときは「きみ」）。音がオフでも 行は進む */
+  const showSong=()=>{
+    const lines=SONG.map(l=>l.t.split('{you}').join(S.you||'きみ'));
+    openModal(`<div class="center"><div class="evo sing">${petSVG(S.form,'happy',{shiny:S.shiny,final:true})}</div>
+      <p class="q">🎵 おわかれの うた 🎵</p><div class="song">${lines.map(()=>'<p class="sl"></p>').join('')}</div>
+      <div class="btns"><button class="btn" data-act="next" id="songNext" disabled>つぎへ</button></div>
+      <div class="btns"><button class="btn small ghost" data-act="skip">とばす</button></div></div>`,
+      act=>{if(stop){stop();stop=null;}i++;show();},false);
+    const els=[...document.querySelectorAll('#sheet .sl')];
+    els.forEach((e,n)=>{e.textContent=lines[n];});
+    stop=sing(SONG,n=>{els.forEach((e,k)=>e.classList.toggle('on',k===n));els[n].classList.add('sung');},
+      ()=>{els.forEach(e=>e.classList.remove('on'));const b=$('#songNext');if(b)b.disabled=false;});
   };
   show();
 }

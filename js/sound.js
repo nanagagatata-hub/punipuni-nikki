@@ -59,3 +59,17 @@ export function speak(ja,zh){
     u(ja,'ja-JP',1.7,1.05);u(zh,'zh-CN',1.3,.85);
   }catch(e){}
 }
+
+/* うた：1 行ずつ 鳴き声の音色で うたい、行が かわるたびに onLine(n)、おわったら onEnd()。
+   音がオフ・音が出せないときも、同じ間隔で 行だけ すすめる。もどり値は とちゅうで止める関数 */
+export function sing(lines,onLine,onEnd){
+  const BEAT=.42,timers=[];let at=0;
+  const mf=m=>440*Math.pow(2,(m-69)/12);
+  lines.forEach((l,n)=>{
+    timers.push(setTimeout(()=>onLine(n),at*1000));
+    if(on&&ctx){let b=0;l.notes.forEach(([m,len])=>{try{tone(mf(m),mf(m)*1.01,len*BEAT*.92,'triangle',.55,at+b*BEAT,18);}catch(e){}b+=len;});}
+    at+=l.notes.reduce((a,x)=>a+x[1],0)*BEAT+.4;
+  });
+  timers.push(setTimeout(onEnd,at*1000));
+  return ()=>{timers.forEach(clearTimeout);try{if(ctx){master.disconnect();master=ctx.createGain();master.gain.value=.25;master.connect(ctx.destination);}}catch(e){}};
+}

@@ -9,7 +9,7 @@ const STAGE_FORM={1:'puni',2:'hoshi',3:'hakase',4:'hakase'};
 /* 生活リズムの設定（時刻は 0 時からの分）。初期値は v2.0.0 の固定値と同じ */
 export function CFG_DEF(){
   return {sleepAt:1200,wakeAt:360,hayaoki:{from:300,until:420,days:[1,2,3,4,5]},
-    hayane:{from:1080,until:[1200,1200,1200,1200,1200,1260,1260]},tempWake:false};
+    hayane:{from:1080,until:[1200,1200,1200,1200,1200,1260,1260]},tempWake:false,manners:3};
 }
 const mins=(v,d,min,max)=>Number.isInteger(v)&&v>=min&&v<=max?v:d;
 /* 設定は項目ごとに検証し、おかしい項目だけ初期値に戻す（ほかの項目は残す） */
@@ -27,6 +27,7 @@ export function cleanCfg(c){
   if(bf>=0&&Array.isArray(b.until)&&b.until.length===7&&b.until.every(u=>mins(u,-1,bf+5,1439)>=0)){d.hayane.from=bf;d.hayane.until=b.until.slice();}
   else if(bf>=0&&d.hayane.until.every(u=>u>bf))d.hayane.from=bf;
   d.tempWake=c.tempWake===true;
+  d.manners=mins(c.manners,d.manners,1,5);
   return d;
 }
 export function DEF(){

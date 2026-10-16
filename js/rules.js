@@ -1,5 +1,5 @@
 // DOM に触れない純粋なルール（時間帯・タスク受付・時間経過・分岐）
-import {H,WD,ADULT_IDS,LINES,TASKS} from './data.js';
+import {H,WD,ADULT_IDS,LINES,TASKS,FORMS,ZORDER} from './data.js';
 import {CFG_DEF} from './state.js';
 const DEFCFG=CFG_DEF();
 const cf=c=>c||DEFCFG;
@@ -27,6 +27,8 @@ function windowOf(t,c,wd){
   if(t.id==='hayane') return {from:c.hayane.from,until:c.hayane.until[wd]};
   return null;
 }
+/* 1 日の上限（ごはんマナー は設定で 1〜5 回） */
+export function taskLimit(t,S){return t.id==='manners'?cf(S.cfg).manners||3:t.limit;}
 export function taskState(t,S,d){
   const h=d.getHours(),m=mOf(d),wd=d.getDay(),w=windowOf(t,cf(S.cfg),wd);
   if(t.id==='lesson'&&S.lessonDays.indexOf(wd)<0) return {ok:false,why:'day'};
@@ -35,7 +37,7 @@ export function taskState(t,S,d){
   if(w&&m>=w.until) return {ok:false,why:'late'};
   if(t.id==='hamigaki'){const slot=h<15?'am':'pm';return S.cnt['hamigaki_'+slot]?{ok:false,why:'done',slot:slot}:{ok:true,slot:slot};}
   const used=S.cnt[t.id]||0;
-  return used<t.limit?{ok:true,used:used}:{ok:false,why:'done',used:used};
+  return used<taskLimit(t,S)?{ok:true,used:used}:{ok:false,why:'done',used:used};
 }
 /* 時刻のひらがな表記：6じ／6じ30ぷん／6じ15ふん */
 /* 分のよみ：2・5・7・9 で終わる数は「ふん」、それ以外は「ぷん」 */
@@ -81,29 +83,41 @@ export function decay(S,now){
 export function afterFeed(S){S.zeroAcc=0;}
 
 const PK=['ka','ki','ge','ho'];
-const BABY={ka:'puni',ki:'shizuku',ge:'koro',ho:'moko'};
-const CHILD={ka:'hoshi',ki:'shabon',ge:'hana',ho:'kumo'};
-const SINGLE={ka:'hakase',ki:'kirara',ge:'morimori',ho:'pokapoka'};
-const PAIR={'ka+ki':'tsukimi','ka+ge':'bouken','ka+ho':'yumemi','ki+ge':'marin','ki+ho':'keki','ge+ho':'ohisama'};
-/* 最大のつよさ（同値は かしこさ→きれい→げんき→ほかほか） */
-function topKey(p){return PK.reduce((a,k)=>p[k]>p[a]?k:a,'ka');}
-/* 進化先：あかちゃん・こどもは最大のつよさ。おとなは 第1候補→相性スコア順で ずかん に無いもの→全部あれば第1候補の色違い（spec §4.3） */
-export function chooseForm(S){
-  const p=S.p;
-  if(S.stage===0) return {form:BABY[topKey(p)],shiny:false};
-  if(S.stage===1) return {form:CHILD[topKey(p)],shiny:false};
+/* 段階ごとの姿の表：1つ型（最大のつよさ）・2つ型（上位2つが近い）・バランス型（4つとも近い） */
+const TABLE_FORMS={
+  1:{single:{ka:'puni',ki:'shizuku',ge:'koro',ho:'moko'},
+     pair:{'ka+ki':'kirapuni','ka+ge':'pyonpuni','ka+ho':'nukupuni','ki+ge':'kazepuni','ki+ho':'awapuni','ge+ho':'potapuni'},bal:'maruppuni'},
+  2:{single:{ka:'hoshi',ki:'shabon',ge:'hana',ho:'kumo'},
+     pair:{'ka+ki':'hanabi','ka+ge':'tanken','ka+ho':'hon','ki+ge':'mizutama','ki+ho':'ribon','ge+ho':'donguri'},bal:'sorairo'},
+  3:{single:{ka:'hakase',ki:'kirara',ge:'morimori',ho:'pokapoka'},
+     pair:{'ka+ki':'tsukimi','ka+ge':'bouken','ka+ho':'yumemi','ki+ge':'marin','ki+ho':'keki','ge+ho':'ohisama'},bal:'niji'}
+};
+/* つよさ から候補を並べる：第1候補 → 残りは相性スコアの高い順（同点は ずかん順）。spec §4.3 */
+function rankForms(p,tb){
   const sorted=PK.slice().sort((a,b)=>p[b]-p[a]||PK.indexOf(a)-PK.indexOf(b));
   const v1=p[sorted[0]],v2=p[sorted[1]],mn=p[sorted[3]];
   let first;
-  if(mn>0&&v1/mn<=1.6) first='niji';
-  else if(v2>0&&v2>=v1*.75) first=PAIR[[sorted[0],sorted[1]].sort((a,b)=>PK.indexOf(a)-PK.indexOf(b)).join('+')];
-  else first=SINGLE[sorted[0]];
-  const score={niji:mn*1.6};
-  PK.forEach(k=>{score[SINGLE[k]]=p[k];});
-  Object.keys(PAIR).forEach(k=>{const [a,b]=k.split('+');score[PAIR[k]]=(p[a]+p[b])/2;});
-  const rest=ADULT_IDS.filter(f=>f!==first).sort((a,b)=>score[b]-score[a]||ADULT_IDS.indexOf(a)-ADULT_IDS.indexOf(b));
-  const pick=[first].concat(rest).find(f=>S.zukan.indexOf(f)<0);
-  return pick?{form:pick,shiny:false}:{form:first,shiny:true};
+  if(mn>0&&v1/mn<=1.6) first=tb.bal;
+  else if(v2>0&&v2>=v1*.75) first=tb.pair[[sorted[0],sorted[1]].sort((a,b)=>PK.indexOf(a)-PK.indexOf(b)).join('+')];
+  else first=tb.single[sorted[0]];
+  const score={[tb.bal]:mn*1.6};
+  PK.forEach(k=>{score[tb.single[k]]=p[k];});
+  Object.keys(tb.pair).forEach(k=>{const [a,b]=k.split('+');score[tb.pair[k]]=(p[a]+p[b])/2;});
+  const rest=Object.keys(score).filter(f=>f!==first).sort((a,b)=>score[b]-score[a]||ZORDER.indexOf(a)-ZORDER.indexOf(b));
+  return [first].concat(rest);
+}
+/* スーパーシークレットに会うまでに、あと何しゅるい見つければよいか（あかちゃん・こども・おとな の 33 しゅるい） */
+export function secretLeft(S){return ZORDER.filter(f=>!FORMS[f].secret&&S.zukan.indexOf(f)<0).length;}
+const SECRET=ZORDER.find(f=>FORMS[f].secret);
+/* 進化先：あかちゃんは第1候補（重複してよい）。こども・おとなは ずかん に無い子を優先。
+   おとな：33 しゅるい そろっていれば スーパーシークレット、ふつうのおとなが 11 しゅるい そろっていたら第1候補の色違い */
+export function chooseForm(S){
+  const order=rankForms(S.p,TABLE_FORMS[S.stage+1]);
+  if(S.stage===0) return {form:order[0],shiny:false};
+  const pick=order.find(f=>S.zukan.indexOf(f)<0);
+  if(S.stage===1) return {form:pick||order[0],shiny:false};
+  if(SECRET&&S.zukan.indexOf(SECRET)<0&&secretLeft(S)===0) return {form:SECRET,shiny:false};
+  return pick?{form:pick,shiny:false}:{form:order[0],shiny:true};
 }
 
 /* 一生の期日（spec §4.1）：ts の日付 + addDays 日の、ぷにちゃんが起きる時刻 */

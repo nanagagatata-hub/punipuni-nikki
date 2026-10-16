@@ -12,6 +12,7 @@ export const TASKS=[
   {id:'yasai',  label:'おやさい', short:'おやさい', icon:'🥦', food:'soup', limit:3},
   {id:'ofuro',  label:'おふろ', short:'おふろ', icon:'🛁', food:'purin', limit:1},
   {id:'dryer', label:'どらいやー', short:'どらいやー', icon:'🌬️', food:'candy', limit:1},
+  {id:'manners',label:'ごはんの まなー', short:'まなー', icon:'🍽️', food:'parfait', limit:3},
   {id:'katazuke',label:'おかたづけ', short:'おかたづけ', icon:'🧸', food:'cookie', limit:1},
   {id:'hayane', label:'はやく べっどに はいれた', short:'はやね', icon:'🛏️', food:'milk', limit:1},
   {id:'hayaoki',label:'はやおき', short:'はやおき', icon:'🌅', food:'pan', limit:1}
@@ -25,34 +26,56 @@ export const FOODS={
   cookie:{name:'ぴかぴかくっきー', icon:'🍪', pt:2, param:'ki', amt:2},
   milk:{name:'ほっとみるく', icon:'🥛', pt:1, param:'ho', amt:1},
   pan:{name:'おひさまぱん', icon:'🍞', pt:2, param:'ge', amt:2},
-  candy:{name:'ふわふわきゃんでぃ', icon:'🍭', pt:1, param:'ki', amt:1}
+  candy:{name:'ふわふわきゃんでぃ', icon:'🍭', pt:1, param:'ki', amt:1},
+  /* ごはんマナー のごほうび：あげると おどる */
+  parfait:{name:'にこにこぱふぇ', icon:'🍨', pt:2, param:'ki', amt:2, dance:true}
 };
 export const PARAMS=[['ka','🎓','かしこさ'],['ki','✨','きれい'],['ge','💪','げんき'],['ho','♨️','ほかほか']];
-/* stage：1=あかちゃん 2=こども 3=おとな（さいごのすがた も おとなの姿を使う） */
+/* stage：1=あかちゃん 2=こども 3=おとな（さいごのすがた も おとなの姿を使う）。say：ずかんでタッチしたときの ひとこと。voice：なきごえの高さ（1＝ふつう） */
 export const FORMS={
   egg:{name:'たまご', stage:0},
-  puni:{name:'ぷにぷに', stage:1, color:'#FFD3E2', dark:'#EFA3BF', hint:'かしこさ の たまご から…'},
-  shizuku:{name:'しずくぷに', stage:1, color:'#CDEBFF', dark:'#93C6EC', hint:'きれい の たまご から…'},
-  koro:{name:'ころぷに', stage:1, color:'#FFE3B8', dark:'#E9B77A', hint:'げんき の たまご から…'},
-  moko:{name:'もこぷに', stage:1, color:'#F3E3FF', dark:'#C9A8EC', hint:'ほかほか の たまご から…'},
-  hoshi:{name:'ほしぷに', stage:2, color:'#CFE0FF', dark:'#97B6EE', hint:'かしこさ を そだてると…'},
-  shabon:{name:'しゃぼんぷに', stage:2, color:'#D4F4F4', dark:'#8FD3D3', hint:'きれい を そだてると…'},
-  hana:{name:'はなぷに', stage:2, color:'#FFE9A8', dark:'#EDC766', hint:'げんき を そだてると…'},
-  kumo:{name:'くもぷに', stage:2, color:'#EEF0FA', dark:'#B9BEDC', hint:'ほかほか を そだてると…'},
-  hakase:{name:'はかせぷに', stage:3, color:'#D2C4FF', dark:'#A28FEE', hint:'かしこさ が いちばん だと…'},
-  kirara:{name:'きららぷに', stage:3, color:'#C4F0FA', dark:'#86D2E6', hint:'きれい が いちばん だと…'},
-  morimori:{name:'もりもりぷに', stage:3, color:'#C6EFC9', dark:'#86CF8E', hint:'げんき が いちばん だと…'},
-  pokapoka:{name:'ぽかぽかぷに', stage:3, color:'#FFD0B5', dark:'#EFA078', hint:'ほかほか が いちばん だと…'},
-  tsukimi:{name:'つきみぷに', stage:3, color:'#E6E0FF', dark:'#B3A6EC', hint:'かしこさ と きれい が なかよし だと…'},
-  bouken:{name:'ぼうけんぷに', stage:3, color:'#E8F3C8', dark:'#B6CC7E', hint:'かしこさ と げんき が なかよし だと…'},
-  yumemi:{name:'ゆめみぷに', stage:3, color:'#DCD8F8', dark:'#A8A0E0', hint:'かしこさ と ほかほか が なかよし だと…'},
-  marin:{name:'まりんぷに', stage:3, color:'#CDEFFF', dark:'#86C6E6', hint:'きれい と げんき が なかよし だと…'},
-  keki:{name:'けーきぷに', stage:3, color:'#FFE0EA', dark:'#F0A9C0', hint:'きれい と ほかほか が なかよし だと…'},
-  ohisama:{name:'おひさまぷに', stage:3, color:'#FFEDB0', dark:'#F2C55C', hint:'げんき と ほかほか が なかよし だと…'},
-  niji:{name:'にじぷに', stage:3, color:'#FFFFFF', dark:'#D9CBEF', hint:'ぜんぶ なかよく そだてると…'}
+  /* あかちゃん（1つ型・2つ型・バランス型） */
+  puni:{name:'ぷにぷに', stage:1, color:'#FFD3E2', dark:'#EFA3BF', hint:'かしこさ の たまご から…', voice:1.35, say:['ぷにっ！ はじめまして','いっしょに あそぼ']},
+  shizuku:{name:'しずくぷに', stage:1, color:'#CDEBFF', dark:'#93C6EC', hint:'きれい の たまご から…', voice:1.4, say:['ぴちょん♪','おみず だいすき']},
+  koro:{name:'ころぷに', stage:1, color:'#FFE3B8', dark:'#E9B77A', hint:'げんき の たまご から…', voice:1.3, say:['ころころ〜','どんぐり みつけた！']},
+  moko:{name:'もこぷに', stage:1, color:'#F3E3FF', dark:'#C9A8EC', hint:'ほかほか の たまご から…', voice:1.3, say:['もこもこ ぬくぬく','ぎゅって して〜']},
+  kirapuni:{name:'きらぷに', stage:1, color:'#FFF1C7', dark:'#EBCB72', hint:'かしこさ と きれい の たまご から…', voice:1.45, say:['きらりん！','おほしさま ひとつ あげる']},
+  pyonpuni:{name:'ぴょんぷに', stage:1, color:'#DDF5D2', dark:'#9FD48C', hint:'かしこさ と げんき の たまご から…', voice:1.5, say:['ぴょーん！','かけっこ しよ！']},
+  nukupuni:{name:'ぬくぷに', stage:1, color:'#FFE0D2', dark:'#EFAE92', hint:'かしこさ と ほかほか の たまご から…', voice:1.25, say:['ぬくぬく…','えほん よんで〜']},
+  kazepuni:{name:'かぜぷに', stage:1, color:'#D8F4F0', dark:'#8FD0C6', hint:'きれい と げんき の たまご から…', voice:1.45, say:['ひゅるる〜♪','おさんぽ いこ']},
+  awapuni:{name:'あわぷに', stage:1, color:'#EEE6FF', dark:'#B7A6E8', hint:'きれい と ほかほか の たまご から…', voice:1.4, say:['ぷくぷく あわあわ','おふろ たのしいね']},
+  potapuni:{name:'ぽたぷに', stage:1, color:'#FFEFC2', dark:'#E8C26C', hint:'げんき と ほかほか の たまご から…', voice:1.25, say:['ぽかぽか〜','ごはん おかわり！']},
+  maruppuni:{name:'まるっぷに', stage:1, color:'#FFE6F0', dark:'#E9A9C4', hint:'ぜんぶ なかよし の たまご から…', voice:1.35, say:['まんまる〜','みんな なかよし！']},
+  /* こども */
+  hoshi:{name:'ほしぷに', stage:2, color:'#CFE0FF', dark:'#97B6EE', hint:'かしこさ を そだてると…', voice:1.15, say:['ほし、だいすき！','よる に おほしさま かぞえよう']},
+  shabon:{name:'しゃぼんぷに', stage:2, color:'#D4F4F4', dark:'#8FD3D3', hint:'きれい を そだてると…', voice:1.2, say:['ふわ〜っと しゃぼんだま','ぴかぴか きれい でしょ']},
+  hana:{name:'はなぷに', stage:2, color:'#FFE9A8', dark:'#EDC766', hint:'げんき を そだてると…', voice:1.15, say:['おはな さいたよ！','おやさい たべると げんき！']},
+  kumo:{name:'くもぷに', stage:2, color:'#EEF0FA', dark:'#B9BEDC', hint:'ほかほか を そだてると…', voice:1.1, say:['ふわふわ〜','おひるね しよ〜']},
+  hanabi:{name:'はなびぷに', stage:2, color:'#FFDDEA', dark:'#EBA0BF', hint:'かしこさ と きれい が なかよし だと…', voice:1.2, say:['どーん！ きれい でしょ','なつ が だいすき']},
+  tanken:{name:'たんけんぷに', stage:2, color:'#E6F1CF', dark:'#AFC97E', hint:'かしこさ と げんき が なかよし だと…', voice:1.15, say:['なに が あるかな？','たんけん しゅっぱつ！']},
+  hon:{name:'ほんぷに', stage:2, color:'#E9E2FA', dark:'#ADA0DA', hint:'かしこさ と ほかほか が なかよし だと…', voice:1.05, say:['この えほん すき','むかしむかし…']},
+  mizutama:{name:'みずたまぷに', stage:2, color:'#D6EEFF', dark:'#8EBDE6', hint:'きれい と げんき が なかよし だと…', voice:1.2, say:['てんてん みずたま♪','あめ の ひ も たのしい']},
+  ribon:{name:'りぼんぷに', stage:2, color:'#FFE3EC', dark:'#F0A8C0', hint:'きれい と ほかほか が なかよし だと…', voice:1.2, say:['りぼん かわいい？','おしゃれ しよ']},
+  donguri:{name:'どんぐりぷに', stage:2, color:'#F5E3C8', dark:'#D2AE7C', hint:'げんき と ほかほか が なかよし だと…', voice:1.1, say:['どんぐり ころころ','もり で あそぼ']},
+  sorairo:{name:'そらいろぷに', stage:2, color:'#DDF0FF', dark:'#9CC9EE', hint:'ぜんぶ なかよく そだてると…', voice:1.15, say:['そら って ひろいね','にじ みえるかな？']},
+  /* おとな */
+  hakase:{name:'はかせぷに', stage:3, color:'#D2C4FF', dark:'#A28FEE', hint:'かしこさ が いちばん だと…', voice:.95, say:['ふむふむ、なるほど','なんでも きいてね']},
+  kirara:{name:'きららぷに', stage:3, color:'#C4F0FA', dark:'#86D2E6', hint:'きれい が いちばん だと…', voice:1.05, say:['きらきら〜♪','おうかん にあう？']},
+  morimori:{name:'もりもりぷに', stage:3, color:'#C6EFC9', dark:'#86CF8E', hint:'げんき が いちばん だと…', voice:.95, say:['もりもり げんき！','いっしょに たいそう！']},
+  pokapoka:{name:'ぽかぽかぷに', stage:3, color:'#FFD0B5', dark:'#EFA078', hint:'ほかほか が いちばん だと…', voice:.9, say:['ぽかぽか〜','おふろ さいこう']},
+  tsukimi:{name:'つきみぷに', stage:3, color:'#E6E0FF', dark:'#B3A6EC', hint:'かしこさ と きれい が なかよし だと…', voice:1, say:['おつきさま きれい','おやすみ の じかん かな']},
+  bouken:{name:'ぼうけんぷに', stage:3, color:'#E8F3C8', dark:'#B6CC7E', hint:'かしこさ と げんき が なかよし だと…', voice:.95, say:['ぼうけん だ！','ちず を みてみよう']},
+  yumemi:{name:'ゆめみぷに', stage:3, color:'#DCD8F8', dark:'#A8A0E0', hint:'かしこさ と ほかほか が なかよし だと…', voice:.9, say:['すてきな ゆめ みてね','むにゃ… えへへ']},
+  marin:{name:'まりんぷに', stage:3, color:'#CDEFFF', dark:'#86C6E6', hint:'きれい と げんき が なかよし だと…', voice:1, say:['うみ に いきたいな','ざぶーん！']},
+  keki:{name:'けーきぷに', stage:3, color:'#FFE0EA', dark:'#F0A9C0', hint:'きれい と ほかほか が なかよし だと…', voice:1.05, say:['あまくて しあわせ','いちご のせる？']},
+  ohisama:{name:'おひさまぷに', stage:3, color:'#FFEDB0', dark:'#F2C55C', hint:'げんき と ほかほか が なかよし だと…', voice:1, say:['おはよう！ いい てんき','にこにこ ぽかぽか']},
+  niji:{name:'にじぷに', stage:3, color:'#FFFFFF', dark:'#D9CBEF', hint:'ぜんぶ なかよく そだてると…', voice:1.05, say:['にじ の むこうへ！','みんな だいすき']},
+  /* スーパーシークレット：ずかんの 33 しゅるい を ぜんぶ みつけると あえる */
+  yumeniji:{name:'ゆめにじぷに', stage:3, secret:true, color:'#FFFFFF', dark:'#C9A8EC', hint:'ぜんぶ の ぷにちゃん に あうと…？', voice:1.1, say:['ゆめ の せかい から きたよ✨','ぜんぶ あつめて くれて ありがとう！']}
 };
 export const ZORDER=Object.keys(FORMS).filter(k=>k!=='egg');
 export const ADULT_IDS=ZORDER.filter(k=>FORMS[k].stage===3);
+export const NORMAL_ADULTS=ADULT_IDS.filter(k=>!FORMS[k].secret);
 export const WORDS=[
   ['你好','にーはお','こんにちは'],['谢谢','しぇしぇ','ありがとう'],['再见','ざいじぇん','ばいばい'],
   ['好吃','はおちー','おいしい'],['早上好','ざおしゃんはお','おはよう'],['晚安','わんあん','おやすみ'],

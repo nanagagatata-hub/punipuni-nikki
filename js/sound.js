@@ -40,7 +40,10 @@ const SFX={
   dizzy:()=>{tone(900,400,.4,'sine',.4,0,60);tone(800,350,.4,'sine',.3,.2,60);},
   snore:()=>tone(180,120,.6,'sine',.3,0,8),
   egg:()=>{tone(500,500,.07,'triangle',.4);tone(560,560,.07,'triangle',.4,.1);},
-  farewell:()=>notes([784,659,523,659,784,1047],'sine',.3)
+  farewell:()=>notes([784,659,523,659,784,1047],'sine',.3),
+  /* ごはんマナー のおどりの曲（約 5 秒）：ぴょこぴょこ はねる明るいメロディ */
+  dance:()=>{const m=[523,659,784,659,880,784,659,784,1047,988,880,784,659,784,880,1047];
+    m.forEach((f,i)=>{tone(f,f,.22,'triangle',.45,i*.3);if(i%2===0)tone(f/2,f/2,.12,'square',.12,i*.3);});}
 };
 export function sfx(name){
   if(!on||!ctx||!SFX[name])return;

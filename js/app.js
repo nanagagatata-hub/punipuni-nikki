@@ -1,6 +1,6 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
 import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES} from './data.js';
-import {dayKey,band,isNight,asleep,nightKey,minLabel,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine,canUndo,undoReport,undoLabel} from './rules.js';
+import {dayKey,band,isNight,asleep,nightKey,minLabel,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine,canUndo,undoReport,undoLabel,taskLimit} from './rules.js';
 import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
 import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
@@ -124,7 +124,15 @@ function feed(fid){
   else if(fid==='kotoba'||fid==='nikuman') sayWord('もぐもぐ！');
   else say(line('eat'));
   save();render();setTimeout(render,2600);
+  if(f.dance&&S.stage>0)dance();
   checkEvolve();
+}
+/* ごはんマナー のごほうび：約 5 秒 おどる（左右ステップ・くるっ・ジャンプ）。曲と ♪・紙ふぶき */
+let danceUntil=0;
+function dance(){
+  danceUntil=Date.now()+5000;sfx('dance');say(line('dance'));render();
+  for(let i=0;i<5;i++)setTimeout(()=>fxBurst(i%2?['♪','♫','🎉']:['♫','✨','🎊']),i*1000);
+  setTimeout(render,5050);
 }
 function checkEvolve(){
   if(S.stage<3&&S.pts>=TH[S.stage+1]){
@@ -159,6 +167,7 @@ function petAct(kind){
   const now=Date.now();lastInteract=now;
   wobble();
   if(asleep(S,now)){sfx('snore');say(line('sleepTap'));return;}
+  if(now<danceUntil)return; // おどっている間は タッチの反応を出さない
   if(farewellReady(S,now)){startFarewell();return;}
   if(S.stage===4&&S.sick){say(line('farewellSick'));render();return;}
   if(S.stage===0){sfx('egg');say(line('egg'));return;}
@@ -241,6 +250,7 @@ function openSettings(){
     <label class="fl">「はやね」を受け付け始める時刻<input id="hnFrom" type="time" step="300" value="${hm(C.hayane.from)}"></label>
     <div class="fl">「はやね」の締め切り（曜日ごと）<span class="days">${WD.map((w,i)=>`<label class="dl">${WDK[i]}<input id="hnUntil${i}" type="time" step="300" value="${hm(C.hayane.until[i])}"></label>`).join('')}</span></div>
     <label class="fl">ねんね中の「ちょっとだけ おきて」ボタン（ひと晩1回・5分だけエサをあげられます）<select id="tempIn"><option value="off" ${C.tempWake?'':'selected'}>出さない</option><option value="on" ${C.tempWake?'selected':''}>出す</option></select></label>
+    <label class="fl">「ごはんの まなー」の回数（1日）<select id="mannersIn">${[1,2,3,4,5].map(n=>`<option value="${n}" ${n===C.manners?'selected':''}>${n}回</option>`).join('')}</select></label>
     <div class="btns"><button class="btn small" data-act="save">保存する</button></div>
     <h3>アプリの更新</h3>
     <p class="sub">ホーム画面から開いていて新しい版が反映されないときに押してください。育成データは消えません。（現在の版：${APP_VERSION}）</p>
@@ -264,7 +274,7 @@ function openSettings(){
         S.sound=$('#soundIn').value==='on';setSound(S.sound);
         const cand={sleepAt:toMin($('#sleepIn').value),wakeAt:toMin($('#wakeIn').value),
           hayaoki:{from:toMin($('#hoFrom').value),until:toMin($('#hoUntil').value),days:[0,1,2,3,4,5,6].filter(i=>$('#hoDay'+i).checked)},
-          hayane:{from:toMin($('#hnFrom').value),until:[0,1,2,3,4,5,6].map(i=>toMin($('#hnUntil'+i).value))},tempWake:$('#tempIn').value==='on'};
+          hayane:{from:toMin($('#hnFrom').value),until:[0,1,2,3,4,5,6].map(i=>toMin($('#hnUntil'+i).value))},tempWake:$('#tempIn').value==='on',manners:+$('#mannersIn').value};
         /* sanitize と同じ検証を通し、1 つでも直されたら保存しない（ほかの設定は保存済み） */
         if(JSON.stringify(cleanCfg(cand))!==JSON.stringify(cand)){save();render();toast('生活リズムの時刻が正しくありません（寝る 18:00〜23:30・起きる 4:00〜9:00、終わりは始まりより後）。ほかの設定は保存しました');return;}
         S.cfg=cand;save();render();toast('保存しました');}
@@ -299,7 +309,7 @@ function render(){
   ensureDay();const now=Date.now();
   $('#petName').textContent=S.name;$('#genLabel').textContent=S.gen+'ぴきめ';
   const sleeping=S.stage>0&&asleep(S,now);
-  const L=look(S,{night:sleeping,react:now<reactUntil?react:null});
+  const L=now<danceUntil&&!sleeping?{face:'sparkle',pose:'dance',arms:'up',think:null}:look(S,{night:sleeping,react:now<reactUntil?react:null});
   $('#pet').innerHTML=petSVG(S.form,L.face,{pts:S.pts,shiny:S.shiny,final:S.stage===4,arms:L.arms,think:L.think});
   $('#pet').dataset.pose=L.pose;
   const bd=band(new Date(),S.cfg);$('#screen').className='screen t-'+bd;
@@ -331,7 +341,7 @@ function render(){
     let dots='',tf=st.ok?FOODS[t.food].icon:st.why==='done'?'💮':st.why==='day'?'📅':'⏰';
     if(note)dots=note;
     else if(t.id==='hamigaki'){dots=`<span class="dot ${S.cnt.hamigaki_am?'on':''}"></span>あさ <span class="dot ${S.cnt.hamigaki_pm?'on':''}"></span>よる`;}
-    else{for(let i=0;i<t.limit;i++)dots+=`<span class="dot ${i<(S.cnt[t.id]||0)?'on':''}"></span>`;}
+    else{for(let i=0;i<taskLimit(t,S);i++)dots+=`<span class="dot ${i<(S.cnt[t.id]||0)?'on':''}"></span>`;}
     /* 済んでいても、取り消せる間は押せる（見た目は済んだまま） */
     const off=!st.ok&&!canUndo(S,t.id);
     return `<button class="task${!st.ok&&!off?' done':''}" data-task="${t.id}" aria-label="${t.label}" ${off?'disabled':''}><span class="tf${t.id===mark.task?' stamp':''}">${tf}</span><span class="ti">${t.icon}</span><span class="tl">${t.short}</span><span class="td">${dots}</span></button>`;

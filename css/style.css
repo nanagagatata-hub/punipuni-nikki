@@ -77,6 +77,14 @@ img,svg{max-width:100%}
 .pet[data-pose="squish"] svg{animation:squish .5s ease-in-out 2}
 .pet[data-pose="none"] svg{animation:breathe 4s ease-in-out infinite}
 .pet.wobble svg{animation:wob .5s ease-in-out}
+/* ごはんマナー のおどり（約 5 秒）：左右ステップ → くるっ → ジャンプ */
+.pet[data-pose="dance"] svg{animation:dance 5s ease-in-out}
+@keyframes dance{
+  0%{transform:none}8%{transform:translateX(-18px) rotate(-10deg)}16%{transform:translateX(18px) rotate(10deg)}
+  24%{transform:translateX(-18px) rotate(-10deg)}32%{transform:translateX(18px) rotate(10deg)}40%{transform:none}
+  52%{transform:rotate(360deg) scale(1.05)}60%{transform:rotate(360deg)}
+  68%{transform:translateY(-36px) scale(.95,1.08)}74%{transform:translateY(0) scale(1.08,.92)}
+  82%{transform:translateY(-28px)}88%{transform:translateY(0) scale(1.06,.94)}100%{transform:none}}
 @keyframes sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
 @keyframes hop{0%,100%{transform:translateY(0) scale(1,1)}40%{transform:translateY(-14px) scale(.97,1.03)}80%{transform:translateY(0) scale(1.05,.95)}}
 @keyframes droop{0%,100%{transform:translateY(4px) scale(1.02,.96)}50%{transform:translateY(6px) scale(1.03,.94)}}

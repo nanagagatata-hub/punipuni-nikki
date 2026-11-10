@@ -7,7 +7,7 @@ let sceneBand='';
 import {speak,sfx,setSound,unlock,sing} from './sound.js';
 import {mount,unmount as roomUnmount,update as roomUpdate,hold as roomHold,pauseFor,poke} from './room.js';
 let roomOn=false;
-const APP_VERSION='v2.5.0'; // sw.js の VERSION と同じ値にそろえる
+const APP_VERSION='v2.5.1'; // sw.js の VERSION と同じ値にそろえる
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

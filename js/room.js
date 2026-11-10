@@ -43,14 +43,14 @@ export function fitScale(w,h,n){
   return Math.min(w/(n*TILE_W), h/(n*TILE_H+WALL_H));
 }
 
-/** ぷにの当たり判定の箱（CSS px）。中心 cx・下端 bottom、箱 0..boxW×0..boxH に収める
+/** ぷにの当たり判定の箱（CSS px）。中心 cx・絵の下端 bottom（箱は絵の真ん中に重ねる）、箱 0..boxW×0..boxH に収める
  * @param {number} cx @param {number} bottom @param {number} sprite
  * @param {number} boxW @param {number} boxH
  * @returns {{left:number,top:number,size:number}} */
 export function petBox(cx,bottom,sprite,boxW,boxH){
   const size=Math.min(Math.max(96,sprite*1.3),boxW,boxH);
   const left=Math.min(Math.max(cx-size/2,0),boxW-size);
-  const top=Math.min(Math.max(bottom-size,0),boxH-size);
+  const top=Math.min(Math.max(bottom+(size-sprite)/2-size,0),boxH-size); // 箱の真ん中を絵の真ん中に合わせる
   return {left,top,size};
 }
 
@@ -59,6 +59,12 @@ export function petBox(cx,bottom,sprite,boxW,boxH){
 export function yawBucket(deg,n=24){
   const step=360/n;
   return normDeg(Math.round(deg/step)*step);
+}
+
+/** SVG 文字列から画像を作る関数を返す。空（絵が作れない）なら fail を呼んで使えない絵を返す
+ * @param {()=>void} fail @param {(svg:string)=>any} mk */
+export function spriteMaker(fail,mk){
+  return svg=>{if(!svg){fail();return {complete:true,naturalWidth:0};}return mk(svg);};
 }
 
 /** SVG→画像のキャッシュ。読み込み中は前回 ready だった画像を返す。max 超過で最も古く使ったものを捨てる
@@ -115,7 +121,7 @@ export function mount(sceneEl,petBtn,opt){
   const r=R={
     sceneEl,petBtn,opt,n,cv,ctx,lay,grid:makeGrid(n,blocked),rng:mulberry32(Date.now()>>>0),mq,
     dpr:1,cssW:0,cssH:0,k:1,s:1,ox:0,oy:0,
-    sprites:new SpriteCache(120,svg=>{if(!svg)return {complete:true,naturalWidth:0};const im=makeImg(svg);im.onerror=()=>r.fail();return im;}),
+    sprites:new SpriteCache(120,spriteMaker(()=>r.fail(),svg=>{const im=makeImg(svg);im.onerror=()=>r.fail();return im;})),
     bgImgs:{},bgCur:null,bgOld:null,bgCurBand:null,fade:1,
     items:lay.items.map(it=>({it,art:itemSVG(it.id),img:null})),
     view:null,mode:'awake',band:'hiru',brain:null,dark:0,darkTarget:0,first:true,
@@ -171,7 +177,10 @@ function bctx(r){
   return {mode:r.mode,band:r.band,reduced:!!(r.opt.reduced||(r.mq&&r.mq.matches)),home:r.lay.home};
 }
 
-function stop(r){cancelAnimationFrame(r.raf);r.raf=0;}
+function stop(r){
+  cancelAnimationFrame(r.raf);r.raf=0;
+  if(r.brain&&r.brain.held)holdBrain(r.brain,false); // 指を離した通知が来なくても固まらない
+}
 /** 裏から戻った・描画面が復活した：dt を捨て、暗さを目標に合わせ、背景と画像を確かめる */
 function resume(r){
   if(R!==r||document.hidden)return;
@@ -182,15 +191,16 @@ function resume(r){
   const reload=im=>{if(im&&!usable(im)){const src=im.src;im.src='';im.src=src;}};
   for(const o of r.items)reload(o.img);
   for(const k in r.bgImgs)reload(r.bgImgs[k]);
-  resize(r);
+  resize(r,true);
   r.raf=requestAnimationFrame(t=>frame(r,t));
 }
 
-function resize(r){
+function resize(r,force){
   if(R!==r)return;
   const w=r.sceneEl.clientWidth,h=r.sceneEl.clientHeight;
   if(!(w>0&&h>0))return;
   const dpr=Math.min(window.devicePixelRatio||1,2);
+  if(!force&&w===r.cssW&&h===r.cssH&&dpr===r.dpr)return; // 大きさが変わらないなら何もしない
   r.dpr=dpr;r.cssW=w;r.cssH=h;
   r.s=fitScale(w,h,r.n);r.k=r.s*dpr;
   const rw=r.n*TILE_W*r.s,rh=(r.n*TILE_H+WALL_H)*r.s;
@@ -199,6 +209,7 @@ function resize(r){
   r.cv.style.width=w+'px';r.cv.style.height=h+'px';
   r.bgCur=null;r.bgCurBand=null;r.bgOld=null;r.fade=1;
   r.box.l=-1; // #pet を置き直す
+  if(r.brain&&!document.hidden)try{draw(r,0);}catch(e){} // キャンバスが空のまま 1 コマ待たない
 }
 
 /** 時間帯の背景を、部屋の大きさに合わせてオフスクリーンに描く。画像が未読込なら null */
@@ -268,7 +279,7 @@ function draw(r,dt){
     ctx.globalAlpha=1;
   }
   // #pet をぷにに重ねる（変わったときだけ）
-  const bx=petBox(r.ox+petX*r.s,r.oy+petY*r.s,TILE_W*r.s,r.cssW,r.cssH);
+  const bx=petBox(r.ox+petX*r.s,r.oy+(petY+6)*r.s,TILE_W*r.s,r.cssW,r.cssH);
   const L=Math.round(bx.left),T=Math.round(bx.top),S=Math.round(bx.size);
   if(L!==r.box.l||T!==r.box.t||S!==r.box.s){
     r.box.l=L;r.box.t=T;r.box.s=S;

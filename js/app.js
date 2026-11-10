@@ -5,7 +5,7 @@ import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
 import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
 import {speak,sfx,setSound,unlock,sing} from './sound.js';
-import {mount,update as roomUpdate,hold as roomHold,pauseFor,poke} from './room.js';
+import {mount,unmount as roomUnmount,update as roomUpdate,hold as roomHold,pauseFor,poke} from './room.js';
 let roomOn=false;
 const APP_VERSION='v2.5.0'; // sw.js の VERSION と同じ値にそろえる
 
@@ -350,7 +350,8 @@ function render(){
   const bd=band(new Date(),S.cfg);$('#screen').className='screen t-'+bd+(roomOn?' room':'');
   if(roomOn){
     const mode=S.stage===0?'egg':sleeping?'sleep':S.sick?'sick':now<danceUntil?'dance':S.hunger===0?'hungry':'awake';
-    roomUpdate({view:{form:S.form,face:L.face,arms:L.arms,think:L.think,pose:L.pose,shiny:S.shiny,final:S.stage===4,pts:S.pts},mode,band:bd,now});
+    try{roomUpdate({view:{form:S.form,face:L.face,arms:L.arms,think:L.think,pose:L.pose,shiny:S.shiny,final:S.stage===4,pts:S.pts},mode,band:bd,now});}
+    catch(e){try{roomUnmount();}catch(e2){}roomOff();return;}
   }else if(sceneBand!==bd){$('#scene').innerHTML=sceneSVG(bd);sceneBand=bd;}
   $('#gauges').innerHTML=S.stage===0?`<span class="glabel">たまご を あたためよう</span>`:
     `<div class="gauge"><span class="glabel">おなか</span>${icons('🍙',S.hunger,lastG?lastG.h:S.hunger)}</div><div class="gauge"><span class="glabel">ごきげん</span>${icons('🌸',S.mood,lastG?lastG.m:S.mood)}</div>`;
@@ -423,6 +424,7 @@ pet.addEventListener('pointerup',()=>{
   const now=Date.now();taps=taps.filter(t=>now-t<2500);taps.push(now);
   if(taps.length>=5){taps=[];petAct('mash');}else petAct(p.top?'head':'belly');
 });
+pet.addEventListener('lostpointercapture',()=>{if(roomOn)roomHold(false);});
 pet.addEventListener('pointercancel',()=>{if(roomOn)roomHold(false);clearTimeout(holdT2);ptr=null;});
 pet.addEventListener('click',e=>{if(e.detail===0)petAct('belly');});
 $('#zukanBtn').addEventListener('click',openZukan);
@@ -459,7 +461,7 @@ function roomOff(){
   roomOn=false;$('#screen').classList.remove('room');sceneBand='';
   $('#scene').textContent='';pet.style.cssText='';render();
 }
-roomOn=mount($('#scene'),pet,{n:6,onFail:roomOff});
+try{roomOn=mount($('#scene'),pet,{n:6,onFail:roomOff});}catch(e){roomOn=false;try{roomUnmount();}catch(e2){}}
 if(roomOn)$('#screen').classList.add('room');
 tick(Date.now());
 greet();

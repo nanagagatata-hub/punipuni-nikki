@@ -163,12 +163,14 @@ function enter(b,ctx,grid){
 }
 
 /** 歩く：向き終わってから次のマスの中心へ進む。着いたら then の行動へ */
-function walkStep(b,dt,ctx){
+function walkStep(b,dt,ctx,rng){
   while(b.path.length&&Math.hypot(b.path[0].x+0.5-b.x,b.path[0].y+0.5-b.y)<=1e-9){
     b.x=b.path[0].x+0.5;b.y=b.path[0].y+0.5;b.path.shift();
   }
   if(!b.path.length){ // 着いた
-    b.act=b.then||'idle';b.then=null;b.t=0;b.dur=0;b.want=0;return;
+    b.act=b.then||'idle';b.then=null;b.t=0;b.dur=0;b.want=0;
+    if(b.mode==='awake')b.dur=between(rng,1,2.5); // 歩いたあとは少し休む
+    return;
   }
   const c=b.path[0],dx=c.x+0.5-b.x,dy=c.y+0.5-b.y,d=Math.hypot(dx,dy); // d>1e-9
   b.want=dirYaw(dx,dy);
@@ -204,6 +206,10 @@ function startAct(b,ctx,grid,rng){
  * @param {Brain} b @param {number} dt @param {BrainCtx} ctx @param {Grid} grid @param {Random} rng */
 export function stepBrain(b,dt,ctx,grid,rng){
   dt=dt>0?Math.min(dt,0.1):0;
+  if(ctx.mode!==b.mode&&(ctx.mode==='dance'||ctx.mode==='egg')){ // 止めている最中でも踊り・たまごはすぐ始める
+    enter(b,ctx,grid);
+    if(ctx.mode==='dance')b.hold=0;
+  }
   if(b.held||b.hold>0){ // さわっている間と離して数秒は動かず正面を向く
     if(!b.held)b.hold=Math.max(0,b.hold-dt);
     b.want=0;b.yaw=turnToward(b.yaw,0,dt);return;
@@ -216,11 +222,11 @@ export function stepBrain(b,dt,ctx,grid,rng){
       if(m==='sleep')planTo(b,grid,ctx.home,'sleep');
       else{b.path=[nearest(b)];b.then=FIN[m];}
     }
-    if(walking(b))walkStep(b,dt,ctx);
+    if(walking(b))walkStep(b,dt,ctx,rng);
     else b.want=0;
   }else if(m==='awake'){
     b.t+=dt;
-    if(b.act==='walk')walkStep(b,dt,ctx);
+    if(b.act==='walk')walkStep(b,dt,ctx,rng);
     else{
       if(b.act==='look'){
         b.lookT-=dt;

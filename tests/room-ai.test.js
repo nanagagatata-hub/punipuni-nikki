@@ -280,3 +280,30 @@ test('motion：NaN を渡しても有限', ()=>{
   const m=motion(mb('idle',{t:NaN,yaw:NaN}),NaN,'spin',NaN,NaN);
   for(const k of ['scaleX','scaleY','lift','tilt','yaw'])assert.ok(Number.isFinite(m[k]),k);
 });
+
+test('F2: 止めている最中に dance になっても 1 コマで踊り出す', ()=>{
+  const c=ctx('awake'),rng=mulberry32(3),b=createBrain(6,c);
+  run(b,1,c,rng);
+  pauseBrain(b,3);
+  stepBrain(b,1/30,ctx('dance'),grid,rng);
+  assert.equal(b.act,'dance');
+  assert.equal(b.hold,0);
+  run(b,2,ctx('dance'),rng);assert.equal(b.act,'dance');
+});
+test('F2: 止めている最中に egg になるとすぐ home に戻る', ()=>{
+  const c=ctx('awake'),rng=mulberry32(3),b=createBrain(6,c);
+  b.x=1.5;b.y=1.5;pauseBrain(b,3);
+  stepBrain(b,1/30,ctx('egg'),grid,rng);
+  assert.deepEqual(pos(b),[home.x+0.5,home.y+0.5]);
+});
+test('F3: 歩き終わったあとは 1 秒以上 idle で休む', ()=>{
+  const c=ctx('awake');
+  for(let seed=1;seed<=8;seed++){
+    const rng=mulberry32(seed),b=createBrain(6,c);
+    toWalk(b,c,rng);
+    for(let i=0;i<30*60&&b.act==='walk';i++)stepBrain(b,1/30,c,grid,rng);
+    assert.equal(b.act,'idle');
+    assert.ok(b.dur>=1&&b.dur<=2.5,'dur='+b.dur);
+    run(b,0.9,c,rng);assert.equal(b.act,'idle');
+  }
+});

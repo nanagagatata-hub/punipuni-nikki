@@ -1,0 +1,8 @@
+/* 段階0 試作（開発用） */
+html,body{margin:0;background:#FFF8EE;color:#4A3A48;font:14px/1.4 -apple-system,'Hiragino Sans',sans-serif}
+body{padding:calc(8px + env(safe-area-inset-top,0px)) 12px calc(8px + env(safe-area-inset-bottom,0px))}
+#hud{margin:0 0 4px;font-weight:700;font-variant-numeric:tabular-nums}
+.links{margin:0 0 6px}
+.links a{margin-right:10px;color:#A94F78}
+#c{display:block;width:100%;aspect-ratio:4/3;background:#FDEFF4;border-radius:16px;touch-action:none}
+#log{margin:6px 0 0;font-size:12px;max-height:30vh;overflow:auto;white-space:pre-wrap;background:#fff;border-radius:8px;padding:6px}

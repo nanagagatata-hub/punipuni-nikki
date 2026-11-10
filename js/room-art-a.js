@@ -6,7 +6,7 @@
 //   2. 下の ART_A に `アイテムid: 関数` を足す。キーは受け持ちの ID だけ。
 //   3. node --test tests/*.test.js と dev/item-sheet.html?g=A で確かめる。
 // room-art.js の itemSVG(id) が ART_A → ART_B → ART_C の順に引く（無い ID は予備の箱になる）。
-import {OL,ST,SHADOW,pts,poly,polyN,roundPoly,isoPt,wrapSVG} from './room-art-kit.js';
+import {OL,ST,SHADOW,f1,pts,poly,polyN,roundPoly,isoPt,wrapSVG} from './room-art-kit.js';
 
 /** @typedef {import('./room-art-kit.js').ItemArt} ItemArt */
 
@@ -63,9 +63,126 @@ function plant(){
   return {svg:wrapSVG(w,h,s),w,h,ax,ay};
 }
 
+// ラグ（足あと 2×2・平たい）。段階1 の roomSVG のラグ（スカラップのふち・点線のぬい目・まん中の花）を
+// 家具として描き直したもの。厚み 3px：手前の 2 辺のふちを 1 段下に、左（+gy 側）＝ふつう・右（+gx 側）＝暗い で重ねる。
+/** @param {{base:string,inner:string,mid:string,dark:string,petal:string,heart:string}} c */
+function rugArt(c){
+  const T=3, pad=9, ax=64+pad, ay=pad, w=128+pad*2, h=64+T+pad*2;
+  const R=(gx,gy,z=0)=>isoPt(ax,ay,gx,gy,z);
+  const cor=[R(0,0),R(2,0),R(2,2),R(0,2)];
+  // 辺 i（cor[i]→cor[i+1]）に沿ったスカラップ。dy＝下へずらす量
+  const scal=(i,fill,dy)=>{
+    const p=cor[i],q=cor[(i+1)%4];let t='';
+    for(let k=0;k<6;k++){const u=(k+.5)/6;t+=`<ellipse cx="${f1(p[0]+(q[0]-p[0])*u)}" cy="${f1(p[1]+(q[1]-p[1])*u+dy)}" rx="9" ry="5.6" fill="${fill}" ${ST}/>`;}
+    return t;
+  };
+  let s='';
+  // 厚み（下の段）：奥の 2 辺→手前の左（ふつう）→手前の右（暗い）
+  s+=scal(0,c.mid,T)+scal(3,c.mid,T)+scal(2,c.mid,T)+scal(1,c.dark,T);
+  s+=polyN(cor.map(p=>[p[0],p[1]+T]),c.mid);
+  // 上の面
+  for(let i=0;i<4;i++)s+=scal(i,c.base,0);
+  s+=polyN(cor,c.base);
+  const d=.2,inn=[R(d,d),R(2-d,d),R(2-d,2-d),R(d,2-d)];
+  s+=`<polygon points="${pts(inn)}" fill="${c.inner}" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="1 6" stroke-linecap="round"/>`;
+  // まん中の花（花びら 4 まい＋しべ）と、すみの小さなハート
+  const m=R(1,1);
+  s+=[[0,-9],[10,0],[0,9],[-10,0]].map(([dx,dy])=>`<ellipse cx="${f1(m[0]+dx)}" cy="${f1(m[1]+dy)}" rx="6" ry="4.2" fill="${c.petal}"/>`).join('')
+    +`<ellipse cx="${f1(m[0])}" cy="${f1(m[1])}" rx="5" ry="3.4" fill="#FFE89A"/>`;
+  for(const [gx,gy] of [[.55,.55],[1.45,.55],[1.45,1.45],[.55,1.45]]){
+    const [x,y]=R(gx,gy);
+    s+=`<path d="M${f1(x)} ${f1(y+3)}C${f1(x-6)} ${f1(y-1)} ${f1(x-3)} ${f1(y-5)} ${f1(x)} ${f1(y-2.2)}C${f1(x+3)} ${f1(y-5)} ${f1(x+6)} ${f1(y-1)} ${f1(x)} ${f1(y+3)}Z" fill="${c.heart}"/>`;
+  }
+  return {svg:wrapSVG(w,h,s),w,h,ax,ay};
+}
+const rug=()=>rugArt({base:'#CDB8F0',inner:'#E6DAFA',mid:'#B9A1E3',dark:'#A58BD3',petal:'#FFC1D8',heart:'#FFFFFF'});
+const rug_pink=()=>rugArt({base:'#FFC4D8',inner:'#FFE4EE',mid:'#F2A9C3',dark:'#E290B0',petal:'#FFFFFF',heart:'#FFFFFF'});
+const rug_mint=()=>rugArt({base:'#A9E2C8',inner:'#DDF5EA',mid:'#8DD0B2',dark:'#74BD9D',petal:'#FFC1D8',heart:'#FFFFFF'});
+
+// らんぷ（足あと 1×1）。まるい台・ほそい柱・すそが波の かさ。かさは 上＝明るい・左＝ふつう・右＝暗い
+function lamp(){
+  const w=76, ax=38, ay=112, h=ay+32+6, cx=ax, cy=ay+16;
+  const tY=cy-100, bY=cy-66, tw=15, bw=27; // かさの上・下の y と はば（半分）
+  let s=`<ellipse cx="${cx}" cy="${cy}" rx="24" ry="10" fill="${SHADOW}"/>`;
+  // 台（厚みつきの だ円）
+  s+=`<ellipse cx="${cx}" cy="${cy-1}" rx="16" ry="7" fill="#E9C79B" ${ST}/>`;
+  s+=`<path d="M${cx} ${cy-5}L${cx+16} ${cy-5}L${cx+16} ${cy-1}A16 7 0 0 1 ${cx} ${cy+6}Z" fill="#DDB585"/>`;
+  s+=`<ellipse cx="${cx}" cy="${cy-5}" rx="16" ry="7" fill="#FFF0D6" ${ST}/>`;
+  // 柱
+  s+=`<path d="M${cx} ${cy-6}L${cx} ${bY+2}" stroke="${OL}" stroke-width="8" stroke-linecap="round"/>`
+    +`<path d="M${cx} ${cy-6}L${cx} ${bY+2}" stroke="#F4DDB4" stroke-width="4" stroke-linecap="round"/>`
+    +`<path d="M${cx+1} ${cy-6}L${cx+1} ${bY+2}" stroke="#E3C89E" stroke-width="1.5"/>`;
+  s+=`<ellipse cx="${cx}" cy="${cy-30}" rx="5" ry="3.2" fill="#FFD27A" ${ST}/>`;
+  // かさ：形（ふつう）→ 右の暗いところ → 線 → 上の明るい だ円 → すその波
+  const shade=`M${cx-tw} ${tY}L${cx+tw} ${tY}L${cx+bw} ${bY}Q${cx} ${bY+7} ${cx-bw} ${bY}Z`;
+  s+=`<path d="${shade}" fill="#FFC6D9"/>`;
+  s+=`<path d="M${cx+5} ${tY}L${cx+tw} ${tY}L${cx+bw} ${bY}Q${cx+18} ${bY+4.6} ${cx+9} ${bY+5.6}Z" fill="#F5A6C2"/>`;
+  s+=`<path d="M${cx-tw+4} ${tY+4}L${cx-bw+7} ${bY-1}" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity=".6"/>`;
+  for(let k=0;k<5;k++){const u=(k+.5)/5, x=cx-bw+u*bw*2, y=bY+7*(1-Math.pow(2*u-1,2))-.5;s+=`<circle cx="${f1(x)}" cy="${f1(y+2)}" r="4.4" fill="${k>=3?'#F5A6C2':'#FFC6D9'}" ${ST}/>`;}
+  s+=`<path d="${shade}" fill="none" ${ST}/>`;
+  s+=`<ellipse cx="${cx}" cy="${tY}" rx="${tw}" ry="5" fill="#FFE6EF" ${ST}/>`;
+  // ひも と 玉
+  s+=`<path d="M${cx+14} ${bY+4}L${cx+14} ${bY+16}" stroke="${OL}" stroke-width="1.6"/><circle cx="${cx+14}" cy="${bY+18}" r="3" fill="#FFE89A" ${ST}/>`;
+  return {svg:wrapSVG(w,h,s),w,h,ax,ay};
+}
+
+// ぼーる（足あと 1×1）。ピンクの玉に みんとの帯と黄色い星。左上が明るく、右下に暗いかげ
+function ball(){
+  const w=76, ax=38, ay=33, h=ay+32+6, cx=ax, cy=ay+16, r=21, by=cy-19;
+  let s=`<ellipse cx="${cx}" cy="${cy}" rx="22" ry="8" fill="${SHADOW}"/>`;
+  s+=`<circle cx="${cx}" cy="${by}" r="${r}" fill="#FFB8CE"/>`;
+  // 帯（ななめの みんと）
+  s+=`<path d="M${cx-r+1} ${by+6}Q${cx} ${by-6} ${cx+r-1} ${by-6}L${cx+r-.2} ${by+3}Q${cx} ${by+4} ${cx-r+4.5} ${by+13}Z" fill="#A9E2C8"/>`;
+  // 右下の暗いかげ（三日月）
+  s+=`<path d="M${cx+r*.98} ${by-4}A${r} ${r} 0 0 1 ${cx-8} ${by+r*.92}A${r*1.05} ${r*1.05} 0 0 0 ${cx+r*.98} ${by-4}Z" fill="rgba(170,80,120,.22)"/>`;
+  s+=`<circle cx="${cx}" cy="${by}" r="${r}" fill="none" ${ST}/>`;
+  // 星
+  const star=[];for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5, rr=i%2?3.4:7.4;star.push([cx-4+Math.cos(a)*rr,by-6+Math.sin(a)*rr]);}
+  s+=`<polygon points="${pts(star)}" fill="#FFE07A" stroke="${OL}" stroke-width="2" stroke-linejoin="round"/>`;
+  // 光
+  s+=`<ellipse cx="${cx-9}" cy="${by-10}" rx="4.5" ry="3" fill="#FFFFFF" opacity=".75" transform="rotate(-35 ${cx-9} ${by-10})"/>`;
+  return {svg:wrapSVG(w,h,s),w,h,ax,ay};
+}
+
+// ぬいぐるみ（足あと 1×1）。まるい体の くま。顔は点の目と小さな口だけ（ほっぺは うすく）
+function plush(){
+  const w=76, ax=38, ay=52, h=ay+32+6, cx=ax, cy=ay+16;
+  const body='#F6D3B0', mid='#E9BE97', dark='#DCAA82', hx=cx, hy=cy-41;
+  let s=`<ellipse cx="${cx}" cy="${cy}" rx="24" ry="9" fill="${SHADOW}"/>`;
+  // 耳
+  for(const sx of [-1,1])s+=`<circle cx="${hx+sx*12}" cy="${hy-11}" r="6.5" fill="${sx>0?mid:body}" ${ST}/><circle cx="${hx+sx*12}" cy="${hy-11}" r="3.2" fill="#FFC1D2"/>`;
+  // 体（まるい）＋右のかげ
+  s+=`<ellipse cx="${cx}" cy="${cy-15}" rx="19" ry="17" fill="${body}" ${ST}/>`;
+  s+=`<path d="M${cx+8} ${cy-30.4}A19 17 0 0 1 ${cx+5} ${cy+1.3}A16 17 0 0 0 ${cx+8} ${cy-30.4}Z" fill="${mid}"/>`;
+  s+=`<ellipse cx="${cx-1}" cy="${cy-12}" rx="10" ry="9" fill="#FFF0E0"/>`;
+  // 足（前に出した まるい足）
+  for(const sx of [-1,1])s+=`<ellipse cx="${cx+sx*10}" cy="${cy-2}" rx="7" ry="5.4" fill="${sx>0?mid:body}" ${ST}/><ellipse cx="${cx+sx*10}" cy="${cy-2}" rx="3.4" ry="2.6" fill="#FFC1D2"/>`;
+  // 手
+  for(const sx of [-1,1])s+=`<ellipse cx="${cx+sx*17}" cy="${cy-17}" rx="5" ry="6.5" fill="${sx>0?dark:body}" ${ST} transform="rotate(${sx*-20} ${cx+sx*17} ${cy-17})"/>`;
+  // 頭
+  s+=`<circle cx="${hx}" cy="${hy}" r="15" fill="${body}" ${ST}/>`;
+  s+=`<path d="M${hx+7} ${hy-13.3}A15 15 0 0 1 ${hx+6} ${hy+13.7}A13 15 0 0 0 ${hx+7} ${hy-13.3}Z" fill="${mid}"/>`;
+  s+=`<ellipse cx="${hx-5}" cy="${hy-7}" rx="4" ry="2.4" fill="#FFFFFF" opacity=".5"/>`;
+  // 顔（点の目・小さな口・ほっぺ）
+  s+=`<circle cx="${hx-5.5}" cy="${hy+1}" r="1.9" fill="#6B4A4A"/><circle cx="${hx+5.5}" cy="${hy+1}" r="1.9" fill="#6B4A4A"/>`;
+  s+=`<path d="M${hx-2} ${hy+5.5}Q${hx} ${hy+7.5} ${hx+2} ${hy+5.5}" stroke="#6B4A4A" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+  s+=`<ellipse cx="${hx-9.5}" cy="${hy+5}" rx="3" ry="1.8" fill="#FFAFC5" opacity=".7"/><ellipse cx="${hx+9.5}" cy="${hy+5}" rx="3" ry="1.8" fill="#FFAFC5" opacity=".7"/>`;
+  // むねの りぼん（みんと）
+  s+=`<path d="M${cx} ${hy+16}L${cx-8} ${hy+12}L${cx-8} ${hy+20}Z" fill="#A9E2C8" stroke="${OL}" stroke-width="2" stroke-linejoin="round"/>`
+    +`<path d="M${cx} ${hy+16}L${cx+8} ${hy+12}L${cx+8} ${hy+20}Z" fill="#8DD0B2" stroke="${OL}" stroke-width="2" stroke-linejoin="round"/>`
+    +`<circle cx="${cx}" cy="${hy+16}" r="2.6" fill="#DDF5EA" stroke="${OL}" stroke-width="2"/>`;
+  return {svg:wrapSVG(w,h,s),w,h,ax,ay};
+}
+
 /** グループ A の絵の表（凍結・プロトタイプなし。引くときは room-data.js の has(ART_A,id)）
  * @type {Readonly<{[id:string]:()=>ItemArt}>} */
 export const ART_A=Object.freeze(Object.assign(Object.create(null),{
+  rug,
+  rug_pink,
+  rug_mint,
   shelf,
   plant,
+  lamp,
+  ball,
+  plush,
 }));

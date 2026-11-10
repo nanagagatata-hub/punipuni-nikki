@@ -1,6 +1,7 @@
 // js/room-art-a.js（と、まだ空の -b・-c）のテスト（node --test tests/room-art-a.test.js）
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {ART_A} from '../js/room-art-a.js';
 import {ART_B} from '../js/room-art-b.js';
 import {ART_C} from '../js/room-art-c.js';
@@ -51,4 +52,24 @@ test('checkSafe・checkArt は決まりを破った絵を落とす',()=>{
   for(const o of [{w:NaN},{h:Infinity},{ax:0},{ay:-1},{ax:31},{ax:45},{h:71},{ay:151,h:200}])assert.throws(()=>checkArt(art(ok,o),'plant',1,1),JSON.stringify(o));
   assert.throws(()=>checkArt(art(),'shelf',1,2)); // 1×2 の足あとには 小さすぎる
   assert.throws(()=>checkArt(null,'plant',1,1));
+});
+
+test('ART_A のキーは GROUPS.A の 8 つちょうど',()=>{
+  assert.deepEqual(Object.keys(ART_A).sort(),[...GROUPS.A].sort());
+});
+
+test('ラグ 3 色はたがいに違う絵で、同じ形・平たい（床から上は 6px 以下＋線と余白）',()=>{
+  const r=['rug','rug_pink','rug_mint'].map(id=>ART_A[id]());
+  assert.equal(new Set(r.map(a=>a.svg)).size,3);
+  for(const a of r){
+    assert.deepEqual({w:a.w,h:a.h,ax:a.ax,ay:a.ay},{w:r[0].w,h:r[0].h,ax:r[0].ax,ay:r[0].ay});
+    assert.ok(a.ay<=16,`ay=${a.ay}`);
+  }
+});
+
+test('ほんだな は Task 3 のハッシュのまま',()=>{
+  const sha=s=>createHash('sha256').update(s).digest('hex');
+  const m=ART_A.shelf();
+  assert.equal(sha(m.svg),'5b1c1812e9cb3acbe8e2d1ff63f31f41c59d7960817f1d66aa7b2598cd763d4e');
+  assert.deepEqual({w:m.w,h:m.h,ax:m.ax,ay:m.ay},{w:108,h:160,ax:70,ay:106});
 });

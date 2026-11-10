@@ -110,6 +110,21 @@ img,svg{max-width:100%}
 .food{position:relative;width:74px;height:74px;border-radius:24px;border:2px solid var(--line);background:var(--card);font-size:38px;box-shadow:0 4px 0 var(--shadow)}
 .food .n{position:absolute;top:-8px;right:-8px;min-width:28px;height:28px;padding:0 6px;border-radius:999px;background:var(--btn);color:var(--btn-ink);font-size:16px;line-height:28px}
 .pill{border:2px solid var(--line);background:var(--card);box-shadow:0 3px 0 var(--shadow);border-radius:999px;padding:8px 18px;font-size:17px}
+/* こいん：ヘッダーの小さな表示（押せないので影なし）。ふえたら 0.5 秒だけ大きくなる */
+.coin{display:inline-flex;align-items:center;border:2px solid var(--line);background:var(--card);border-radius:999px;padding:8px 12px;font-size:17px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.coin.coinpop{animation:coinpop .5s cubic-bezier(.34,1.7,.6,1)}
+@keyframes coinpop{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
+/* せまい画面（スマホ）：ボタンの列は折り返さず 1 行。なまえ は 「ぴきめ」の上に置き、入りきらない分は … にする */
+@media (max-width:520px){
+  .top{gap:8px}
+  .title{flex-direction:column;align-items:flex-start;gap:0;min-width:0}
+  .title b{font-size:22px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .title small{font-size:13px}
+  .topbtns{gap:6px;flex-shrink:0}
+  .topbtns .pill{padding:8px 12px;font-size:15px;white-space:nowrap}
+  .coin{padding:6px 10px;font-size:15px}
+  .gear{width:44px;height:44px;font-size:20px}
+}
 
 .note{background:var(--card);border-radius:28px;padding:18px 18px 20px;border:2px solid var(--line);box-shadow:0 5px 0 var(--shadow),0 12px 22px rgba(120,70,40,.14)}
 .note{padding:12px 14px 14px}
@@ -269,12 +284,3 @@ textarea{min-height:90px;font-size:13px!important;font-family:ui-monospace,monos
 
 /* 押せない間のボタン（おわかれの歌の「つぎへ」など）は うすく */
 .btn:disabled{opacity:.45;box-shadow:none;cursor:default}
-
-/* おへや（Canvas の部屋）。使えない時は .room が付かず、今の表示のまま */
-.screen.room{aspect-ratio:4/3}
-.screen.room .scene canvas{display:block}
-.screen.room .pet{position:absolute;margin:0;z-index:2;background:none}
-.screen.room .growth{position:absolute;bottom:8px;left:0;right:0;margin-top:0}
-@media (min-width:700px) and (min-height:700px){
-  .screen.room{flex:0 0 auto;width:100%;margin:auto 0}
-}

@@ -1,12 +1,10 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
 import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES,SONG} from './data.js';
-import {dayKey,band,isNight,asleep,nightKey,minLabel,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine,canUndo,undoReport,undoLabel,taskLimit,secretLeft} from './rules.js';
+import {dayKey,band,isNight,asleep,nightKey,minLabel,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine,canUndo,undoReport,undoLabel,taskLimit,secretLeft,grantCoin} from './rules.js';
 import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
 import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
 import {speak,sfx,setSound,unlock,sing} from './sound.js';
-import {mount,unmount as roomUnmount,update as roomUpdate,hold as roomHold,pauseFor,poke} from './room.js';
-let roomOn=false;
 const APP_VERSION='v2.5.1'; // sw.js の VERSION と同じ値にそろえる
 
 const $=s=>document.querySelector(s);
@@ -100,7 +98,8 @@ function report(t){
   const key=t.id==='hamigaki'?'hamigaki_'+st.slot:t.id;
   S.cnt[key]=(S.cnt[key]||0)+1;
   S.inv[t.food]=(S.inv[t.food]||0)+1;
-  S.undo.push({t:t.id,k:key,f:t.food,b:S.boostUntil,n:S.inv[t.food]});if(S.undo.length>30)S.undo.shift();
+  const c=grantCoin(S,FOODS[t.food].pt);
+  S.undo.push({t:t.id,k:key,f:t.food,b:S.boostUntil,n:S.inv[t.food],c});if(S.undo.length>30)S.undo.shift();
   const f=FOODS[t.food];
   if(t.id==='lesson'){S.boostUntil=Date.now()+24*H;say(`すごい！${f.name} を もらったよ。ぐんぐんたいむ が はじまった！`);}
   else say(`${f.name} を もらったよ！した の ${f.icon} を おして あげてね`);
@@ -111,7 +110,6 @@ function feed(fid){
   if(!(S.inv[fid]>0))return;
   const f=FOODS[fid],now=Date.now();lastInteract=now;
   if(asleep(S,now)){say(line('sleepFeed'));return;}
-  if(roomOn)pauseFor(3);
   flyFood(fid);S.inv[fid]--;afterFeed(S);
   if(S.stage>0){S.hunger=Math.min(4,S.hunger+(fid==='nikuman'?2:1));if(fid==='purin')S.mood=Math.min(4,S.mood+1);}
   if(S.sick){
@@ -162,7 +160,7 @@ function showEvolve(){
 }
 /* ゆらす演出は 1 回だけ。終わったらクラスを外してポーズのアニメーションに戻す */
 let wobT=null;
-function wobble(){if(roomOn)poke();const el=$('#pet');el.classList.remove('wobble');void el.offsetWidth;el.classList.add('wobble');clearTimeout(wobT);wobT=setTimeout(()=>el.classList.remove('wobble'),700);}
+function wobble(){const el=$('#pet');el.classList.remove('wobble');void el.offsetWidth;el.classList.add('wobble');clearTimeout(wobT);wobT=setTimeout(()=>el.classList.remove('wobble'),700);}
 $('#pet').addEventListener('animationend',e=>{if(e.animationName==='wob')$('#pet').classList.remove('wobble');});
 /* タッチ（spec §6）：kind = head / belly / stroke / hug / mash */
 const TOUCH_LINE={head:'tapHead',belly:'tapBelly',stroke:'stroke',hug:'hug',mash:'dizzy'};
@@ -218,7 +216,7 @@ function newGeneration(){
   S.history.push({f:S.form,n:S.name,g:S.gen,s:S.shiny});
   if(S.history.length>200)S.history=S.history.slice(-200);
   const keep={name:S.name,you:S.you,gen:Math.min(9999,S.gen+1),zukan:S.zukan,shinySeen:S.shinySeen,history:S.history,
-    lessonDays:S.lessonDays,inv:S.inv,day:S.day,cnt:S.cnt,boostUntil:S.boostUntil,sound:S.sound,cfg:S.cfg,tempNight:S.tempNight,undo:S.undo};
+    lessonDays:S.lessonDays,inv:S.inv,day:S.day,cnt:S.cnt,boostUntil:S.boostUntil,sound:S.sound,cfg:S.cfg,tempNight:S.tempNight,undo:S.undo,coin:S.coin,own:S.own,room:S.room};
   S=Object.assign(DEF(),keep);save();say('たまご を もらったよ！あたためて あげよう');render();
 }
 function formName(){return (S.stage===4?'かがやく ':'')+(S.shiny?'きらきら ':'')+FORMS[S.form].name;}
@@ -339,20 +337,25 @@ function flyFood(fid){
   s.style.setProperty('--tx',(p.left+p.width/2-r.left-r.width/2)+'px');s.style.setProperty('--ty',(p.top+p.height*.55-r.top-r.height/2)+'px');
   document.body.appendChild(s);setTimeout(()=>s.remove(),700);
 }
+/* こいん：ヘッダーの数字。前に出した数より ふえたときだけ ぽん と大きくする */
+let shownCoin=null;
+function setCoin(n){
+  const el=$('#coin');if(!el)return;
+  n=Math.max(0,Math.floor(Number(n))||0);
+  el.textContent='🪙 '+n;el.setAttribute('aria-label','こいん '+n+' まい');
+  if(shownCoin!=null&&n>shownCoin)replay(el,'coinpop');
+  shownCoin=n;
+}
+{const el=$('#coin');if(el)el.addEventListener('animationend',()=>el.classList.remove('coinpop'));}
 function render(){
   ensureDay();const now=Date.now();
   $('#petName').textContent=S.name;$('#genLabel').textContent=S.gen+'ぴきめ';
   const sleeping=S.stage>0&&asleep(S,now);
   const L=now<danceUntil&&!sleeping?{face:'sparkle',pose:'dance',arms:'up',think:null}:look(S,{night:sleeping,react:now<reactUntil?react:null});
-  if(!roomOn)$('#pet').innerHTML=petSVG(S.form,L.face,{pts:S.pts,shiny:S.shiny,final:S.stage===4,arms:L.arms,think:L.think});
-  else $('#pet').innerHTML='';
+  $('#pet').innerHTML=petSVG(S.form,L.face,{pts:S.pts,shiny:S.shiny,final:S.stage===4,arms:L.arms,think:L.think});
   $('#pet').dataset.pose=L.pose;
-  const bd=band(new Date(),S.cfg);$('#screen').className='screen t-'+bd+(roomOn?' room':'');
-  if(roomOn){
-    const mode=S.stage===0?'egg':sleeping?'sleep':S.sick?'sick':now<danceUntil?'dance':S.hunger===0?'hungry':'awake';
-    try{roomUpdate({view:{form:S.form,face:L.face,arms:L.arms,think:L.think,pose:L.pose,shiny:S.shiny,final:S.stage===4,pts:S.pts},mode,band:bd,now});}
-    catch(e){try{roomUnmount();}catch(e2){}roomOff();return;}
-  }else if(sceneBand!==bd){$('#scene').innerHTML=sceneSVG(bd);sceneBand=bd;}
+  const bd=band(new Date(),S.cfg);$('#screen').className='screen t-'+bd;
+  if(sceneBand!==bd){$('#scene').innerHTML=sceneSVG(bd);sceneBand=bd;}
   $('#gauges').innerHTML=S.stage===0?`<span class="glabel">たまご を あたためよう</span>`:
     `<div class="gauge"><span class="glabel">おなか</span>${icons('🍙',S.hunger,lastG?lastG.h:S.hunger)}</div><div class="gauge"><span class="glabel">ごきげん</span>${icons('🌸',S.mood,lastG?lastG.m:S.mood)}</div>`;
   lastG={h:S.hunger,m:S.mood};
@@ -390,6 +393,7 @@ function render(){
   $('#params').innerHTML=PARAMS.map(p=>`<div class="prow"><span>${p[1]}</span><span>${p[2]}</span><div class="bar"><i data-w="${S.p[p[0]]/mx*100}"></i></div><b>${Math.floor(S.p[p[0]])}</b></div>`).join('');
     document.querySelectorAll('[data-w]').forEach(el=>{el.style.width=Math.max(0,Math.min(100,+el.dataset.w||0))+'%';});
   renderBubble();
+  setCoin(S.coin);
 }
 
 /* ---------- events ---------- */
@@ -409,7 +413,6 @@ pet.addEventListener('pointerdown',e=>{
   const r=pet.getBoundingClientRect();
   ptr={x:e.clientX,y:e.clientY,dist:0,done:false,top:(e.clientY-r.top)/r.height<.4};
   try{pet.setPointerCapture(e.pointerId);}catch(err){}
-  if(roomOn)roomHold(true);
   clearTimeout(holdT2);holdT2=setTimeout(()=>{if(ptr&&!ptr.done&&ptr.dist<12){ptr.done=true;petAct('hug');}},700);
 });
 pet.addEventListener('pointermove',e=>{
@@ -418,14 +421,12 @@ pet.addEventListener('pointermove',e=>{
   if(!ptr.done&&ptr.dist>=80){ptr.done=true;clearTimeout(holdT2);petAct('stroke');}
 });
 pet.addEventListener('pointerup',()=>{
-  if(roomOn)roomHold(false);
   clearTimeout(holdT2);if(!ptr)return;
   const p=ptr;ptr=null;if(p.done)return;
   const now=Date.now();taps=taps.filter(t=>now-t<2500);taps.push(now);
   if(taps.length>=5){taps=[];petAct('mash');}else petAct(p.top?'head':'belly');
 });
-pet.addEventListener('lostpointercapture',()=>{if(roomOn)roomHold(false);});
-pet.addEventListener('pointercancel',()=>{if(roomOn)roomHold(false);clearTimeout(holdT2);ptr=null;});
+pet.addEventListener('pointercancel',()=>{clearTimeout(holdT2);ptr=null;});
 pet.addEventListener('click',e=>{if(e.detail===0)petAct('belly');});
 $('#zukanBtn').addEventListener('click',openZukan);
 $('#speakBtn').addEventListener('click',()=>speak(bubble.ja,bubble.zh));
@@ -456,13 +457,6 @@ function idle(now){
   if(S.stage===0||S.sick||asleep(S,now)||!$('#modal').hidden)return;
   if(now-lastInteract>=90e3&&idleFor!==lastInteract){idleFor=lastInteract;say(line('idle'));}
 }
-/* おへや：使えなければ（または画像の読み込みに失敗したら）今の表示に戻る */
-function roomOff(){
-  roomOn=false;$('#screen').classList.remove('room');sceneBand='';
-  $('#scene').textContent='';pet.style.cssText='';render();
-}
-try{roomOn=mount($('#scene'),pet,{n:6,onFail:roomOff});}catch(e){roomOn=false;try{roomUnmount();}catch(e2){}}
-if(roomOn)$('#screen').classList.add('room');
 tick(Date.now());
 greet();
 setSound(S.sound);

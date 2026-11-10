@@ -1,6 +1,7 @@
 // DOM に触れない純粋なルール（時間帯・タスク受付・時間経過・分岐）
 import {H,WD,ADULT_IDS,LINES,TASKS,FORMS,ZORDER} from './data.js';
 import {CFG_DEF} from './state.js';
+import {MAX_COIN,MAX_GRANT} from './room-data.js';
 const DEFCFG=CFG_DEF();
 const cf=c=>c||DEFCFG;
 const mOf=d=>d.getHours()*60+d.getMinutes();
@@ -182,5 +183,17 @@ export function undoReport(S,tid){
   if((S.cnt[u.k]||0)>1)S.cnt[u.k]--;else delete S.cnt[u.k];
   if(S.inv[u.f]>1)S.inv[u.f]--;else delete S.inv[u.f];
   if(u.t==='lesson')S.boostUntil=u.b;
+  /* もらった こいんも戻す。もう使っていたら 0 で止める（借金にしない）。c の無い古い項目は 0 */
+  const c=Math.floor(Number(u.c));
+  S.coin=Math.max(0,coinOf(S)-(isFinite(c)?Math.min(MAX_GRANT,Math.max(0,c)):0));
   return true;
+}
+/* こいん：報告でもらう。amount を 0〜20 の整数に丸めて足し、999999 で止める。実際に増えた数を返す */
+function coinOf(S){const c=Math.floor(Number(S.coin));return isFinite(c)?Math.min(MAX_COIN,Math.max(0,c)):0;}
+export function grantCoin(S,amount){
+  let a=Number(amount);
+  a=isFinite(a)?Math.min(MAX_GRANT,Math.max(0,Math.floor(a))):0;
+  const before=coinOf(S);
+  S.coin=Math.min(MAX_COIN,before+a);
+  return S.coin-before;
 }

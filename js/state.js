@@ -1,5 +1,7 @@
 // 保存形式（DEF・sanitize・バックアップコード）
 import {H,TASKS,FOODS,FORMS,ZORDER,ADULT_IDS} from './data.js';
+import {MAX_COIN,MAX_GRANT,defaultOwn,defaultRoom} from './room-data.js';
+import {cleanOwn,cleanRoom} from './room-edit.js';
 /* v2 から保存キーを分ける：古い版のタブが残っていても v2 のデータを上書きされないように。v1 のキーは読むだけ */
 export const KEY='punipuni-nikki-v2';
 export const LEGACY_KEY='punipuni-nikki-v1';
@@ -35,13 +37,14 @@ export function DEF(){
   return {v:2,name:'ぷにちゃん',you:'',gen:1,stage:0,form:'egg',shiny:false,pts:0,p:{ka:0,ki:0,ge:0,ho:0},
     hunger:3,mood:3,hAcc:0,mAcc:0,zeroAcc:0,sick:false,cure:0,lastTick:now,petAt:0,boostUntil:0,
     adultAt:0,finalAt:0,finalSeenAt:0,inv:{},day:'',cnt:{},lessonDays:[6],
-    zukan:[],shinySeen:[],history:[],sound:true,cfg:CFG_DEF(),tempUntil:0,tempNight:'',undo:[]};
+    zukan:[],shinySeen:[],history:[],sound:true,cfg:CFG_DEF(),tempUntil:0,tempNight:'',undo:[],
+    coin:0,own:defaultOwn(),room:defaultRoom()};
 }
 /* 保存データ・復元コードは信頼しない：既知のキーと型だけを取り込む（__proto__等の混入対策）。v1 は v2 に移行する */
 function num(v,d,min,max){v=Number(v);if(!isFinite(v))return d;return Math.min(max,Math.max(min,v));}
 function int(v,d,min,max){return Math.floor(num(v,d,min,max));}
 function str(v,max){return typeof v==='string'?v.replace(/[\u0000-\u001F\u007F]/g,'').trim().slice(0,max):'';}
-const own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+const hasOwn=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
 const known=(list,a)=>Array.isArray(a)?list.filter(f=>a.indexOf(f)>=0):[];
 export function sanitize(o){
   const d=DEF();
@@ -52,7 +55,7 @@ export function sanitize(o){
   d.gen=int(o.gen,1,1,9999);
   d.stage=int(o.stage,0,0,4);
   const fs=Math.min(d.stage,3);
-  d.form=(typeof o.form==='string'&&own(FORMS,o.form)&&FORMS[o.form].stage===fs)?o.form:(d.stage?STAGE_FORM[d.stage]:'egg');
+  d.form=(typeof o.form==='string'&&hasOwn(FORMS,o.form)&&FORMS[o.form].stage===fs)?o.form:(d.stage?STAGE_FORM[d.stage]:'egg');
   d.shiny=d.stage>=3&&o.shiny===true;
   d.pts=num(o.pts,0,0,1e6);
   const p=(o.p&&typeof o.p==='object')?o.p:{};
@@ -87,7 +90,11 @@ export function sanitize(o){
     if(!u||typeof u!=='object')return false;
     const t=TASKS.find(x=>x.id===u.t);
     return !!t&&u.f===t.food&&(t.id==='hamigaki'?(u.k==='hamigaki_am'||u.k==='hamigaki_pm'):u.k===t.id)&&d.cnt[u.k]>0;
-  }).slice(-30).map(u=>({t:u.t,k:u.k,f:u.f,b:num(u.b,0,0,now+24*H),n:int(u.n,1000,1,1000)}));
+  }).slice(-30).map(u=>({t:u.t,k:u.k,f:u.f,b:num(u.b,0,0,now+24*H),n:int(u.n,1000,1,1000),c:int(u.c,0,0,MAX_GRANT)}));
+  /* おへや：こいん・持ちもの・部屋。キーの無い古いデータは初期値（部屋は「持っているものだけ」置ける） */
+  d.coin=int(o.coin,0,0,MAX_COIN);
+  d.own=hasOwn(o,'own')?cleanOwn(o.own):defaultOwn();
+  d.room=cleanRoom(o.room===undefined?defaultRoom():o.room,d.own);
   return d;
 }
 /* 読み込み：v2 のキー → なければ v1 のキー。壊れていたら元の文字列を KEY-broken に退避してから初期データで始める */

@@ -2,7 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mulberry32, makeGrid, passable, bfs, createBrain, stepBrain, holdBrain, pauseBrain,
-  normDeg, dirYaw, turnToward, pickAct, motion, TURN_GATE, WEIGHTS, BAND_MUL, SPEED, DUR} from '../js/room-ai.js';
+  normDeg, dirYaw, turnToward, pickAct, motion, TURN_GATE, WEIGHTS, BAND_MUL, SPEED, DUR, relocateBrain} from '../js/room-ai.js';
+import {blockedCells, homeFor} from '../js/room-edit.js';
 
 const isStep=(a,b)=>Math.abs(a.x-b.x)+Math.abs(a.y-b.y)===1;
 
@@ -305,5 +306,59 @@ test('F3: 歩き終わったあとは 1 秒以上 idle で休む', ()=>{
     assert.equal(b.act,'idle');
     assert.ok(b.dur>=1&&b.dur<=2.5,'dur='+b.dur);
     run(b,0.9,c,rng);assert.equal(b.act,'idle');
+  }
+});
+
+// ---- 部屋が変わったとき（relocateBrain）と 家具のある部屋 ----
+test('relocateBrain：通れないマスにいたら to の中心へ移り、経路を捨てて idle',()=>{
+  const g=makeGrid(6,[{x:2,y:2}]),c=ctx('awake'),b=createBrain(6,c);
+  b.x=2.5;b.y=2.5;b.act='walk';b.path=[{x:2,y:2},{x:3,y:2}];b.then=null;
+  relocateBrain(b,g,{x:3,y:2});
+  assert.equal(b.x,3.5);assert.equal(b.y,2.5);
+  assert.equal(b.path.length,0);assert.equal(b.act,'idle');
+});
+test('relocateBrain：通れるマスにいれば動かない（経路は捨てる）・force なら動く',()=>{
+  const g=makeGrid(6,[{x:2,y:2}]),b=createBrain(6,ctx('awake'));
+  b.x=1.5;b.y=4.5;b.act='walk';b.path=[{x:1,y:4},{x:1,y:3}];
+  relocateBrain(b,g,{x:3,y:2});
+  assert.deepEqual(pos(b),[1.5,4.5]);assert.equal(b.path.length,0);assert.equal(b.act,'idle');
+  b.act='sleep';
+  relocateBrain(b,g,{x:3,y:2});
+  assert.equal(b.act,'sleep'); // 歩いていなければ行動はそのまま
+  relocateBrain(b,g,{x:3,y:2},true);
+  assert.deepEqual(pos(b),[3.5,2.5]);
+});
+test('relocateBrain：grid.n=8 なら b.n=8',()=>{
+  const b=createBrain(6,ctx('awake'));
+  relocateBrain(b,makeGrid(8,[]),{x:0,y:0});
+  assert.equal(b.n,8);assert.deepEqual(pos(b),[3.5,3.5]);
+});
+test('家具のある grid で 2000 ステップ：通れないマスに入らない',()=>{
+  const room={n:6,floor:'f_honey',wall:'w_pink',items:[
+    {id:'bed',x:0,y:0,r:0},{id:'sofa',x:3,y:0,r:0},{id:'desk',x:5,y:2,r:0},{id:'shelf',x:0,y:3,r:1}]};
+  const g=makeGrid(6,blockedCells(room)),home=homeFor(room);
+  assert.ok(passable(g,home.x,home.y));
+  for(let seed=1;seed<=6;seed++){
+    const rng=mulberry32(seed),mk=mode=>({mode,band:'hiru',reduced:false,home});
+    const b=createBrain(6,mk('awake'));
+    for(let i=0;i<2000;i++){
+      const mode=i<700?'awake':i<1300?'sleep':'awake';
+      stepBrain(b,0.05,mk(mode),g,rng);
+      const cx=Math.min(5,Math.max(0,Math.round(b.x-.5))),cy=Math.min(5,Math.max(0,Math.round(b.y-.5)));
+      assert.ok(passable(g,cx,cy),`${seed}/${i}: ${b.x},${b.y}`);
+      assert.ok(Number.isFinite(b.x)&&Number.isFinite(b.y));
+    }
+  }
+});
+test('とじこめ：通れるマスが 1 つだけでも例外・NaN なし',()=>{
+  const blocked=[];for(let y=0;y<6;y++)for(let x=0;x<6;x++)if(x!==4||y!==1)blocked.push({x,y});
+  const g=makeGrid(6,blocked),home={x:4,y:1},rng=mulberry32(7);
+  const mk=mode=>({mode,band:'yoru',reduced:false,home});
+  const b=createBrain(6,mk('awake'));
+  const modes=['awake','sleep','sick','hungry','dance','egg','awake'];
+  for(let i=0;i<500;i++){
+    stepBrain(b,0.05,mk(modes[Math.floor(i/75)]),g,rng);
+    assert.ok(Number.isFinite(b.x)&&Number.isFinite(b.y)&&Number.isFinite(b.yaw));
+    assert.deepEqual(pos(b),[4.5,1.5]);
   }
 });

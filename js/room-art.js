@@ -1,4 +1,4 @@
-// おへやの絵（床・壁・まど とその柄）と固定の配置、家具の絵の振り分け。DOM には触れない。
+// おへやの絵（床・壁・まど とその柄）と、家具の絵の振り分け。DOM には触れない。
 // 仕様：docs/superpowers/specs/2026-11-10-oheya-stage0-1-design.md §3.1〜3.3、
 //       docs/superpowers/specs/2026-11-10-oheya-room-mode-and-stage2-design.md §8.1
 // 投影は 2:1 アイソメ。マス (gx,gy) の上の頂点は
@@ -14,24 +14,6 @@ import {ART_C} from './room-art-c.js';
 export {TILE_W,TILE_H,WALL_H} from './room-art-kit.js';
 
 /** @typedef {import('./room-art-kit.js').ItemArt} ItemArt */
-
-/**
- * 部屋の固定の配置。n は 6・8・10。マス単位。
- * @param {6|8|10} n
- * @returns {{items:{id:'shelf'|'plant',x:number,y:number,w:number,h:number,walk:false}[],rug:{x:number,y:number,w:2,h:2},home:{x:number,y:number},window:{wall:'right',at:number}}}
- */
-export function layout(n){
-  const m=n/2;
-  return {
-    items:[
-      {id:'shelf',x:0,y:m-1,w:1,h:2,walk:false},
-      {id:'plant',x:n-1,y:0,w:1,h:1,walk:false}
-    ],
-    rug:{x:m-1,y:m-1,w:2,h:2},
-    home:{x:m,y:m},
-    window:{wall:'right',at:m}
-  };
-}
 
 // ---- ゆか・かべの柄 ----
 // 床の柄：(P,n) → SVG 片。P(gx,gy) は床の格子点。床のひし形 P(0,0)〜P(n,n) の中だけに描く。

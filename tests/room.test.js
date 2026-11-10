@@ -1,7 +1,8 @@
 // room.js の純関数と SpriteCache のテスト
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {toScreen,fromScreen,sortByDepth,NIGHT,NIGHT_COLOR,approach,fitScale,petBox,yawBucket,SpriteCache,spriteMaker} from '../js/room.js';
+import {toScreen,fromScreen,sortByDepth,NIGHT,NIGHT_COLOR,approach,fitScale,petBox,yawBucket,SpriteCache,spriteMaker,cellAt,sortForDraw} from '../js/room.js';
+import {defaultRoom} from '../js/room-data.js';
 
 test('toScreen と fromScreen は往復する',()=>{
   for(const n of [6,8,10])for(let i=0;i<100;i++){
@@ -79,8 +80,13 @@ test('SpriteCache は最初から未完了なら null',()=>{
 
 test('import しても DOM に触れず、DOM 側の関数が export されている',async()=>{
   const m=await import('../js/room.js');
-  for(const k of ['mount','update','hold','pauseFor','poke','unmount'])assert.equal(typeof m[k],'function',k);
+  for(const k of ['mount','update','hold','pauseFor','poke','unmount','setRoom','setEdit','onCell'])assert.equal(typeof m[k],'function',k);
   assert.doesNotThrow(()=>m.unmount());
+  assert.doesNotThrow(()=>m.setRoom(defaultRoom()));
+  assert.doesNotThrow(()=>m.setEdit(null));
+  assert.doesNotThrow(()=>m.setEdit({mask:new Uint8Array(36),sel:0}));
+  assert.doesNotThrow(()=>m.onCell(null));
+  assert.doesNotThrow(()=>m.onCell(()=>{}));
   assert.doesNotThrow(()=>m.update({view:null,mode:'awake',band:'hiru',now:0}));
 });
 
@@ -92,4 +98,46 @@ test('F5: 絵が作れない（空の SVG）ときは fail を呼び、使えな
   assert.equal(im.naturalWidth,0);
   const ok=mk('<svg/>');
   assert.equal(fails,1);assert.equal(made,1);assert.equal(ok.naturalWidth,1);
+});
+
+// ---- 部屋の状態から描く（cellAt・sortForDraw） ----
+test('cellAt：全マスの中心がそのマスになる（n=6,8,10）',()=>{
+  const ox=10,oy=20,s=0.5;
+  for(const n of [6,8,10])for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+    const P=toScreen(x+.5,y+.5,n);
+    assert.deepEqual(cellAt(ox+P.x*s,oy+P.y*s,ox,oy,s,n),{x,y},`${n}: ${x},${y}`);
+  }
+});
+test('cellAt：部屋の外は null',()=>{
+  assert.equal(cellAt(0,0,10,20,0.5,6),null);
+  for(const n of [6,8,10]){
+    const far=toScreen(n+.5,n+.5,n),neg=toScreen(-.5,2,n);
+    assert.equal(cellAt(10+far.x*.5,20+far.y*.5,10,20,.5,n),null);
+    assert.equal(cellAt(10+neg.x*.5,20+neg.y*.5,10,20,.5,n),null);
+  }
+  assert.equal(cellAt(NaN,5,0,0,1,6),null);
+  assert.equal(cellAt(5,5,0,0,0,6),null);
+});
+test('sortForDraw：平たいものが先、それぞれ奥から',()=>{
+  const src=[{x:5,y:5,flat:true,k:'rug'},{x:.5,y:.5,k:'a'},{x:3,y:3,k:'b'}];
+  assert.deepEqual(sortForDraw(src).map(e=>e.k),['rug','a','b']);
+  const mix=[{x:4,y:4,k:'b'},{x:3,y:3,flat:true,k:'r2'},{x:1,y:1,flat:true,k:'r1'},{x:1,y:2,k:'a'}];
+  assert.deepEqual(sortForDraw(mix).map(e=>e.k),['r1','r2','a','b']);
+  assert.equal(src[0].k,'rug'); // 元の配列は変えない
+});
+test('sortForDraw：2×2 までの家具とぷにの前後（n=6 の全マス）',()=>{
+  const n=6;
+  for(const [w,h] of [[1,1],[1,2],[2,1],[2,2]])
+  for(let fy=0;fy+h<=n;fy++)for(let fx=0;fx+w<=n;fx++){
+    const item={x:fx+w/2,y:fy+h/2,k:'item'};
+    for(let gy=0;gy<n;gy++)for(let gx=0;gx<n;gx++){
+      if(gx>=fx&&gx<fx+w&&gy>=fy&&gy<fy+h)continue; // 足あとの中
+      const front=gx>=fx&&gy>=fy;          // 手前（gx+gy が大きい側）
+      const back=gx<fx+w&&gy<fy+h;         // 奥
+      if(!front&&!back)continue;           // 横に並ぶマスは重ならない
+      const pet={x:gx+.5,y:gy+.5,k:'pet'};
+      const ks=sortForDraw([pet,item]).map(e=>e.k);
+      assert.deepEqual(ks,front?['item','pet']:['pet','item'],`${w}x${h} at ${fx},${fy} pet ${gx},${gy}`);
+    }
+  }
 });

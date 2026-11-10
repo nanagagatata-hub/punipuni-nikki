@@ -133,6 +133,17 @@ export function pauseBrain(b,sec){
   if(b.act==='walk'){b.act='idle';b.then=null;b.t=0;b.dur=0;}
 }
 
+/** 部屋が変わったとき（家具を置いた・ひろげた）：b.n を合わせ、今のマスが通れない（または force）なら to の中心へ移す。
+ * 経路は捨て、歩いていたら idle にする（次のコマで引き直す）
+ * @param {Brain} b @param {Grid} grid @param {{x:number,y:number}} to @param {boolean} [force] */
+export function relocateBrain(b,grid,to,force){
+  b.n=grid.n;
+  const c=nearest(b);
+  if(force||!passable(grid,c.x,c.y)){b.x=to.x+0.5;b.y=to.y+0.5;}
+  b.path=[];
+  if(b.act==='walk'){b.act='idle';b.then=null;b.t=0;b.dur=0;b.want=0;}
+}
+
 /** いちばん近いマス */
 function nearest(b){
   const c=v=>Math.min(b.n-1,Math.max(0,Math.round(v-0.5)));

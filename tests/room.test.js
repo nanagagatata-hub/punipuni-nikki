@@ -68,3 +68,10 @@ test('SpriteCache は最初から未完了なら null',()=>{
   const c=new SpriteCache(5,()=>({complete:false,naturalWidth:0}));
   assert.equal(c.get('X',()=>'X'),null);
 });
+
+test('import しても DOM に触れず、DOM 側の関数が export されている',async()=>{
+  const m=await import('../js/room.js');
+  for(const k of ['mount','update','hold','pauseFor','poke','unmount'])assert.equal(typeof m[k],'function',k);
+  assert.doesNotThrow(()=>m.unmount());
+  assert.doesNotThrow(()=>m.update({view:null,mode:'awake',band:'hiru',now:0}));
+});

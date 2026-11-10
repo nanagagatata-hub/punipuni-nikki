@@ -312,6 +312,42 @@ body.inroom{overflow:hidden;overscroll-behavior:none}
 }
 
 /* おみせ */
+/* おへや の上に重ねる（上の「← もどる」と こいん は見えたまま） */
+.rshop{position:absolute;left:16px;right:16px;top:calc(66px + env(safe-area-inset-top,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));
+  display:flex;flex-direction:column;gap:10px;padding:14px;background:var(--card);border:3px solid var(--frame-dk);border-radius:28px;box-shadow:0 6px 0 var(--shadow);overflow:hidden}
+.rshop[hidden]{display:none}
+.shead{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.shead h2{margin:0;flex:1;font-size:24px}
+.stabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;flex:0 0 auto}
+.stab{min-height:52px;border:2px solid var(--line);background:var(--tile);border-radius:18px;font-size:18px;font-weight:700;color:var(--ink);box-shadow:0 3px 0 var(--shadow)}
+.stab.on{background:var(--accent);border-color:var(--btn);color:var(--ink)}
+.scards{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;align-content:start;padding:4px 2px 8px}
+.scard{display:flex;flex-direction:column;align-items:center;gap:4px;min-height:170px;padding:10px 8px;border:2px solid var(--line);background:var(--tile);border-radius:22px;box-shadow:0 4px 0 var(--shadow);color:var(--ink);font:inherit}
+.scard:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--shadow)}
+.scard:disabled{cursor:default;box-shadow:none}
+.scard.s-short,.scard.s-locked{opacity:.5}
+.scard.s-owned,.scard.s-max{background:var(--mint)}
+.sart{width:96px;height:72px;object-fit:contain;pointer-events:none}
+.sart-x{display:flex;align-items:center;justify-content:center;width:96px;height:72px;font-size:28px;font-weight:900;color:var(--btn)}
+.sname{font-size:16px;font-weight:700;line-height:1.3;text-align:center}
+.snote{font-size:16px;font-weight:900;line-height:1.3;text-align:center;font-variant-numeric:tabular-nums}
+.scard.s-locked .snote{font-size:14px;font-weight:700}
+.shave{font-size:13px;color:var(--soft)}
+/* 「これを かう？」 */
+.sconfirm{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px;background:var(--card)}
+.sconfirm[hidden]{display:none}
+.sconfirm .sart,.sconfirm .sart-x{width:192px;height:144px}
+.sconfirm .sart-x{font-size:52px}
+.sconfirm-name{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.sconfirm-name .sask{font-size:24px;font-weight:900}
+.sconfirm-name .sname{font-size:20px}
+.sconfirm-price{margin:0;font-size:22px;font-weight:900}
+.sconfirm .btn{min-width:140px;min-height:56px}
+@media (max-width:520px){
+  .rshop{left:8px;right:8px;padding:10px}
+  .stab{font-size:15px}
+  .scards{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+}
 
 
 

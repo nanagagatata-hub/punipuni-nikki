@@ -1,0 +1,12 @@
+/* 段階0.5 向きの試作（開発用） */
+html,body{margin:0;background:#FFF8EE;color:#4A3A48;font:14px/1.5 -apple-system,'Hiragino Sans',sans-serif}
+body{padding:calc(8px + env(safe-area-inset-top,0px)) 12px calc(8px + env(safe-area-inset-bottom,0px));max-width:1000px;margin:0 auto}
+h1{font-size:18px;margin:4px 0 8px}
+.ctl{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-bottom:6px}
+.ctl button{font:inherit;padding:6px 16px;border-radius:999px;border:2px solid #E6C9D6;background:#fff}
+.ctl input[type=range]{width:200px;vertical-align:middle}
+.row{margin:8px 0 4px;color:#7A6274}
+canvas{display:block;width:100%;background:#FDEFF4;border-radius:16px}
+#turn{aspect-ratio:2/1}
+#walk{aspect-ratio:4/3}
+#hud{font-size:12px;color:#7A6274;font-variant-numeric:tabular-nums}

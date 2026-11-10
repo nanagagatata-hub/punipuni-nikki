@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light">
+<title>おへや 段階0.5 向きの試作（開発用）</title>
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="./turn-spike.css">
+<script type="module" src="./turn-spike.js"></script>
+</head>
+<body>
+<!-- 開発用の使い捨て試作。アプリからはリンクしない・sw.js の ASSETS に入れない。保存データには触らない -->
+<h1>ぷにの向き：A（紙めくり）と B（2.5D）の見比べ</h1>
+<div class="ctl">
+  <button id="spin" type="button">とめる</button>
+  <label>向き <input id="ang" type="range" min="-180" max="180" step="1" value="0"> <output id="angOut">0°</output></label>
+  <label>B の方向数
+    <select id="buckets"><option value="16">16（22.5°ごと）</option><option value="24" selected>24（15°ごと）</option><option value="0">なめらか（毎回つくる）</option></select>
+  </label>
+  <label>顔 <select id="face"><option value="normal">ふつう</option><option value="happy">にこにこ</option></select></label>
+</div>
+<p class="row">上段：A 紙めくり（今の petSVG を横に縮めるだけ）／下段：B 2.5D（顔・耳・腕・かざりを丸い体の上で回す）</p>
+<canvas id="turn"></canvas>
+<p class="row">おへやで歩く：B で、進む方へ なめらかに向きを変える（斜め前・斜め後ろの 4 方向）</p>
+<canvas id="walk"></canvas>
+<p id="hud"></p>
+</body>
+</html>

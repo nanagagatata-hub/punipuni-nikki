@@ -65,6 +65,13 @@ export function fitScale(w,h,n){
   return Math.min(w/(n*TILE_W), h/(n*TILE_H+WALL_H));
 }
 
+/** 部屋の倍率と左上（CSS px）。縦も横も真ん中に置く（縦向きの iPad で上が空かないように）
+ * @param {number} w @param {number} h @param {number} n @returns {{s:number,ox:number,oy:number}} */
+export function fitOffset(w,h,n){
+  const s=fitScale(w,h,n);
+  return {s:s,ox:(w-n*TILE_W*s)/2,oy:(h-(n*TILE_H+WALL_H)*s)/2};
+}
+
 /** ぷにの当たり判定の箱（CSS px）。中心 cx・絵の下端 bottom（箱は絵の真ん中に重ねる）、箱 0..boxW×0..boxH に収める
  * @param {number} cx @param {number} bottom @param {number} sprite
  * @param {number} boxW @param {number} boxH
@@ -296,9 +303,8 @@ function resize(r,force){
   const dpr=Math.min(window.devicePixelRatio||1,2);
   if(!force&&w===r.cssW&&h===r.cssH&&dpr===r.dpr)return; // 大きさが変わらないなら何もしない
   r.dpr=dpr;r.cssW=w;r.cssH=h;
-  r.s=fitScale(w,h,r.n);r.k=r.s*dpr;
-  const rw=r.n*TILE_W*r.s,rh=(r.n*TILE_H+WALL_H)*r.s;
-  r.ox=(w-rw)/2;r.oy=h-rh; // 中央・下寄せ
+  const f=fitOffset(w,h,r.n); // 縦横とも中央
+  r.s=f.s;r.k=r.s*dpr;r.ox=f.ox;r.oy=f.oy;
   r.cv.width=Math.round(w*dpr);r.cv.height=Math.round(h*dpr);
   r.cv.style.width=w+'px';r.cv.style.height=h+'px';
   r.bgCur=null;r.bgCurBand=null;r.bgOld=null;r.fade=1;

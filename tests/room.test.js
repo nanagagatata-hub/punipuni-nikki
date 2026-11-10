@@ -1,7 +1,7 @@
 // room.js の純関数と SpriteCache のテスト
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {toScreen,fromScreen,sortByDepth,NIGHT,NIGHT_COLOR,approach,fitScale,petBox,yawBucket,SpriteCache,spriteMaker,cellAt,sortForDraw} from '../js/room.js';
+import {toScreen,fromScreen,sortByDepth,NIGHT,NIGHT_COLOR,approach,fitScale,fitOffset,petBox,yawBucket,SpriteCache,spriteMaker,cellAt,sortForDraw} from '../js/room.js';
 import {defaultRoom} from '../js/room-data.js';
 
 test('toScreen と fromScreen は往復する',()=>{
@@ -31,6 +31,14 @@ test('fitScale は収まる',()=>{
   const s=fitScale(760,570,6);
   assert.ok(6*64*s<=760+1e-9&&(6*32+112)*s<=570+1e-9);
   assert.ok(Math.abs(6*64*s-760)<1e-6||Math.abs((6*32+112)*s-570)<1e-6);
+});
+test('fitOffset は部屋を縦横とも中央に置く',()=>{
+  for(const [w,h] of [[814,900],[1174,560],[760,570]]){
+    const f=fitOffset(w,h,6),rw=6*64*f.s,rh=(6*32+112)*f.s;
+    assert.equal(f.s,fitScale(w,h,6));
+    assert.ok(Math.abs(f.ox-(w-rw)/2)<1e-9&&Math.abs(f.oy-(h-rh)/2)<1e-9);
+    assert.ok(f.ox>=-1e-9&&f.oy>=-1e-9);
+  }
 });
 test('petBox は最小 96',()=>{
   assert.equal(petBox(100,100,50,400,300).size,96);

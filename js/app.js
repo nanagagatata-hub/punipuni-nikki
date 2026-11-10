@@ -36,7 +36,8 @@ function tickLife(now){
 
 /* ---------- drawing ---------- */
 /* ---------- speech & fx ---------- */
-function say(ja,zh){bubble={ja:ja,zh:zh||''};renderBubble();replay($('.bubble'),'talk');}
+function say(ja,zh){bubble={ja:ja,zh:zh||''};renderBubble();replay($('.bubble'),'talk');
+  if(isRoomOpen())replay($('#roomView .bubble'),'talk');}
 /* 同じ動きをもう一度最初から（クラスを付けなおす） */
 function replay(el,cls){if(!el)return;el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);}
 const line=k=>pickLine(k,S,new Date());

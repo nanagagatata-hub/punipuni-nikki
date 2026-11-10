@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mulberry32, makeGrid, passable, bfs, createBrain, stepBrain, holdBrain, pauseBrain,
-  normDeg, dirYaw, turnToward, pickAct, TURN_GATE, WEIGHTS, BAND_MUL, SPEED, DUR} from '../js/room-ai.js';
+  normDeg, dirYaw, turnToward, pickAct, motion, TURN_GATE, WEIGHTS, BAND_MUL, SPEED, DUR} from '../js/room-ai.js';
 
 const isStep=(a,b)=>Math.abs(a.x-b.x)+Math.abs(a.y-b.y)===1;
 
@@ -215,4 +215,68 @@ test('dt=0 と目的地にいるときに NaN を出さない', ()=>{
   b.x=b.path[0].x+0.5;b.y=b.path[0].y+0.5;
   stepBrain(b,0,c,grid,rng);stepBrain(b,0,ctx('sick'),grid,rng);
   for(const k of ['x','y','yaw'])assert.ok(Number.isFinite(b[k]),k);
+});
+
+// ---- 見た目の動き（motion） ----
+const ACTS=['idle','walk','look','hop','dance','sleep','rest','sad'];
+const POSES=['bob','sway','droop','bounce','tilt','squish','spin','none'];
+const mb=(act,extra)=>({...createBrain(6,ctx('awake')),act,...extra});
+
+test('motion：横×縦はほぼ 1、値は有限', ()=>{
+  for(const act of ACTS)for(const pose of POSES)for(let i=0;i<=100;i++){
+    const t=i/10,b=mb(act,{t,yaw:45});
+    for(const [pk,sp] of [[undefined,undefined],[0.1,0.3]]){
+      const m=motion(b,t,pose,pk,sp);
+      assert.ok(Math.abs(m.scaleX*m.scaleY-1)<1e-9,`${act} ${pose} ${t}`);
+      for(const k of ['scaleX','scaleY','lift','tilt','yaw'])assert.ok(Number.isFinite(m[k]),`${act} ${pose} ${k}`);
+    }
+  }
+});
+
+test('motion：呼吸の幅', ()=>{
+  let lo=9,hi=0,slo=9,shi=0;
+  for(let i=0;i<=200;i++){
+    const t=i/10,a=motion(mb('idle'),t,'none').scaleY,s=motion(mb('sleep'),t,'none').scaleY;
+    lo=Math.min(lo,a);hi=Math.max(hi,a);slo=Math.min(slo,s);shi=Math.max(shi,s);
+  }
+  assert.ok(lo>=0.98-1e-9&&hi<=1.02+1e-9&&hi-lo>0.03);
+  assert.ok(slo>=0.97-1e-9&&shi<=1.03+1e-9&&shi-slo>0.05);
+});
+
+test('motion：ぴょんは持ち上がる', ()=>{
+  assert.ok(Math.abs(motion(mb('hop',{t:0.3}),0.3,'none').lift-0.35)<0.01);
+  assert.equal(motion(mb('hop',{t:0}),0,'none').lift,0);
+  assert.ok(motion(mb('hop',{t:0.3}),0.3,'none').scaleY>1);
+});
+
+test('motion：ダンスは傾く', ()=>{
+  let mx=0;
+  for(let i=0;i<=100;i++)mx=Math.max(mx,Math.abs(motion(mb('dance'),i/10,'none').tilt));
+  assert.ok(mx<=0.08+1e-9&&mx>0.05);
+});
+
+test('motion：あるくは小さく弾む', ()=>{
+  let mx=0;
+  for(let i=0;i<=100;i++)mx=Math.max(mx,motion(mb('walk'),i/10,'none').lift);
+  assert.ok(mx>0.02&&mx<=0.04+1e-9);
+});
+
+test('motion：poke はつぶれる', ()=>{
+  const b=mb('idle');
+  assert.ok(motion(b,0,'none',0.1).scaleY<1);
+  assert.equal(motion(b,0,'none',0.6).scaleY,motion(b,0,'none').scaleY);
+});
+
+test('motion：yaw は向き、spin は一回転', ()=>{
+  const b=mb('idle',{yaw:45});
+  assert.equal(motion(b,0,'none').yaw,45);
+  assert.equal(motion(b,0,'spin',undefined,0.4).yaw,normDeg(45+180));
+  assert.equal(motion(b,0,'spin',undefined,0.8).yaw,45);
+  assert.equal(motion(b,0,'spin',undefined,2).yaw,45);
+  assert.equal(motion(b,0,'bob',undefined,0.4).yaw,45);
+});
+
+test('motion：NaN を渡しても有限', ()=>{
+  const m=motion(mb('idle',{t:NaN,yaw:NaN}),NaN,'spin',NaN,NaN);
+  for(const k of ['scaleX','scaleY','lift','tilt','yaw'])assert.ok(Number.isFinite(m[k]),k);
 });

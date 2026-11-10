@@ -5,6 +5,7 @@
 //  - bfs（マス目の経路探索）は新規。
 //  - ときどき止まる・夜は決まった場所へ集まって眠る は oekaki `src/tank/walk.ts`・`sleep.ts`（b1611f5）の考え方。
 //    1 次元の歩きをマス目＋BFS に変更。
+//  - motion は odori `src/core/puppet-motion.ts`（9cef958）の移植。拍を秒に変え、act と pose の種類を増やした。横×縦＝1 を保つ。
 
 /** @typedef {() => number} Random  0以上1未満 */
 /** @typedef {{n:number, block:Uint8Array}} Grid  block[gy*n+gx]=1 は通れない */
@@ -232,4 +233,51 @@ export function stepBrain(b,dt,ctx,grid,rng){
     b.want=0;
   }
   if(!(b.act==='walk'&&b.path.length))b.yaw=turnToward(b.yaw,b.want,dt);
+}
+
+
+// ---- 見た目の動き ----
+const TAU=Math.PI*2;
+const fin=(v,d=0)=>Number.isFinite(v)?v:d;
+/** @param {number} x 0..1 の位相 @returns {number} 放物線 0→1→0 */
+const arc=x=>4*x*(1-x);
+
+/** 今の act と pose から、つぶれ・持ち上がり・傾き・向きを返す（横×縦＝1 を保つ）
+ * @param {Brain} b @param {number} t 秒 @param {string} pose look() の pose
+ * @param {number} [pokeAge] poke() からの秒 @param {number} [spinAge] pose spin が始まってからの秒 @returns {Motion} */
+export function motion(b,t,pose,pokeAge,spinAge){
+  t=fin(t);
+  let sy=1,lift=0,tilt=0,yaw=fin(b.yaw);
+  const bt=fin(b.t);
+  switch(b.act){
+    case 'sleep': sy=1+0.03*Math.sin(TAU*t/5);break;
+    case 'rest': sy=0.96+0.01*Math.sin(TAU*t/5);break; // しおれる
+    case 'sad': sy=0.97+0.01*Math.sin(TAU*t/4);break;
+    case 'walk':{ // 1 マスごとに小さくつぶれて弾む
+      const s=Math.abs(Math.sin(Math.PI*t*SPEED));
+      lift=0.04*s;sy=1-0.04*(1-s);break;
+    }
+    case 'hop':{
+      const d=arc((bt%DUR.hop)/DUR.hop);
+      lift=0.35*d;sy=1+0.06*d;break;
+    }
+    case 'dance':{
+      tilt=0.08*Math.sin(TAU*t);
+      const p=(t*2)%1;
+      sy=1-0.07*(1-p)**3;lift=0.06*Math.sin(Math.PI*p);break;
+    }
+    default: // idle・look ほか：呼吸と pose
+      sy=1+0.02*Math.sin(TAU*t/4);
+      if(b.act==='idle')switch(pose){
+        case 'bob': lift=0.03*(0.5+0.5*Math.sin(TAU*t/1.5));break;
+        case 'sway': tilt=0.06*Math.sin(TAU*t/2);break;
+        case 'droop': sy=1-0.04*(0.5+0.5*Math.sin(TAU*t/4));break;
+        case 'bounce':{const s=Math.abs(Math.sin(TAU*t*0.75));lift=0.05*s;sy=1-0.03*(1-s);break;}
+        case 'tilt': tilt=0.12;break;
+        case 'squish': sy=1-0.08*Math.abs(Math.sin(TAU*t/1.2));break;
+      }
+  }
+  if(Number.isFinite(pokeAge)&&pokeAge>=0&&pokeAge<0.5)sy*=1-0.1*Math.sin(Math.PI*pokeAge/0.5);
+  if(pose==='spin'&&Number.isFinite(spinAge)&&spinAge>=0&&spinAge<0.8)yaw=normDeg(yaw+360*spinAge/0.8);
+  return {scaleX:1/sy,scaleY:sy,lift,tilt,yaw};
 }

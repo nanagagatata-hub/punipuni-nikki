@@ -20,6 +20,27 @@
 		"8000": { "label": "ぷにぷに (http.server)", "onAutoForward": "notify" }
 	},
 
-	// Playwright 用のブラウザと OS ライブラリを入れる
-	"postCreateCommand": "bash .devcontainer/post-create.sh"
+	"mounts": [
+		// Claude Code の設定・ログイン・プラグインを、リビルド後も保持する
+		"source=punipuni-claude-config,target=/home/vscode/.claude,type=volume",
+		// 流用元を「読み取り専用」で参照する（同じ親フォルダにある前提）
+		"source=${localWorkspaceFolder}/../Oekaki_Suizokukan,target=/refs/oekaki,type=bind,readonly",
+		"source=${localWorkspaceFolder}/../odori_tabi,target=/refs/odori,type=bind,readonly",
+		"source=${localWorkspaceFolder}/../orbit_seq,target=/refs/orbit,type=bind,readonly"
+	],
+
+	// Claude Code の設定をすべて上のボリュームに置く
+	"containerEnv": {
+		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+	},
+
+	// Claude Code の VS Code 拡張を毎回自動で入れる
+	"customizations": {
+		"vscode": {
+			"extensions": ["anthropic.claude-code"]
+		}
+	},
+
+	// ボリュームの持ち主を直す → Claude Code の CLI を入れる → Playwright 用のブラウザと OS ライブラリを入れる
+	"postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.claude && npm install -g @anthropic-ai/claude-code && bash .devcontainer/post-create.sh"
 }

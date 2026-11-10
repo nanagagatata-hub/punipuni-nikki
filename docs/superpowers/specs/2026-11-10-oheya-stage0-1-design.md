@@ -236,7 +236,7 @@ odori `puppet-motion.ts` の考え方を移植（拍ではなく秒で動かす�
 2. 段階0：実装 → `security-reviewer` → `/security-review` → 構文チェック＋Playwright → コミット → **結果と依頼文を報告して止まる**。
 3. 段階1（オーナーの判断のあと）：
    - 先に 2.2 の型と 2.3 の関数の形を `room-ai.js` に確定させる。
-   - 並行する場合はサブエージェント 2 本まで：①`room-ai.js`＋テスト、②`room-art.js`＋`room.js`＋テスト。`app.js`・`css` の組み込みは本体で行う。
+   - 並行はサブエージェント同時 4 本まで（実装 3＋レビュー 1。2026-11-10 オーナー決定。`security-reviewer`・`/security-review` は数えない）：①`room-ai.js`＋テスト、②`room-art.js`＋テスト、③`room.js` の純関数＋テスト。`room.js` の描画と `app.js`・`css` の組み込みは本体で行う。
    - 実装 → `security-reviewer` → `/security-review` → 構文チェック・テスト＋Playwright → `ASSETS` に 3 本を足し `VERSION`／`APP_VERSION` を `v2.5.0` → コミット。
 4. `main` には入れない・`main` へプッシュしない。G1 で、段階2に進むか TS＋Vite に移行するか、`dev/` を残すかを決める。
 5. 仕様が変わる部分（ホーム画面がおへやになる）は、段階1のコミットで `docs/spec.md` と `docs/spec-summary.md` に反映する。

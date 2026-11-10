@@ -269,3 +269,12 @@ textarea{min-height:90px;font-size:13px!important;font-family:ui-monospace,monos
 
 /* 押せない間のボタン（おわかれの歌の「つぎへ」など）は うすく */
 .btn:disabled{opacity:.45;box-shadow:none;cursor:default}
+
+/* おへや（Canvas の部屋）。使えない時は .room が付かず、今の表示のまま */
+.screen.room{aspect-ratio:4/3}
+.screen.room .scene canvas{display:block}
+.screen.room .pet{position:absolute;margin:0;z-index:2;background:none}
+.screen.room .growth{position:absolute;bottom:8px;left:0;right:0;margin-top:0}
+@media (min-width:700px) and (min-height:700px){
+  .screen.room{flex:0 0 auto;width:100%;margin:auto 0}
+}

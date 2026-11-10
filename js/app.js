@@ -5,6 +5,8 @@ import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
 import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
 import {speak,sfx,setSound,unlock,sing} from './sound.js';
+import {mount,update as roomUpdate,hold as roomHold,pauseFor,poke} from './room.js';
+let roomOn=false;
 const APP_VERSION='v2.4.0'; // sw.js の VERSION と同じ値にそろえる
 
 const $=s=>document.querySelector(s);
@@ -109,6 +111,7 @@ function feed(fid){
   if(!(S.inv[fid]>0))return;
   const f=FOODS[fid],now=Date.now();lastInteract=now;
   if(asleep(S,now)){say(line('sleepFeed'));return;}
+  if(roomOn)pauseFor(3);
   flyFood(fid);S.inv[fid]--;afterFeed(S);
   if(S.stage>0){S.hunger=Math.min(4,S.hunger+(fid==='nikuman'?2:1));if(fid==='purin')S.mood=Math.min(4,S.mood+1);}
   if(S.sick){
@@ -159,7 +162,7 @@ function showEvolve(){
 }
 /* ゆらす演出は 1 回だけ。終わったらクラスを外してポーズのアニメーションに戻す */
 let wobT=null;
-function wobble(){const el=$('#pet');el.classList.remove('wobble');void el.offsetWidth;el.classList.add('wobble');clearTimeout(wobT);wobT=setTimeout(()=>el.classList.remove('wobble'),700);}
+function wobble(){if(roomOn)poke();const el=$('#pet');el.classList.remove('wobble');void el.offsetWidth;el.classList.add('wobble');clearTimeout(wobT);wobT=setTimeout(()=>el.classList.remove('wobble'),700);}
 $('#pet').addEventListener('animationend',e=>{if(e.animationName==='wob')$('#pet').classList.remove('wobble');});
 /* タッチ（spec §6）：kind = head / belly / stroke / hug / mash */
 const TOUCH_LINE={head:'tapHead',belly:'tapBelly',stroke:'stroke',hug:'hug',mash:'dizzy'};
@@ -341,10 +344,14 @@ function render(){
   $('#petName').textContent=S.name;$('#genLabel').textContent=S.gen+'ぴきめ';
   const sleeping=S.stage>0&&asleep(S,now);
   const L=now<danceUntil&&!sleeping?{face:'sparkle',pose:'dance',arms:'up',think:null}:look(S,{night:sleeping,react:now<reactUntil?react:null});
-  $('#pet').innerHTML=petSVG(S.form,L.face,{pts:S.pts,shiny:S.shiny,final:S.stage===4,arms:L.arms,think:L.think});
+  if(!roomOn)$('#pet').innerHTML=petSVG(S.form,L.face,{pts:S.pts,shiny:S.shiny,final:S.stage===4,arms:L.arms,think:L.think});
+  else $('#pet').innerHTML='';
   $('#pet').dataset.pose=L.pose;
-  const bd=band(new Date(),S.cfg);$('#screen').className='screen t-'+bd;
-  if(sceneBand!==bd){$('#scene').innerHTML=sceneSVG(bd);sceneBand=bd;}
+  const bd=band(new Date(),S.cfg);$('#screen').className='screen t-'+bd+(roomOn?' room':'');
+  if(roomOn){
+    const mode=S.stage===0?'egg':sleeping?'sleep':S.sick?'sick':now<danceUntil?'dance':S.hunger===0?'hungry':'awake';
+    roomUpdate({view:{form:S.form,face:L.face,arms:L.arms,think:L.think,pose:L.pose,shiny:S.shiny,final:S.stage===4,pts:S.pts},mode,band:bd,now});
+  }else if(sceneBand!==bd){$('#scene').innerHTML=sceneSVG(bd);sceneBand=bd;}
   $('#gauges').innerHTML=S.stage===0?`<span class="glabel">たまご を あたためよう</span>`:
     `<div class="gauge"><span class="glabel">おなか</span>${icons('🍙',S.hunger,lastG?lastG.h:S.hunger)}</div><div class="gauge"><span class="glabel">ごきげん</span>${icons('🌸',S.mood,lastG?lastG.m:S.mood)}</div>`;
   lastG={h:S.hunger,m:S.mood};
@@ -401,6 +408,7 @@ pet.addEventListener('pointerdown',e=>{
   const r=pet.getBoundingClientRect();
   ptr={x:e.clientX,y:e.clientY,dist:0,done:false,top:(e.clientY-r.top)/r.height<.4};
   try{pet.setPointerCapture(e.pointerId);}catch(err){}
+  if(roomOn)roomHold(true);
   clearTimeout(holdT2);holdT2=setTimeout(()=>{if(ptr&&!ptr.done&&ptr.dist<12){ptr.done=true;petAct('hug');}},700);
 });
 pet.addEventListener('pointermove',e=>{
@@ -409,12 +417,13 @@ pet.addEventListener('pointermove',e=>{
   if(!ptr.done&&ptr.dist>=80){ptr.done=true;clearTimeout(holdT2);petAct('stroke');}
 });
 pet.addEventListener('pointerup',()=>{
+  if(roomOn)roomHold(false);
   clearTimeout(holdT2);if(!ptr)return;
   const p=ptr;ptr=null;if(p.done)return;
   const now=Date.now();taps=taps.filter(t=>now-t<2500);taps.push(now);
   if(taps.length>=5){taps=[];petAct('mash');}else petAct(p.top?'head':'belly');
 });
-pet.addEventListener('pointercancel',()=>{clearTimeout(holdT2);ptr=null;});
+pet.addEventListener('pointercancel',()=>{if(roomOn)roomHold(false);clearTimeout(holdT2);ptr=null;});
 pet.addEventListener('click',e=>{if(e.detail===0)petAct('belly');});
 $('#zukanBtn').addEventListener('click',openZukan);
 $('#speakBtn').addEventListener('click',()=>speak(bubble.ja,bubble.zh));
@@ -445,6 +454,13 @@ function idle(now){
   if(S.stage===0||S.sick||asleep(S,now)||!$('#modal').hidden)return;
   if(now-lastInteract>=90e3&&idleFor!==lastInteract){idleFor=lastInteract;say(line('idle'));}
 }
+/* おへや：使えなければ（または画像の読み込みに失敗したら）今の表示に戻る */
+function roomOff(){
+  roomOn=false;$('#screen').classList.remove('room');sceneBand='';
+  $('#scene').textContent='';pet.style.cssText='';render();
+}
+roomOn=mount($('#scene'),pet,{n:6,onFail:roomOff});
+if(roomOn)$('#screen').classList.add('room');
 tick(Date.now());
 greet();
 setSound(S.sound);

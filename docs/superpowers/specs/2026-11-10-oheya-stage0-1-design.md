@@ -105,16 +105,16 @@
 - `bfs(grid, from, to) → {x,y}[] | null`（4 方向・マス単位。from/to を含む）
 - `createBrain(n, ctx) → Brain`（`sleep`／`egg` のときは最初から `home`）
 - `stepBrain(brain, dt, ctx, grid, rng) → void`（`dt` は 0.1 秒で切り詰め）
-- `holdBrain(brain, on:boolean) → void`（離したときに `hold=3`）
-- `motion(brain, timeSec, pose) → Motion`
+- `holdBrain(brain, on:boolean) → void`（離したときに `hold=3`）、`pauseBrain(brain, sec) → void`（エサのあと）
+- `motion(brain, timeSec, pose, pokeAge?) → Motion`
 
 `js/room.js`
-- 純関数：`toScreen(gx,gy) → {x,y}`、`fromScreen(x,y) → {gx,gy}`、`depthKey(obj)`、`sortByDepth(list)`、`approach(cur, target, dt, tau)`（暗さを近づける）、`fitScale(w,h,n)`
-- DOM：`mount(sceneEl, petBtn, opt) → boolean`（失敗で `false`）、`update({view, mode, band, now})`、`hold(on)`、`poke()`、`pauseFor(sec)`
+- 純関数：`toScreen(gx,gy,n) → {x,y}`、`fromScreen(x,y,n) → {gx,gy}`、`sortByDepth(list)`、`approach(cur, target, dt, tau)`（暗さを近づける）、`fitScale(w,h,n)`、`petBox(cx, bottom, sprite, boxW, boxH)`（`#pet` の位置と大きさ。最小 96px・`.screen` の中に収める）、`SpriteCache`（最大 40 件・読み込み中は前の絵）
+- DOM：`mount(sceneEl, petBtn, opt) → boolean`（失敗で `false`）、`update({view, mode, band, now})`、`hold(on)`、`poke()`、`pauseFor(sec)`、`unmount()`
 
 `js/room-art.js`
-- `floorSVG(n)`、`wallSVG(n, band)`（まど・カーテン・空を含む）、`rugSVG()`、`shelfSVG()`、`plantSVG()`
-- `layout(n) → {items:{id,x,y,w,h,walk:boolean}[], home:{x,y}}`
+- `roomSVG(n, band)`（床・壁 2 面・まど（空）・カーテン・ラグをまとめた背景 1 枚）、`itemSVG(id)`（`shelf`／`plant`。足もとの基準点つき）
+- `layout(n) → {items, rug, home, window}`（細かい形は実装計画 Task 6）
 
 ### 2.4 `app.js` とのつなぎ
 - 起動時：`#scene` の中に Canvas を作る（`room.mount`）。`true` なら `.screen` に `room` クラスを付け、`#pet` には SVG を入れない（`aria-label` は残す）。`false` なら今のまま（`sceneSVG`＋`#pet` の SVG）。

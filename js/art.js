@@ -17,59 +17,72 @@ function silSVG(form){
   const ears=FORMS[form].stage===1?'':`<circle cx="58" cy="62" r="18" fill="var(--sil)"/><circle cx="142" cy="62" r="18" fill="var(--sil)"/>`;
   return `<svg viewBox="0 0 200 200" aria-hidden="true">${ears}<path d="${BODY}" fill="var(--sil)"/><text x="100" y="138" text-anchor="middle" font-size="56" font-weight="900" fill="var(--card)">？</text></svg>`;
 }
-function faceSVG(face){
-  const ink='#5B3A55',ey=108,ex=[78,122];let eyes='',mouth='',extra='';
+/* 顔の部品。eyes・mouth・extra は [x0, svg] の並び（x0 は部品の中心の x。null は まわりに浮くもの）。
+   dup=true は今の faceSVG と 1 文字も変えない文字列（st のあとに stroke-width を重ねて書いたタグもそのまま。HTML は最初の値＝4 を使う）。
+   dup=false は 2.5D 用：重ねた stroke-width を書かない（見た目は同じ）。1 本の path で左右を描いている部品は左右に分ける */
+function faceParts(face,dup){
+  const ink='#5B3A55',ey=108,ex=[78,122];
   const st=`stroke="${ink}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"`;
+  const sw=w=>dup?` stroke-width="${w}"`:'';
+  const both=f=>ex.map(x=>[x,f(x)]);
+  let eyes=[],mouth=[],extra=[];
   let blushCol='#FF9EBB';
   if(face==='happy'){
-    eyes=ex.map(x=>`<path d="M${x-8} ${ey+3} Q${x} ${ey-8} ${x+8} ${ey+3}" ${st}/>`).join('');
-    mouth=`<path d="M89 124 Q100 142 111 124 Z" fill="#FF7FA0" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>`;
+    eyes=both(x=>`<path d="M${x-8} ${ey+3} Q${x} ${ey-8} ${x+8} ${ey+3}" ${st}/>`);
+    mouth=[[100,`<path d="M89 124 Q100 142 111 124 Z" fill="#FF7FA0" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>`]];
   }else if(face==='sleep'){
-    eyes=ex.map(x=>`<path d="M${x-8} ${ey} Q${x} ${ey+6} ${x+8} ${ey}" ${st}/>`).join('');
-    mouth=`<ellipse cx="100" cy="130" rx="4" ry="3" fill="${ink}"/>`;
-    extra=`<text x="150" y="62" font-size="22" font-weight="900" fill="${ink}" opacity=".55">z</text><text x="164" y="42" font-size="30" font-weight="900" fill="${ink}" opacity=".55">Z</text>`;
+    eyes=both(x=>`<path d="M${x-8} ${ey} Q${x} ${ey+6} ${x+8} ${ey}" ${st}/>`);
+    mouth=[[100,`<ellipse cx="100" cy="130" rx="4" ry="3" fill="${ink}"/>`]];
+    extra=[[null,`<text x="150" y="62" font-size="22" font-weight="900" fill="${ink}" opacity=".55">z</text><text x="164" y="42" font-size="30" font-weight="900" fill="${ink}" opacity=".55">Z</text>`]];
   }else if(face==='sick'){
-    eyes=`<path d="M71 102 L84 108 L71 114" ${st}/><path d="M129 102 L116 108 L129 114" ${st}/>`;
-    mouth=`<path d="M88 132 q4 -5 8 0 q4 5 8 0 q4 -5 8 0" ${st} stroke-width="3"/>`;
-    extra=`<path d="M152 78 q7 11 0 15 q-7 -4 0 -15Z" fill="#9FD3F5"/><path d="M66 88 h24 M110 88 h24" stroke="#9FB6E8" stroke-width="3" stroke-linecap="round"/>`;
+    eyes=[[78,`<path d="M71 102 L84 108 L71 114" ${st}/>`],[122,`<path d="M129 102 L116 108 L129 114" ${st}/>`]];
+    mouth=[[100,`<path d="M88 132 q4 -5 8 0 q4 5 8 0 q4 -5 8 0" ${st}${sw(3)}/>`]];
+    const brow=d=>`<path d="${d}" stroke="#9FB6E8" stroke-width="3" stroke-linecap="round"/>`;
+    extra=[[null,`<path d="M152 78 q7 11 0 15 q-7 -4 0 -15Z" fill="#9FD3F5"/>`]].concat(dup?[[100,brow('M66 88 h24 M110 88 h24')]]:[[78,brow('M66 88 h24')],[122,brow('M110 88 h24')]]);
     blushCol='#B9D8F2';
   }else if(face==='sad'){
-    eyes=ex.map(x=>`<circle cx="${x}" cy="${ey+2}" r="5.5" fill="${ink}"/>`).join('');
-    mouth=`<path d="M92 133 Q100 125 108 133" ${st} stroke-width="3.5"/>`;
+    eyes=both(x=>`<circle cx="${x}" cy="${ey+2}" r="5.5" fill="${ink}"/>`);
+    mouth=[[100,`<path d="M92 133 Q100 125 108 133" ${st}${sw(3.5)}/>`]];
   }else if(face==='sparkle'||face==='drool'||face==='shy'||face==='hug'){
-    eyes=ex.map(x=>`<path d="M${x-8} ${ey+3} Q${x} ${ey-8} ${x+8} ${ey+3}" ${st}/>`).join('');
-    mouth=face==='shy'?`<path d="M94 128 Q100 133 106 128" ${st} stroke-width="3"/>`:`<path d="M88 124 Q100 144 112 124 Z" fill="#FF7FA0" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>`;
-    if(face==='sparkle') extra=sparkle(58,92,7,'#FFD84D')+sparkle(146,90,6,'#FFD84D');
-    if(face==='drool') extra=`<path d="M110 132 q4 10 0 14 q-4 -4 0 -14Z" fill="#9FD3F5"/>`;
+    eyes=both(x=>`<path d="M${x-8} ${ey+3} Q${x} ${ey-8} ${x+8} ${ey+3}" ${st}/>`);
+    mouth=[[100,face==='shy'?`<path d="M94 128 Q100 133 106 128" ${st}${sw(3)}/>`:`<path d="M88 124 Q100 144 112 124 Z" fill="#FF7FA0" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>`]];
+    if(face==='sparkle') extra=[[58,sparkle(58,92,7,'#FFD84D')],[146,sparkle(146,90,6,'#FFD84D')]];
+    if(face==='drool') extra=[[110,`<path d="M110 132 q4 10 0 14 q-4 -4 0 -14Z" fill="#9FD3F5"/>`]];
     if(face==='shy'||face==='hug') blushCol='#FF7FA0';
-    if(face==='hug') extra=`<path d="M148 70 c-6 -8 -16 0 -8 8 l8 8 l8 -8 c8 -8 -2 -16 -8 -8Z" fill="#FF7FA0"/>`;
+    if(face==='hug') extra=[[148,`<path d="M148 70 c-6 -8 -16 0 -8 8 l8 8 l8 -8 c8 -8 -2 -16 -8 -8Z" fill="#FF7FA0"/>`]];
   }else if(face==='pout'){
-    eyes=ex.map(x=>`<circle cx="${x}" cy="${ey+2}" r="6.5" fill="${ink}"/><path d="M${x-9} ${ey-5} L${x+9} ${ey-3}" ${st} stroke-width="3.5"/>`).join('');
-    mouth=`<path d="M94 130 q6 -6 12 0" ${st} stroke-width="3.5"/><circle cx="138" cy="122" r="12" fill="#FFB7CC" opacity=".8"/>`;
+    eyes=both(x=>`<circle cx="${x}" cy="${ey+2}" r="6.5" fill="${ink}"/><path d="M${x-9} ${ey-5} L${x+9} ${ey-3}" ${st}${sw(3.5)}/>`);
+    mouth=[[100,`<path d="M94 130 q6 -6 12 0" ${st}${sw(3.5)}/>`],[138,`<circle cx="138" cy="122" r="12" fill="#FFB7CC" opacity=".8"/>`]];
   }else if(face==='tears'){
-    eyes=ex.map(x=>`<circle cx="${x}" cy="${ey+2}" r="6" fill="${ink}"/><circle cx="${x+2}" cy="${ey}" r="2" fill="#fff"/>`).join('');
-    mouth=`<path d="M90 134 q5 -6 10 0 q5 6 10 0" ${st} stroke-width="3"/>`;
-    extra=`<path d="M72 116 q-4 12 0 16 q4 -4 0 -16Z M128 116 q-4 12 0 16 q4 -4 0 -16Z" fill="#9FD3F5"/>`;
+    eyes=both(x=>`<circle cx="${x}" cy="${ey+2}" r="6" fill="${ink}"/><circle cx="${x+2}" cy="${ey}" r="2" fill="#fff"/>`);
+    mouth=[[100,`<path d="M90 134 q5 -6 10 0 q5 6 10 0" ${st}${sw(3)}/>`]];
+    const drop=d=>`<path d="${d}" fill="#9FD3F5"/>`;
+    extra=dup?[[100,drop('M72 116 q-4 12 0 16 q4 -4 0 -16Z M128 116 q-4 12 0 16 q4 -4 0 -16Z')]]:[[72,drop('M72 116 q-4 12 0 16 q4 -4 0 -16Z')],[128,drop('M128 116 q-4 12 0 16 q4 -4 0 -16Z')]];
   }else if(face==='hungry'){
-    eyes=ex.map(x=>`<circle cx="${x}" cy="${ey-2}" r="7" fill="${ink}"/><circle cx="${x+2}" cy="${ey-6}" r="2.5" fill="#fff"/>`).join('');
-    mouth=`<ellipse cx="100" cy="131" rx="5" ry="6" fill="#FF7FA0" stroke="${ink}" stroke-width="3"/>`;
+    eyes=both(x=>`<circle cx="${x}" cy="${ey-2}" r="7" fill="${ink}"/><circle cx="${x+2}" cy="${ey-6}" r="2.5" fill="#fff"/>`);
+    mouth=[[100,`<ellipse cx="100" cy="131" rx="5" ry="6" fill="#FF7FA0" stroke="${ink}" stroke-width="3"/>`]];
   }else if(face==='giggle'){
-    eyes=`<path d="M70 102 L82 108 L70 114" ${st}/><path d="M130 102 L118 108 L130 114" ${st}/>`;
-    mouth=`<path d="M86 122 Q100 146 114 122 Z" fill="#FF7FA0" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>`;
+    eyes=[[76,`<path d="M70 102 L82 108 L70 114" ${st}/>`],[124,`<path d="M130 102 L118 108 L130 114" ${st}/>`]];
+    mouth=[[100,`<path d="M86 122 Q100 146 114 122 Z" fill="#FF7FA0" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>`]];
   }else if(face==='squint'){
-    eyes=ex.map(x=>`<path d="M${x-8} ${ey} Q${x} ${ey-5} ${x+8} ${ey}" ${st}/>`).join('');
-    mouth=`<path d="M92 127 Q100 134 108 127" ${st} stroke-width="3.5"/>`;
+    eyes=both(x=>`<path d="M${x-8} ${ey} Q${x} ${ey-5} ${x+8} ${ey}" ${st}/>`);
+    mouth=[[100,`<path d="M92 127 Q100 134 108 127" ${st}${sw(3.5)}/>`]];
   }else if(face==='dizzy'){
-    eyes=ex.map(x=>`<path d="M${x} ${ey} m-1 0 a2 2 0 1 1 3 0 a4 4 0 1 1 -6 0 a6 6 0 1 1 9 0" ${st} stroke-width="2.5"/>`).join('');
-    mouth=`<path d="M88 132 q4 -5 8 0 q4 5 8 0 q4 -5 8 0" ${st} stroke-width="3"/>`;
+    eyes=both(x=>`<path d="M${x} ${ey} m-1 0 a2 2 0 1 1 3 0 a4 4 0 1 1 -6 0 a6 6 0 1 1 9 0" ${st}${sw(2.5)}/>`);
+    mouth=[[100,`<path d="M88 132 q4 -5 8 0 q4 5 8 0 q4 -5 8 0" ${st}${sw(3)}/>`]];
   }else{
-    eyes=ex.map(x=>`<circle cx="${x}" cy="${ey}" r="7.5" fill="${ink}"/><circle cx="${x+2.5}" cy="${ey-3}" r="2.6" fill="#fff"/>`).join('');
-    mouth=`<path d="M92 127 Q100 135 108 127" ${st} stroke-width="3.5"/>`;
+    eyes=both(x=>`<circle cx="${x}" cy="${ey}" r="7.5" fill="${ink}"/><circle cx="${x+2.5}" cy="${ey-3}" r="2.6" fill="#fff"/>`);
+    mouth=[[100,`<path d="M92 127 Q100 135 108 127" ${st}${sw(3.5)}/>`]];
   }
-  const blush=`<ellipse cx="60" cy="124" rx="10" ry="5.5" fill="${blushCol}" opacity=".75"/><ellipse cx="140" cy="124" rx="10" ry="5.5" fill="${blushCol}" opacity=".75"/>`;
+  const blush=[60,140].map(x=>[x,`<ellipse cx="${x}" cy="124" rx="10" ry="5.5" fill="${blushCol}" opacity=".75"/>`]);
   /* 目が開いている表情だけ まばたきする（.blink-on） */
   const blink=['normal','hungry','sad','tears','pout'].indexOf(face)>=0;
-  return blush+`<g class="eyes${blink?' blink-on':''}">${eyes}</g>`+mouth+extra;
+  return {blush,eyes,mouth,extra,blink};
+}
+const svgOf=list=>list.map(p=>p[1]).join('');
+function faceSVG(face){
+  const P=faceParts(face,true);
+  return svgOf(P.blush)+`<g class="eyes${P.blink?' blink-on':''}">${svgOf(P.eyes)}</g>`+svgOf(P.mouth)+svgOf(P.extra);
 }
 /* 小さな雲（そらいろぷに など） */
 function cloudMini(x,y){return `<g fill="#FFFFFF" stroke="#C9DDF0" stroke-width="1.5"><ellipse cx="${x}" cy="${y}" rx="12" ry="7"/><circle cx="${x-5}" cy="${y-4}" r="6"/><circle cx="${x+4}" cy="${y-6}" r="7"/></g>`;}
@@ -122,10 +135,109 @@ function accSVG(form){
   return '';
 }
 const RAINBOW=['#FFB3C7','#FFD9A8','#FFF2A8','#C2F0D6','#BCD8FF','#DCC8FF'];
+
+/* ---------- 2.5D の向き（おへや用。opt.yaw があるときだけ通る。設計書 §3.7） ----------
+   体の輪郭はそのまま。顔・おなかなど表面の部品は丸い体の上で回し、耳・足は左右の位置だけ回す。
+   頭の上のかざりは横幅だけ変え、腕と まわりに浮くものは回さない。|yaw|>90 は後ろ姿（顔が隠れる） */
+const RAD=Math.PI/180;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+/* 正面図で中心からのずれ u・半径 R の表面の点を th（ラジアン）回す → 画面の x と、こちらを向いている度合い c */
+function turnPt(u,R,th){const p=Math.asin(clamp(u/R,-1,1))+th;return {x:100+R*Math.sin(p),c:Math.cos(p)};}
+/* 表面に貼った部品：中心 x0 の部品を回したあとの位置へ移し、横に c 倍。裏に回ったら描かない */
+function onSurface(svg,x0,R,th,minC=.06){
+  const t=turnPt(x0-100,R,th);if(t.c<=minC)return '';
+  return `<g transform="translate(${t.x.toFixed(2)} 0) scale(${t.c.toFixed(3)} 1) translate(${-x0} 0)">${svg}</g>`;
+}
+const R_FACE=62,R_EAR=48,R_FOOT=34,R_HEAD=44;
+/* かざりの分け方：accSVG(form) を上から順の部品に分け、その番号で置き場所を決める（書いていない部品は top＝頭の上）。
+   face：[番号, 中心 x] 顔・おなかの表面（半径 62 で回す）／
+   off：[番号, 中心 x, 作り直し] 頭の上で中心から外れた部品。半径 44 で回した x を作り直しの関数に渡す（関数が無ければ位置だけずらす）／
+   float：番号の並び か '*'（全部）。体の外に浮くもの・まわりのきらきら（回さない） */
+const ACC_SORT={
+  /* はかせのふさ：つけ根は ぼうしの真ん中のまま、たれた先だけ回す（ずらすと後ろ姿で ぼうしから離れるため） */
+  hakase:{face:[[0,78],[1,122],[2,100]],off:[[5,138,x=>`<path d="M100 30 L${x} 34 L${x} 52" stroke="#FFD84D" stroke-width="3" fill="none" stroke-linecap="round"/>`],[6,138,x=>`<circle cx="${x}" cy="55" r="4.5" fill="#FFD84D"/>`]]},
+  kirara:{float:[2,3,4]},
+  pokapoka:{float:[2,3]},
+  shabon:{float:'*'},
+  bouken:{float:[3]},
+  marin:{float:[3]},
+  kirapuni:{float:[1,2]},
+  kazepuni:{float:[0,1]},
+  maruppuni:{face:[[1,64],[2,136],[3,82],[4,118],[5,100]]},
+  hanabi:{float:'*'},
+  mizutama:{face:[[0,66],[1,134],[2,78],[3,124],[4,100],[5,52],[6,148]],float:[7,8]},
+  donguri:{float:[1,2,3,4]},
+  sorairo:{float:[2,3]}
+};
+const PART=/<g\b[^>]*>[\s\S]*?<\/g>|<text\b[\s\S]*?<\/text>|<\w+\b[^>]*\/>/g;
+const ACC25={};
+/* ACC25[form] = {top: svg, face: [{svg, x0}], off: [{svg, x0, make?}], float: svg}（初めて使うときに作る） */
+function acc25(form){
+  if(ACC25[form]) return ACC25[form];
+  const s=accSVG(form),parts=s.match(PART)||[],k=ACC_SORT[form]||{},used={};
+  const r={top:'',face:[],off:[],float:''};
+  if(parts.join('')!==s){r.top=s;return ACC25[form]=r;} // 分けられないときは全部 頭の上
+  (k.face||[]).forEach(([i,x0])=>{r.face.push({svg:parts[i],x0});used[i]=1;});
+  (k.off||[]).forEach(([i,x0,make])=>{r.off.push({svg:parts[i],x0,make});used[i]=1;});
+  parts.forEach((p,i)=>{if(used[i])return;if(k.float==='*'||(k.float||[]).indexOf(i)>=0)r.float+=p;else r.top+=p;});
+  return ACC25[form]=r;
+}
+function petSVG25(form,face,opt){
+  const F=FORMS[form],dk=F.dark,baby=F.stage===1;
+  const yaw=Number.isFinite(opt.yaw)?opt.yaw:0,th=yaw*RAD;
+  let defs='',col=F.color;
+  /* にじ色はグラデーションのまま（data: 画像では CSS の色回しは動かない） */
+  if(opt.shiny||F.secret){
+    const id='rb-'+form+(F.secret?'-s':'');col=`url(#${id})`;
+    defs=`<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">${RAINBOW.map((c,i)=>`<stop offset="${(i/(RAINBOW.length-1)).toFixed(2)}" stop-color="${c}"/>`).join('')}</linearGradient></defs>`;
+  }
+  let back='';
+  if(form==='niji'){
+    back=['#FF9AA2','#FFD28C','#FFF3A0','#B5EAD7','#A7C7FF','#CDB4FF'].map((c,i)=>{const r=80-i*7;return `<path d="M${100-r} 126 A${r} ${r} 0 0 1 ${100+r} 126" fill="none" stroke="${c}" stroke-width="7" stroke-linecap="round"/>`;}).join('');
+  }
+  const topK=(.55+.45*Math.abs(Math.cos(th))).toFixed(3);
+  const top=svg=>svg?`<g transform="translate(100 0) scale(${topK} 1) translate(-100 0)">${svg}</g>`:'';
+  const surf=(list,minC)=>list.map(([x0,svg])=>x0===null?'':onSurface(svg,x0,R_FACE,th,minC)).join('');
+  /* 耳：半径 48 で回し、いつも体のうしろ。内側のピンクは前を向いているときだけ */
+  const ears=baby?'':[58,142].map(x0=>{const t=turnPt(x0-100,R_EAR,th),x=t.x.toFixed(2);
+    return `<circle cx="${x}" cy="62" r="18" fill="${col}" stroke="${dk}" stroke-width="3"/>`+(t.c>.15?`<ellipse cx="${x}" cy="62" rx="${(8*t.c).toFixed(2)}" ry="8" fill="#FFB7CC"/>`:'');}).join('');
+  const tuft=form==='puni'?top(`<path d="M100 42 q-9 -16 5 -21 q11 -2 7 9" fill="none" stroke="${dk}" stroke-width="4" stroke-linecap="round"/>`):'';
+  /* 腕：回さない。おなかに当てた腕（belly）は おなかの表面に貼り、横向き（|yaw|≥60°）から後ろ姿では横の腕にする（片方の腕だけになるのを避ける） */
+  const arm=(x,y,r)=>`<ellipse cx="${x}" cy="${y}" rx="11" ry="15" fill="${col}" stroke="${dk}" stroke-width="3" transform="rotate(${r} ${x} ${y})"/>`;
+  const belly=opt.arms==='belly'&&Math.cos(th)>.5+1e-9;
+  const arms=opt.arms==='up'?arm(30,98,-35)+arm(170,98,35):belly?'':arm(33,132,25)+arm(167,132,-25);
+  const armsFront=belly?onSurface(arm(78,146,60),78,R_FACE,th)+onSurface(arm(122,146,-60),122,R_FACE,th):'';
+  /* 足：半径 34 で回し、いつも体のうしろ */
+  const feet=[74,126].map(x0=>`<ellipse cx="${turnPt(x0-100,R_FOOT,th).x.toFixed(2)}" cy="180" rx="18" ry="9" fill="${dk}"/>`).join('');
+  const body=arms+feet+`<path d="${BODY}" fill="${col}" stroke="${dk}" stroke-width="3.5"/>`+
+    onSurface(`<ellipse cx="100" cy="150" rx="40" ry="24" fill="#fff" opacity=".5"/>`,100,R_FACE,th)+armsFront;
+  if(opt.final){
+    back=`<ellipse cx="100" cy="114" rx="94" ry="88" fill="#FFF8E8" opacity=".6"/>`+
+      RAINBOW.map((c,i)=>`<ellipse cx="100" cy="114" rx="${92-i*5}" ry="${86-i*5}" fill="none" stroke="${c}" stroke-width="5" opacity=".85"/>`).join('')+back;
+  }
+  /* 顔：半径 62 の表面。顔の extra のうち体の外のもの（Z・汗）は浮くもの */
+  const P=faceParts(face,false);
+  const faceS=surf(P.blush,.2)+surf(P.eyes)+surf(P.mouth)+surf(P.extra);
+  const faceFloat=P.extra.filter(p=>p[0]===null).map(p=>p[1]).join('');
+  /* かざり */
+  const A=acc25(form);
+  const accS=A.face.map(p=>onSurface(p.svg,p.x0,R_FACE,th)).join('')+top(A.top)+
+    A.off.map(p=>{const x=turnPt(p.x0-100,R_HEAD,th).x;return p.make?p.make(x.toFixed(2)):`<g transform="translate(${(x-p.x0).toFixed(2)} 0)">${p.svg}</g>`;}).join('');
+  const think=opt.think?`<circle cx="150" cy="58" r="4" fill="#fff" stroke="#D9CCD6" stroke-width="2"/><circle cx="160" cy="44" r="6" fill="#fff" stroke="#D9CCD6" stroke-width="2"/><ellipse cx="176" cy="24" rx="20" ry="17" fill="#fff" stroke="#D9CCD6" stroke-width="2"/><text x="176" y="32" text-anchor="middle" font-size="20">${opt.think}</text>`:'';
+  const fin=opt.final?sparkle(22,70,8,'#FFE08A')+sparkle(180,66,9,'#FFE08A')+sparkle(170,160,6,'#FFFFFF'):'';
+  const shine=opt.shiny?sparkle(26,40,10,'#FFD84D')+sparkle(176,112,8,'#FF9EBB')+sparkle(40,172,7,'#8FD6E8'):'';
+  const skin=ears+tuft+body;
+  const inner=(F.secret?`<g class="secret-skin">${skin}</g>`:skin)+faceS+accS+faceFloat+A.float;
+  const glow=F.secret?`<ellipse cx="100" cy="116" rx="96" ry="90" fill="#FFF6FF" opacity=".55"/>`:'';
+  const tw=F.secret?`<g class="twinkle">${[[18,60,7,'#FFD84D'],[184,52,8,'#FFB3C7'],[24,150,6,'#BCD8FF'],[178,150,7,'#C2F0D6'],[100,6,5,'#FFF2A8']].map(([x,y,r,c])=>sparkle(x,y,r,c)).join('')}</g>`:'';
+  const g=baby?`<g transform="translate(100 118) scale(.84) translate(-100 -118)">${inner}</g>`:inner;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" aria-hidden="true">${defs}<ellipse cx="100" cy="190" rx="60" ry="7" fill="rgba(0,0,0,.08)"/>${glow}${back}${g}${shine}${fin}${tw}${think}</svg>`;
+}
 export function petSVG(form,face,opt){
   opt=opt||{};
   if(form==='egg') return eggSVG(opt.pts||0);
   if(opt.sil) return silSVG(form);
+  if(typeof opt.yaw==='number') return petSVG25(form,face,opt);
   const F=FORMS[form],dk=F.dark,baby=F.stage===1;
   let defs='',col=F.color;
   /* スーパーシークレット は いつも にじ色の お肌（CSS で ゆっくり色が回る） */

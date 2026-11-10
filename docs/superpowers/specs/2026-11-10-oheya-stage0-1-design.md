@@ -22,6 +22,9 @@
 | 画面 | `.screen` を 4:3 に固定し、Canvas を全面に敷く |
 | 夜 | 紺色の重ねを 0.42 まで約 6 秒でなじませる。まどの空は約 3 秒でクロスフェード。明滅なし |
 | 失敗時 | Canvas やぷにの画像が使えないときは、今の `sceneSVG`＋`#pet` の SVG 表示に戻す |
+| ぷにの向き | **B：2.5D**（2026-11-10、段階0.5の試作 `dev/turn-spike.*` を見てオーナー決定）。体の輪郭はそのまま、顔などを丸い体の表面で回し、横顔・後ろ姿も出す。進む方へ毎秒 360° でなめらかに向きを変える。§3.7 |
+| 絵の変換 | 段階0で発見：`petSVG` は `xmlns` が無く、10 種類の顔で属性が重複していて、そのままでは `data:` 画像にできない。**`room.js` で HTML として読んで XML に書き出してから画像にする（案 A）**。既存の `faceSVG` の重複は直さない |
+| シークレットのにじ色 | CSS で色が回る演出は `data:` 画像の中では動かないので、部屋の中では止まった にじ色にする（今のホーム以外の画面は今のまま） |
 | VERSION | 段階0は `dev/`・`docs/` だけなので上げない（CLAUDE.md 補足）。段階1で `v2.5.0` に上げる |
 
 ### 範囲外（まだやらない）
@@ -77,7 +80,7 @@
 | `js/room-ai.js`（新規） | ぷにの行動の状態機械、BFS の経路探索、つぶれて伸びる動きの計算、`mulberry32`。共有する JSDoc の型もここに置く | 触れない |
 | `js/room.js`（新規） | Canvas の用意、rAF（約 30fps）、投影、深度ソート、背景のオフスクリーンキャッシュ、ぷにの絵のキャッシュ、夜の暗さ、`#pet` の位置合わせ、裏に回ったら止める。投影・ソート・暗さ・倍率は純関数で export | `mount()` 以降だけ |
 | `js/room-art.js`（新規） | 床・壁・まど（中は時間帯の空）・ラグ・ほんだな・しょくぶつの SVG 文字列と、固定の配置 `layout(n)` | 触れない |
-| `js/art.js`（小変更） | 時間帯の空の色表 `SCENE` を export（まどの中の空に使う）。他は変えない | — |
+| `js/art.js`（変更） | 時間帯の空の色表 `SCENE` を export（まどの中の空に使う）。`petSVG` に向き `yaw`（度）のオプションを足す（§3.7）。**`yaw` を渡さないときの出力は今と 1 文字も変えない**（回帰テストで固定）。そのために 34 姿のかざり（`accSVG`）を「頭の上」「顔の表面」「まわりに浮く」に分けて持つ | 触れない |
 | `js/app.js`（変更） | `room.mount()`、`render()` から `room.update()`、タッチで `room.hold()`、`wobble()` を `room.poke()` に。失敗したら今の表示 | — |
 | `css/style.css`（変更） | `.screen` を 4:3、Canvas を全面、`.pet` を `position:absolute` の透明ボタンに（おへや表示のときだけ。クラス `.screen.room` で切り替え） | — |
 | `sw.js` | `ASSETS` に `./js/room.js`・`./js/room-ai.js`・`./js/room-art.js` を足し、`VERSION` を `v2.5.0` | — |
@@ -90,10 +93,11 @@
 /** @typedef {'asa'|'hiru'|'yuu'|'yoru'} Band */
 /** @typedef {'idle'|'walk'|'look'|'hop'|'dance'|'sleep'|'rest'|'sad'} Act */
 /** @typedef {{x:number, y:number, act:Act, t:number, dur:number,
- *   path:{x:number,y:number}[], dir:1|-1, hold:number, held:boolean, n:number}} Brain
- *   x,y は足もとのマス座標（マスの中心は i+0.5）。hold はタッチ後に止まっている残り秒 */
+ *   path:{x:number,y:number}[], yaw:number, want:number, hold:number, held:boolean, n:number}} Brain
+ *   x,y は足もとのマス座標（マスの中心は i+0.5）。yaw は今の向き・want は向きたい向き（度。0 が正面、+ で見ている人から見て右、±180 が後ろ）。
+ *   hold はタッチ後に止まっている残り秒 */
 /** @typedef {{mode:Mode, band:Band, reduced:boolean, home:{x:number,y:number}}} BrainCtx  home はねんねのマス（3.1） */
-/** @typedef {{scaleX:number, scaleY:number, lift:number, tilt:number, flip:boolean}} Motion */
+/** @typedef {{scaleX:number, scaleY:number, lift:number, tilt:number, yaw:number}} Motion  yaw は絵を選ぶ向き（度。spin のときは一回転を足す） */
 /** @typedef {{form:string, face:string, arms:string, think:string|null, pose:string,
  *   shiny:boolean, final:boolean, pts:number}} PetView  look() と S から作る、絵のキーになる値 */
 ```
@@ -107,9 +111,10 @@
 - `stepBrain(brain, dt, ctx, grid, rng) → void`（`dt` は 0.1 秒で切り詰め）
 - `holdBrain(brain, on:boolean) → void`（離したときに `hold=3`）、`pauseBrain(brain, sec) → void`（エサのあと）
 - `motion(brain, timeSec, pose, pokeAge?) → Motion`
+- `dirYaw(dx, dy) → number`（マス目の移動の向き → 向き。`+gx` は 45、`+gy` は -45、`-gx` は -135、`-gy` は 135）、`turnToward(cur, want, dt, rate=360) → number`（いちばん近い回り方で近づける）、`normDeg(d) → -180〜180`
 
 `js/room.js`
-- 純関数：`toScreen(gx,gy,n) → {x,y}`、`fromScreen(x,y,n) → {gx,gy}`、`sortByDepth(list)`、`approach(cur, target, dt, tau)`（暗さを近づける）、`fitScale(w,h,n)`、`petBox(cx, bottom, sprite, boxW, boxH)`（`#pet` の位置と大きさ。最小 96px・`.screen` の中に収める）、`SpriteCache`（最大 40 件・読み込み中は前の絵）
+- 純関数：`toScreen(gx,gy,n) → {x,y}`、`fromScreen(x,y,n) → {gx,gy}`、`sortByDepth(list)`、`approach(cur, target, dt, tau)`（暗さを近づける）、`fitScale(w,h,n)`、`petBox(cx, bottom, sprite, boxW, boxH)`（`#pet` の位置と大きさ。最小 96px・`.screen` の中に収める）、`SpriteCache`（最大 120 件・読み込み中は前の絵）、`yawBucket(deg, n=24) → number`（15° ごとに丸める）
 - DOM：`mount(sceneEl, petBtn, opt) → boolean`（失敗で `false`）、`update({view, mode, band, now})`、`hold(on)`、`poke()`、`pauseFor(sec)`、`unmount()`
 
 `js/room-art.js`
@@ -145,7 +150,7 @@
 背景キャッシュ（床・壁・まど・ラグ）→ 物（ほんだな・しょくぶつ・ぷにと影）を足もとの `(gx+gy)` の小さい順（同じなら `gx` の小さい順）→ 夜の暗さの重ね。ゲージ・バッジ・成長バーは DOM のまま上に重なる（暗くならない）。
 
 ### 3.4 ぷにの絵
-`petSVG(form, face, {pts, shiny, final, arms, think})` → `data:` 画像 → `Image`。キーは `form|face|arms|think|shiny|final|stage`（たまごは `pts>=2` のひび）。キャッシュは最大 40 件で古いものから捨てる。読み込みが終わるまでは前の絵を描く。読み込みに失敗したら `mount` の逃げ道と同じく今の表示に戻す。左右の向きは反転で出す。
+`petSVG(form, face, {pts, shiny, final, arms, think, yaw})` → HTML として読んで XML に書き出す（`DOMParser` `text/html` → `XMLSerializer`。結果が空なら使わない）→ `data:` 画像 → `Image`。キーは `form|face|arms|think|shiny|final|stage|yawBucket`（たまごは `pts>=2` のひび。たまごは向きを変えない）。キャッシュは最大 120 件で古いものから捨てる。読み込みが終わるまでは前に読めた絵を描く（向きを変えている途中で消えないように。段階0.5で確認）。読み込みに失敗したら `mount` の逃げ道と同じく今の表示に戻す。左右反転は使わない（向きは §3.7）。
 
 ### 3.5 夜と時間帯の変わり目（明滅なし）
 - 暗さの目標：あさ 0、ひる 0、ゆうがた 0.10、よる 0.42（紺色 `#1E2350` を重ねる）。`approach()` で時定数約 2 秒の指数的な近づけ（約 6 秒でなじむ・行き過ぎない）。
@@ -157,6 +162,21 @@
 - `document.hidden` の間は止める。戻ったら `dt` を 0 から数え直し、背景キャッシュと画像を確かめて必要なら作り直す（段階0の結果を反映）。
 - ねんね中は描画を 10fps に落とす（呼吸だけなので）。
 - `prefers-reduced-motion` のときは `reduced:true`。
+
+### 3.7 ぷにの向き（2.5D）
+段階0.5の試作 `dev/turn-spike.js` の `petSVG25` を元にする（4 姿で確認済み）。`yaw` を θ（度）として、200×200 の絵の中心 `x=100` の縦の軸のまわりに回す。
+- 表面の点の回し方：正面図で中心からのずれ `u`、半径 `R` の点を `φ=asin(u/R)+θ` に移し、`x=100+R·sinφ`、横幅を `cosφ` 倍にする。`cosφ` が小さい（裏に回った）部品は描かない。
+| 部品 | 扱い |
+|---|---|
+| 体の輪郭・足 | 輪郭はそのまま。足は半径 34 で回し、いつも体のうしろ |
+| 耳 | 半径 48 で回し、いつも体のうしろ。内側のピンクは前を向いているときだけ（横幅 `cos` 倍） |
+| 腕 | 体の左右の端に置いたまま回さない（手前に回すと、おなかの前に輪が出て穴のように見えたため） |
+| 顔（目・口・ほっぺ・顔の `extra`）・おなかの白・顔の表面のかざり（めがね・おなかの模様など） | 半径 62 で回す（体の輪郭 約 75 より小さくして、横を向いても輪郭の内側に残す） |
+| 頭の上のかざり（ぼうし・かんむり・葉・ほし など）・`puni` の毛 | 中心のまま横幅を `0.55+0.45·|cosθ|` 倍。中心から外れた部分（はかせのふさ等）は半径 44 で回す |
+| まわりに浮くもの（しゃぼん・きらきら・湯気・`think`・`final` のオーラ・`shiny` のきらきら） | 回さない |
+- 後ろ姿（|θ|>90°）は顔が隠れ、つるんとした背中になる（しっぽ等は足さない。G1 で子どもの反応を見て決める）。
+- 34 姿のかざりの分類は実装計画 Task 6b の表で決める。分類しにくいかざりは「頭の上」として扱い、見た目を Playwright のスクリーンショット（0°・45°・90°・135°・180°）で確かめる。
+- 方向は 24（15° ごと）にまとめて絵をキャッシュする。
 
 ---
 
@@ -184,7 +204,7 @@
 - 時間帯の倍率：あさは `look`×1.5、ひるは `walk`・`hop`×1.3、ゆうがたは `idle`×1.5。
 - `reduced`：`hop`・`dance` の重み 0、歩く速さ 0.6 倍、`idle` を 1.5 倍の長さ。
 - 行き先が無い（BFS が `null`）ときは `idle`。部屋の外・通れないマスには出ない。
-- 向き `dir` は画面上の左右（`gx-gy` の増減）で決める。
+- 向き：歩くときは `want=dirYaw(進む向き)`。毎フレーム `yaw=turnToward(yaw, want, dt)`（毎秒 360°）。`|want-yaw|>60°` の間は歩き出さず、ほぼ向き終わってから進む。たちどまり・`held`・`hungry`・`sad`・`sleep`・`egg`・`dance` の間は `want=0`（正面）。`look` は `want` を -50 と +50 に 0.6〜0.8 秒ごとに切り替える。
 
 ### 4.3 さわっている間は逃げない
 `held` の間は動かず正面を向く。離したら `hold=3` 秒止まる。エサのあとも `pauseFor(3)`。歩いている途中なら、今いる位置で止まる（次に動くときに最寄りのマスの中心から経路を引き直す）。
@@ -196,12 +216,13 @@ odori `puppet-motion.ts` の考え方を移植（拍ではなく秒で動かす�
 - ぴょん：lift 0.35 の放物線、跳んでいる間 縦に 6% 伸びる
 - ダンス：tilt 0.08 ラジアンの揺れ＋拍ごとに弾む
 - `poke()`：0.5 秒の小さなつぶれ
-- たちどまり中は `look()` の `pose` を数値に置き換える：`bob`（上下）、`sway`（tilt 揺れ）、`droop`（縦 0.96 でゆっくり）、`bounce`（小さく弾む）、`tilt`（傾けて止まる）、`squish`（2 回つぶれる）、`spin`（左右反転を 2 回）、`none`（呼吸のみ）
+- たちどまり中は `look()` の `pose` を数値に置き換える：`bob`（上下）、`sway`（tilt 揺れ）、`droop`（縦 0.96 でゆっくり）、`bounce`（小さく弾む）、`tilt`（傾けて止まる）、`squish`（2 回つぶれる）、`spin`（その場で 1 回転：`Motion.yaw` に 0.8 秒で 360° を足す）、`none`（呼吸のみ）
 
 ### 4.5 出所の記録（各ファイルの冒頭に書く）
 - `mulberry32`・`between`：oekaki `src/tank/random.ts`（b1611f5）からほぼそのまま。TS の型を JSDoc に変更。
 - 「ときどき止まる」「夜は決まった場所へ集まって眠る」：oekaki `src/tank/walk.ts`・`sleep.ts`（b1611f5）の考え方。1 次元の歩きから、マス目＋BFS（新規）に変更。
 - `motion`：odori `src/core/puppet-motion.ts`（9cef958）。拍を秒に変え、mode を増やした。
+- `petSVG` の向き（2.5D）：段階0.5の試作 `dev/turn-spike.js`（このリポジトリ）の `petSVG25`。
 - orbit `src/render/camera.ts`（f2a74b1）は Three.js 前提のため段階1では使わない（段階4の回転で参照）。
 
 ---
@@ -217,7 +238,13 @@ odori `puppet-motion.ts` の考え方を移植（拍ではなく秒で動かす�
   - `held` の間と離して 3 秒は動かない
   - 長い時間（例：1 万歩）回しても止まりきらず、範囲の外・通れないマスに出ない
   - `motion` の `scaleX*scaleY≈1`
-- `tests/room.test.js`：`toScreen`／`fromScreen` の往復、`sortByDepth` の順、`approach` が単調で行き過ぎない、`fitScale` が収まる倍率を返す
+  - 向き：`dirYaw` の 4 方向、`turnToward` はいちばん近い回り方で行き過ぎない（170°→-170° は 20° の回転）、大きく向きを変える間は進まない、たちどまりで正面に戻る、`dt=0`・目的地にいるときに NaN を出さない（段階0で見つけた不具合）
+- `tests/art.test.js`
+  - **回帰**：`yaw` を渡さないときの `petSVG` の出力が、変更前（v2.4.0）と全姿 × 全顔 × オプションの組み合わせで同じ（変更前の出力の SHA-256 を `tests/fixtures/petsvg-v2.4.0.json` に保存して比べる）
+  - `yaw` を 15° ごとに回した出力に、同じ要素の中で重複する属性が無い・`http`・`<script`・`on…=` を含まない
+  - `yaw=0` と `yaw` なしで、顔の部品の位置が同じ
+  - 後ろ（180°）では目の部品が出ない、`shabon` の泡は回しても位置が変わらない
+- `tests/room.test.js`：`toScreen`／`fromScreen` の往復、`sortByDepth` の順、`approach` が単調で行き過ぎない、`fitScale` が収まる倍率を返す、`yawBucket` が 15° ごと・-180 と 180 を同じに扱う
 - `tests/room-art.test.js`：各 SVG が `<svg` で始まり、`http`・`<script`・`on…=` を含まない。`layout(n)` の足もとが n=6・8・10 で範囲内・重ならない、`home` が通れる
 - 構文チェック：`for f in js/*.js dev/*.js; do node --check "$f"; done`
 
@@ -225,6 +252,7 @@ odori `puppet-motion.ts` の考え方を移植（拍ではなく秒で動かす�
 - 起動、エサやり（報告 → トレイ → ぷにに飛ぶ）、設定（⚙️ の長押し）、保存と復元（バックアップコードの出力 → 入力）
 - 昼と夜：`page.clock` で時刻を固定して切り替え、まどの空と暗さを確認
 - ぷにが歩く：`#pet` の位置を約 30 秒あけて比べる。タッチ中は動かない
+- 向き：34 姿 × 0°・45°・90°・135°・180° の一覧画像をスクリーンショットで確かめる（かざりが不自然に浮く・ちぎれる姿が無いか）。ホーム以外の画面（ずかん・進化）の絵が今と同じ
 - コンソールエラー・CSP 違反がない
 - 820×1180（縦）と 1180×820（横）で崩れない（スクリーンショット）
 - 今の育成データ：おとな・病気・ねんね中の v2 データを `localStorage` に入れて起動。v1 からの移行もそのまま動く
@@ -236,7 +264,7 @@ odori `puppet-motion.ts` の考え方を移植（拍ではなく秒で動かす�
 2. 段階0：実装 → `security-reviewer` → `/security-review` → 構文チェック＋Playwright → コミット → **結果と依頼文を報告して止まる**。
 3. 段階1（オーナーの判断のあと）：
    - 先に 2.2 の型と 2.3 の関数の形を `room-ai.js` に確定させる。
-   - 並行はサブエージェント同時 4 本まで（実装 3＋レビュー 1。2026-11-10 オーナー決定。`security-reviewer`・`/security-review` は数えない）：①`room-ai.js`＋テスト、②`room-art.js`＋テスト、③`room.js` の純関数＋テスト。`room.js` の描画と `app.js`・`css` の組み込みは本体で行う。
+   - 並行はサブエージェント同時 4 本まで（実装 3＋レビュー 1。2026-11-10 オーナー決定。`security-reviewer`・`/security-review` は数えない）：①`room-ai.js`＋テスト、②`art.js` の向き（2.5D）＋テスト、③`room-art.js`＋テスト、④`room.js` の純関数＋テスト（実装は同時 3 本までなので、先に終わった流れが ④ を受け持つ）。`room.js` の描画と `app.js`・`css` の組み込みは本体で行う。
    - 実装 → `security-reviewer` → `/security-review` → 構文チェック・テスト＋Playwright → `ASSETS` に 3 本を足し `VERSION`／`APP_VERSION` を `v2.5.0` → コミット。
 4. `main` には入れない・`main` へプッシュしない。G1 で、段階2に進むか TS＋Vite に移行するか、`dev/` を残すかを決める。
 5. 仕様が変わる部分（ホーム画面がおへやになる）は、段階1のコミットで `docs/spec.md` と `docs/spec-summary.md` に反映する。
@@ -252,3 +280,5 @@ odori `puppet-motion.ts` の考え方を移植（拍ではなく秒で動かす�
 - iPad の描画負荷・発熱・ホーム画面追加時の挙動は、段階0の実機結果でしか判断できない。結果次第では「ぷにの絵を事前に ImageBitmap にする」「背景を 1 枚の画像に固める」「dpr を 1.5 に下げる」などで調整する。
 - 4:3 にすると縦向きでホーム画面が今より縦に長くなる可能性がある。820×1180 で、トレイとふきだしが画面内に収まるかを確認し、はみ出す場合は 16:11 などに調整する。
 - `fromScreen` は段階1ではテストのためだけに使う（家具の配置は段階2）。
+- 2.5D の向きは 4 姿でしか確かめていない。34 姿のかざりで見た目が崩れるものがあれば、その姿だけ「頭の上」扱いにするなど個別に調整する。
+- 向きごとに絵を作るので、作る絵の数が増える（1 姿・1 顔で最大 24 枚）。iPad での絵を作る時間と記憶の量は G1 で見る。

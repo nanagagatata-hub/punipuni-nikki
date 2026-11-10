@@ -1,0 +1,27 @@
+/* 家具の絵の確認ページ（開発用）。大きさ・位置は item-sheet.js が el.style で入れる */
+*{box-sizing:border-box}
+body{margin:0;padding:12px 16px 40px;background:#FFF8EE;color:#5A4550;font:14px/1.5 system-ui,sans-serif}
+h1{font-size:18px;margin:0 0 6px}
+h2{font-size:16px;margin:22px 0 6px;padding-top:8px;border-top:2px solid #F1D9C4}
+nav a{display:inline-block;margin:0 6px 6px 0;padding:4px 12px;border-radius:999px;background:#fff;border:2px solid #E7C9B8;color:inherit;text-decoration:none}
+nav a.on{background:#FFD5E3;border-color:#E995B8;font-weight:700}
+#note{margin:4px 0 10px;font-size:13px}
+#note.bad{color:#C0392B;font-weight:700}
+
+.row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;padding:10px 0;border-bottom:1px dashed #E7C9B8}
+.info{flex:0 0 190px;align-self:flex-start;font-size:12.5px}
+.info b{display:block;font-size:15px}
+.info .tag{display:inline-block;margin:3px 0;padding:0 8px;border-radius:999px;background:#B9EAD2}
+.info .tag.spare{background:#E6E0DA}
+.info .ok{color:#2E8B57}
+.info .ng{color:#C0392B;font-weight:700}
+
+.cell{margin:0;text-align:center;font-size:12px}
+.cell.bad .stage{outline:3px solid #C0392B}
+.stage{position:relative;overflow:hidden;background:#fff;border:1px solid #E7C9B8;border-radius:8px}
+.stage svg,.stage img{position:absolute;left:0;top:0;display:block}
+.stage img{max-width:none}
+
+.pats{display:flex;flex-wrap:wrap;gap:12px}
+.pat{margin:0;text-align:center;font-size:12px}
+.pat img{display:block;width:192px;height:128px;border:1px solid #E7C9B8;border-radius:8px;background:#fff}

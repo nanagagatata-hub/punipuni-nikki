@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light">
+<title>おへや 家具の絵の確認（開発用）</title>
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="./item-sheet.css">
+<script type="module" src="./item-sheet.js"></script>
+</head>
+<body>
+<!-- 開発用の確認ページ。アプリからはリンクしない・sw.js の ASSETS に入れない。
+     ?g=A|B|C|all … 家具の絵を 4 つの向きで並べる ／ ?g=pat … ゆか・かべの見本 -->
+<h1>家具の絵の確認</h1>
+<nav id="nav"></nav>
+<p id="note">よみこみ中…</p>
+<div id="sheet"></div>
+</body>
+</html>

@@ -1,11 +1,11 @@
-// おへやの絵（床・壁・まど・ラグ）と固定の配置、家具の絵の振り分け。DOM には触れない。
+// おへやの絵（床・壁・まど とその柄）と固定の配置、家具の絵の振り分け。DOM には触れない。
 // 仕様：docs/superpowers/specs/2026-11-10-oheya-stage0-1-design.md §3.1〜3.3、
 //       docs/superpowers/specs/2026-11-10-oheya-room-mode-and-stage2-design.md §8.1
 // 投影は 2:1 アイソメ。マス (gx,gy) の上の頂点は
 //   x=原点x+(gx-gy)*32, y=原点y+(gx+gy)*16  （マス (0,0) がいちばん奥）
 // 共通の部品（線・多角形・箱・影）は room-art-kit.js、家具の絵は room-art-a.js / -b.js / -c.js にある。
 import {SCENE} from './art.js';
-import {ITEMS,has} from './room-data.js';
+import {ITEMS,DEFAULT_FLOOR,DEFAULT_WALL,has} from './room-data.js';
 import {WALL_H,ST,f1,pts,poly,polyN,isoBox,footShadow,wrapSVG} from './room-art-kit.js';
 import {ART_A} from './room-art-a.js';
 import {ART_B} from './room-art-b.js';
@@ -33,30 +33,119 @@ export function layout(n){
   };
 }
 
+// ---- ゆか・かべの柄 ----
+// 床の柄：(P,n) → SVG 片。P(gx,gy) は床の格子点。床のひし形 P(0,0)〜P(n,n) の中だけに描く。
+const line2=(a,b,col,w)=>`<path d="M${f1(a[0])} ${f1(a[1])}L${f1(b[0])} ${f1(b[1])}" stroke="${col}" stroke-width="${w}" fill="none"/>`;
+const floorBase=(P,n,fill)=>poly([P(0,0),P(n,0),P(n,n),P(0,n)],fill);
+// 床の上に寝かせた だ円（アイソメの平面：横 rx・たて rx/2）
+const flatE=(p,dx,dy,rx,fill)=>`<ellipse cx="${f1(p[0]+dx)}" cy="${f1(p[1]+dy)}" rx="${rx}" ry="${f1(rx*.5)}" fill="${fill}"/>`;
+const FLOOR_ART={
+  // はちみついろの板張り（gx の向きに板。つなぎ目をずらす）
+  f_honey(P,n){
+    let s=floorBase(P,n,'#FFE9BD');
+    for(let k=1;k<n;k++)s+=line2(P(0,k),P(n,k),'#F1D197',1.6);
+    for(let j=0;j<n;j++){const g=(j*2.5+1)%n;s+=line2(P(g,j),P(g,j+1),'#F1D197',1.6);}
+    return s;
+  },
+  // みんといろの板張り（gy の向きに板）
+  f_mint(P,n){
+    let s=floorBase(P,n,'#D8F3E5');
+    for(let k=1;k<n;k++)s+=line2(P(k,0),P(k,n),'#B2E0C8',1.6);
+    for(let j=0;j<n;j++){const g=(j*2.5+1.5)%n;s+=line2(P(j,g),P(j+1,g),'#B2E0C8',1.6);}
+    return s;
+  },
+  // 2 色の いちまつ（クリームと ももいろ）
+  f_check(P,n){
+    let s=floorBase(P,n,'#FFF6E4');
+    for(let i=0;i<n;i++)for(let j=0;j<n;j++)if((i+j)%2)s+=polyN([P(i,j),P(i+1,j),P(i+1,j+1),P(i,j+1)],'#FFDCE6');
+    return s;
+  },
+  // そらいろの じゅうたんに、まっしろの くも
+  f_cloud(P,n){
+    let s=floorBase(P,n,'#DCEDFF');
+    // くもを置くマスと ずらしは i,j だけで決める（乱数を使わない）。くもは となりのマスへ少しはみ出すので、
+    // 手前の 2 辺（i=n-1・j=n-1）のマスには置かない（床のふちの外へ出ないように。奥の 2 辺は壁がかくす）
+    for(let i=0;i<n-1;i++)for(let j=0;j<n-1;j++){
+      const h=(i*5+j*3)%7;
+      if(h!==0&&h!==3)continue;
+      const c=P(i+.5,j+.5), dx=((i*13+j*7)%5-2)*2, z=h?1.1:1.3;
+      const E=(x,y,rx,fill)=>flatE(c,dx+x*z,y*z,f1(rx*z),fill);
+      s+=E(1,3,15,'#C6DDF6');                                         // くもの かげ
+      s+=E(-9,1,9,'#FFFFFF')+E(10,1,10,'#FFFFFF')+E(2,-3,10,'#FFFFFF')+E(0,1,14,'#FFFFFF');
+    }
+    return s;
+  },
+};
+
+// 壁の柄：L＝左奥の壁の色、R＝右奥の壁の色（左が少し濃い）、deco(A,n,k)＝壁の上の模様。
+// A(g,h) は壁の点（g＝壁にそったマス、h＝床からの高さ px）。k は壁を横に 1px 進んだときの y の変化（右奥 +.5・左奥 -.5・見本 0）。
+// 星や雲は k で壁の向きに傾ける。
+const skew=(c,k,xy)=>xy.map(([u,v])=>[c[0]+u,c[1]+u*k+v]);
+const STAR=Array.from({length:10},(_,i)=>{const a=-Math.PI/2+i*Math.PI/5,r=i%2?3.2:7.6;return [Math.cos(a)*r,Math.sin(a)*r];});
+const CLOUD=(c,k,fill)=>{
+  const e=(u,v,rx,ry)=>{const p=skew(c,k,[[u,v]])[0];return `<ellipse cx="${f1(p[0])}" cy="${f1(p[1])}" rx="${rx}" ry="${ry}" fill="${fill}"/>`;};
+  return e(-9,2,8,6)+e(9,2,9,6)+e(0,-3,9,8)+e(0,3,14,5.5);
+};
+const WALL_ART={
+  // うすピンクに 白い みずたま
+  w_pink:{L:'#FBC8DA',R:'#FFD5E3',dot:{L:'#FFEAF1',R:'#FFF0F5'},deco(A,n,k,side){
+    let t='';
+    for(let r=0;r<4;r++)for(let g=0.5+(r%2)*0.5;g<n;g+=1){const p=A(g,30+r*22);t+=`<circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="3.2" fill="${this.dot[side]}"/>`;}
+    return t;
+  }},
+  // クリームに ラベンダーの たてじま
+  w_stripe:{L:'#F6EEDD',R:'#FFF7E8',dot:{L:'#DCCDF6',R:'#E6DAFB'},deco(A,n,k,side){
+    let t='';
+    for(let g=0.25;g<n;g+=0.5){
+      t+=polyN([A(g,0),A(g+.2,0),A(g+.2,WALL_H),A(g,WALL_H)],this.dot[side]);
+      t+=line2(A(g+.33,0),A(g+.33,WALL_H),'#FFFFFF',1.4);
+    }
+    return t;
+  }},
+  // ふじいろに きいろの おほしさま
+  w_star:{L:'#D6D3F5',R:'#E2DFFA',dot:{L:'#FFF1A8',R:'#FFF5BC'},deco(A,n,k,side){
+    let t='';
+    for(let r=0;r<4;r++)for(let g=0.5+(r%2)*0.5,i=0;g<n;g+=1,i++){
+      const p=A(g,30+r*22);
+      if((i+r)%2===0)t+=`<polygon points="${pts(skew(p,k,STAR))}" fill="${this.dot[side]}" stroke="#F2D77A" stroke-width="1" stroke-linejoin="round"/>`;
+      else t+=`<circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="1.8" fill="#FFFFFF"/>`;
+    }
+    return t;
+  }},
+  // そらいろに 白い くも
+  w_sky:{L:'#C3E2F8',R:'#D2EBFC',dot:{L:'#FFFFFF',R:'#FFFFFF'},deco(A,n,k,side){
+    let t='';
+    for(let r=0;r<2;r++)for(let g=0.8+r*1.1;g<n-.4;g+=2.2)t+=CLOUD(A(g,40+r*42),k,this.dot[side]);
+    return t;
+  }},
+};
+
 /**
- * 背景（床＋壁2面＋まど＋カーテン＋ラグ）の SVG 文字列。
+ * 背景（床＋壁2面＋まど＋カーテン）の SVG 文字列。ラグは家具（ART_A.rug）が描く。
  * 原点：マス (0,0) の上の頂点が (n*32, WALL_H)。viewBox は 0 0 n*64 (n*32+WALL_H)。
+ * SVG の id は 'rsky-<band>-<wall>'（時間帯・壁の柄ごとに別）。
  * @param {6|8|10} n
  * @param {'asa'|'hiru'|'yuu'|'yoru'} band
+ * @param {string} [floorId] FLOORS の ID（省略・知らない ID は DEFAULT_FLOOR）
+ * @param {string} [wallId] WALLS の ID（省略・知らない ID は DEFAULT_WALL）
  */
-export function roomSVG(n,band){
-  const S=SCENE[band]||SCENE.hiru, H=WALL_H, ox=n*32, gid='rsky-'+band;
+export function roomSVG(n,band,floorId,wallId){
+  const fid=has(FLOOR_ART,floorId)?floorId:DEFAULT_FLOOR, wid=has(WALL_ART,wallId)?wallId:DEFAULT_WALL;
+  const WA=WALL_ART[wid];
+  const S=SCENE[band]||SCENE.hiru, H=WALL_H, ox=n*32, gid='rsky-'+band+'-'+wid;
   // 床の格子点 (gx,gy) の高さ h の位置
   const P=(gx,gy,h=0)=>[ox+(gx-gy)*32, H+(gx+gy)*16-h];
   const c=n/2;
   // 床
-  let s=poly([P(0,0),P(n,0),P(n,n),P(0,n)],'#FFE9BD');
-  for(let k=1;k<n;k++){const a=P(0,k),b=P(n,k);s+=`<path d="M${f1(a[0])} ${f1(a[1])}L${f1(b[0])} ${f1(b[1])}" stroke="#F1D197" stroke-width="1.6" fill="none"/>`;}
-  for(let j=0;j<n;j++){const g=(j*2.5+1)%n,a=P(g,j),b=P(g,j+1);s+=`<path d="M${f1(a[0])} ${f1(a[1])}L${f1(b[0])} ${f1(b[1])}" stroke="#F1D197" stroke-width="1.6" fill="none"/>`;}
+  let s=FLOOR_ART[fid](P,n);
   // 壁（右奥＝gy=0 の辺、左奥＝gx=0 の辺）
   const wallR=g=>P(g,0), wallL=g=>P(0,g);
-  const wall=(W,fill,dot)=>{
-    let t=poly([W(0),W(n),[W(n)[0],W(n)[1]-H],[W(0)[0],W(0)[1]-H]],fill);
-    for(let r=0;r<4;r++)for(let g=0.5+(r%2)*0.5;g<n;g+=1){const p=W(g);t+=`<circle cx="${f1(p[0])}" cy="${f1(p[1]-30-r*22)}" r="3.2" fill="${dot}"/>`;}
-    return t;
+  const wall=(W,side,k)=>{
+    const A=(g,h)=>{const p=W(g);return [p[0],p[1]-h];};
+    return poly([W(0),W(n),[W(n)[0],W(n)[1]-H],[W(0)[0],W(0)[1]-H]],WA[side])+WA.deco(A,n,k,side);
   };
   const strip=(W,h0,h1,fill,extra='')=>polyN([[W(0)[0],W(0)[1]-h0],[W(n)[0],W(n)[1]-h0],[W(n)[0],W(n)[1]-h1],[W(0)[0],W(0)[1]-h1]],fill)+extra;
-  s+=wall(wallL,'#FBC8DA','#FFEAF1')+wall(wallR,'#FFD5E3','#FFF0F5');
+  s+=wall(wallL,'L',-.5)+wall(wallR,'R',.5);
   // 幅木（ミント）と上の飾り（クリーム）
   for(const W of [wallL,wallR]){
     s+=strip(W,0,10,'#B9EAD2')+`<path d="M${f1(W(0)[0])} ${f1(W(0)[1]-10)}L${f1(W(n)[0])} ${f1(W(n)[1]-10)}" stroke="#8FD1B4" stroke-width="2" fill="none"/>`;
@@ -99,20 +188,26 @@ export function roomSVG(n,band){
   };
   s+=curtain(c-1.6,c-1.05,c-1.32)+curtain(c+1.05,c+1.6,c+1.32);
 
-  // ラグ（ラベンダー、スカラップのふち）
-  const a=c-1, R=(gx,gy)=>P(gx,gy);
-  const cor=[R(a,a),R(a+2,a),R(a+2,a+2),R(a,a+2)];
-  for(let i=0;i<4;i++){
-    const p=cor[i],q=cor[(i+1)%4];
-    for(let k=0;k<6;k++){const t=(k+.5)/6,x=p[0]+(q[0]-p[0])*t,y=p[1]+(q[1]-p[1])*t;s+=`<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="9" ry="5.6" fill="#CDB8F0" ${ST}/>`;}
-  }
-  s+=polyN(cor,'#CDB8F0');
-  const d=.2,inn=[R(a+d,a+d),R(a+2-d,a+d),R(a+2-d,a+2-d),R(a+d,a+2-d)];
-  s+=`<polygon points="${pts(inn)}" fill="#E6DAFA" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="1 6" stroke-linecap="round"/>`;
-  const mid=R(c,c);
-  s+=[[0,-9],[10,0],[0,9],[-10,0]].map(([dx,dy])=>`<ellipse cx="${f1(mid[0]+dx)}" cy="${f1(mid[1]+dy)}" rx="6" ry="4.2" fill="#FFC1D8"/>`).join('')+`<ellipse cx="${f1(mid[0])}" cy="${f1(mid[1])}" rx="5" ry="3.4" fill="#FFE89A"/>`;
-
   return wrapSVG(n*64,n*32+H,s);
+}
+
+/**
+ * ゆか・かべの見本（96×64）。おみせ・もようがえの ボタンに使う。知らない ID は ''。
+ * ゆかは 8×8 の床の まんなかを 1/2 で、かべは まっすぐ前から見た壁（幅木・上の飾りつき）を 4/7 で切り取る。
+ * @param {string} id FLOORS か WALLS の ID
+ * @returns {string}
+ */
+export function patternSVG(id){
+  if(has(FLOOR_ART,id)){
+    const n=8,P=(gx,gy)=>[n*32+(gx-gy)*32,(gx+gy)*16];
+    return wrapSVG(96,64,`<g transform="translate(48 32) scale(.5) translate(${-n*32} ${-n*16})">${FLOOR_ART[id](P,n)}</g>`);
+  }
+  if(has(WALL_ART,id)){
+    const WA=WALL_ART[id],H=WALL_H,n=5,U=36,A=(g,h)=>[g*U,H-h],R=(h0,h1,fill)=>polyN([A(0,h0),A(n,h0),A(n,h1),A(0,h1)],fill);
+    const body=R(0,H,WA.R)+WA.deco(A,n,0,'R')+R(0,10,'#B9EAD2')+line2(A(0,10),A(n,10),'#8FD1B4',2)+R(H-7,H,'#FFF5E4');
+    return wrapSVG(96,64,`<g transform="scale(${f1(64/H*100)/100})">${body}</g>`);
+  }
+  return '';
 }
 
 /** 家具の絵の表（引く順）。同じ ID が 2 つの表にあれば先の表が勝つ（テストで ID の重なりは無いと固定） */

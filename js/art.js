@@ -163,7 +163,7 @@ export function petSVG(form,face,opt){
 }
 
 /* 時間帯の景色（絵本のページのうしろの絵）。band：asa / hiru / yuu / yoru。ID は band ごとに分けて重複を避ける */
-const SCENE={
+export const SCENE={
   asa:{sky:['#FFC9C2','#FFE6C7','#FFF6D8'],hill:['#CDEFC4','#B2E2A8'],ink:'#5B4150'},
   hiru:{sky:['#7FC8FF','#B9E3FF','#E3F5FF'],hill:['#A6E09A','#82CC7A'],ink:'#4A3A48'},
   yuu:{sky:['#FF8E6E','#FFB98C','#D7A6E8'],hill:['#B88BB0','#93698F'],ink:'#4A2F45'},

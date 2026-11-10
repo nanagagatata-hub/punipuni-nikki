@@ -49,6 +49,13 @@ export function sortForDraw(list){
   return [...sortByDepth(list.filter(e=>e.flat)),...sortByDepth(list.filter(e=>!e.flat))];
 }
 
+/** sortForDraw の結果のうち、もようがえのマスを入れる位置（＝最初の立っているもの。なければ末尾）
+ * @param {{flat?:boolean}[]} sorted @returns {number} */
+export function maskSlot(sorted){
+  const i=sorted.findIndex(e=>!e.flat);
+  return i<0?sorted.length:i;
+}
+
 /** 時間帯ごとの夜の暗さ（0〜1） */
 export const NIGHT={asa:0,hiru:0,yuu:0.10,yoru:0.42};
 export const NIGHT_COLOR='#1E2350';
@@ -157,7 +164,7 @@ export function mount(sceneEl,petBtn,opt){
     dpr:1,cssW:0,cssH:0,k:1,s:1,ox:0,oy:0,
     sprites:new SpriteCache(120,spriteMaker(()=>r.fail(),svg=>{const im=makeImg(svg);im.onerror=()=>r.fail();return im;})),
     bgImgs:{},bgKey:'',bgCur:null,bgOld:null,bgCurBand:null,fade:1,
-    edit:null,cellCb:null,
+    edit:null,cellCb:null,layer:null,
     view:null,mode:'awake',band:'hiru',brain:null,dark:0,darkTarget:0,first:true,
     clock:0,lastDraw:0,lastT:0,raf:0,pokeAt:-9,spinAt:-9,lastAct:'',lastPose:'',
     box:{l:-1,t:-1,s:-1},failed:false,handlers:[],ro:null,fail:null
@@ -188,7 +195,7 @@ export function unmount(){
   for(const a of r.arts.values())a.img.onerror=null;
   for(const k in r.bgImgs)r.bgImgs[k].onerror=null;
   r.sprites.make=svg=>svg?makeImg(svg):{complete:true,naturalWidth:0}; // 以後の失敗通知は不要
-  r.cellCb=null;
+  r.cellCb=null;r.layer=null;
   if(r.cv.parentNode)r.cv.parentNode.removeChild(r.cv);
 }
 
@@ -361,21 +368,43 @@ function draw(r,dt){
   const list=r.placed.map(o=>({x:o.p.x+o.f.w/2,y:o.p.y+o.f.h/2,flat:o.flat,o}));
   list.push({x:b.x,y:b.y,pet:true});
   ctx.setTransform(r.k,0,0,r.k,r.ox*r.dpr,r.oy*r.dpr);
-  let petX=0,petY=0,masked=!(ed&&ed.mask);
-  for(const e of sortForDraw(list)){
-    if(!masked&&!e.flat){drawMask(r,ed.mask);masked=true;}
+  let petX=0,petY=0;
+  const one=e=>{
     if(e.pet){
       const p=toScreen(b.x,b.y,r.n);
       petX=p.x;petY=p.y;
       drawPet(r,v,p.x,p.y);
     }else drawItem(r,e.o,ed&&!e.flat&&e.o.i!==ed.sel?EDIT_FADE:1);
-  }
-  if(!masked)drawMask(r,ed.mask);
-  // 夜の暗さ
-  if(r.dark>0.001){
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.globalAlpha=r.dark;ctx.fillStyle=NIGHT_COLOR;ctx.fillRect(0,0,cv.width,cv.height);
-    ctx.globalAlpha=1;
+  };
+  const sorted=sortForDraw(list),cut=maskSlot(sorted),night=r.dark>0.001;
+  for(let i=0;i<cut;i++)one(sorted[i]);
+  if(ed&&ed.mask&&night){
+    // 夜のもようがえ：ゆか・ラグを暗くしてからマスを明るいまま描き、
+    // 立っている家具とぷには別の板で暗くしてから重ねる（見た目の前後は昼と同じ）
+    darken(ctx,cv,r.dark);
+    ctx.setTransform(r.k,0,0,r.k,r.ox*r.dpr,r.oy*r.dpr);
+    drawMask(r,ed.mask);
+    if(cut<sorted.length){
+      const lc=layerCtx(r);
+      if(lc){
+        lc.setTransform(1,0,0,1,0,0);lc.globalAlpha=1;lc.globalCompositeOperation='source-over';
+        lc.clearRect(0,0,cv.width,cv.height);
+        lc.setTransform(r.k,0,0,r.k,r.ox*r.dpr,r.oy*r.dpr);
+        r.ctx=lc;
+        try{for(let i=cut;i<sorted.length;i++)one(sorted[i]);}finally{r.ctx=ctx;}
+        lc.globalCompositeOperation='source-atop'; // 描いたところだけ暗くする
+        darken(lc,cv,r.dark);
+        lc.globalCompositeOperation='source-over';
+        ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(lc.canvas,0,0);
+      }else{
+        for(let i=cut;i<sorted.length;i++)one(sorted[i]);
+      }
+    }
+  }else{
+    if(ed&&ed.mask)drawMask(r,ed.mask);
+    for(let i=cut;i<sorted.length;i++)one(sorted[i]);
+    // 夜の暗さ
+    if(night)darken(ctx,cv,r.dark);
   }
   // 選んだ家具の足あと（暗くしたあとに、いちばん上へ）
   if(ed&&ed.sel>=0){
@@ -396,6 +425,25 @@ function draw(r,dt){
     const st=r.petBtn.style;
     st.left=L+'px';st.top=T+'px';st.width=S+'px';st.height=S+'px';
   }
+}
+
+/** 画面全体に夜の色を重ねる */
+function darken(c,cv,a){
+  c.setTransform(1,0,0,1,0,0);
+  c.globalAlpha=a;c.fillStyle=NIGHT_COLOR;c.fillRect(0,0,cv.width,cv.height);
+  c.globalAlpha=1;
+}
+
+/** 夜のもようがえ用の重ね板（メインと同じ大きさ。作れなければ null） */
+function layerCtx(r){
+  const w=r.cv.width,h=r.cv.height;
+  let L=r.layer;
+  if(!L){
+    try{const c=document.createElement('canvas');L=r.layer={cv:c,ctx:c.getContext('2d')};}catch(e){return null;}
+    if(!L.ctx){r.layer=null;return null;}
+  }
+  if(L.cv.width!==w||L.cv.height!==h){L.cv.width=w;L.cv.height=h;}
+  return L.ctx;
 }
 
 /** 床のひし形（マス (x,y) から w×h。in だけ内側へ縮める）のパスを作る */

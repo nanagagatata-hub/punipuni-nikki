@@ -1,7 +1,7 @@
 // room.js の純関数と SpriteCache のテスト
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {toScreen,fromScreen,sortByDepth,NIGHT,NIGHT_COLOR,approach,fitScale,fitOffset,petBox,yawBucket,SpriteCache,spriteMaker,cellAt,sortForDraw} from '../js/room.js';
+import {toScreen,fromScreen,sortByDepth,NIGHT,NIGHT_COLOR,approach,fitScale,fitOffset,petBox,yawBucket,SpriteCache,spriteMaker,cellAt,sortForDraw,maskSlot} from '../js/room.js';
 import {defaultRoom} from '../js/room-data.js';
 
 test('toScreen と fromScreen は往復する',()=>{
@@ -148,4 +148,10 @@ test('sortForDraw：2×2 までの家具とぷにの前後（n=6 の全マス）
       assert.deepEqual(ks,front?['item','pet']:['pet','item'],`${w}x${h} at ${fx},${fy} pet ${gx},${gy}`);
     }
   }
+});
+test('maskSlot：もようがえのマスは平たいものの直後（立っているものの前）に入る',()=>{
+  assert.equal(maskSlot([]),0);
+  assert.equal(maskSlot([{flat:true},{flat:true}]),2);
+  assert.equal(maskSlot([{flat:true},{pet:true},{flat:false}]),1);
+  assert.equal(maskSlot([{pet:true}]),0);
 });

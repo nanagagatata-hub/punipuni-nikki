@@ -284,3 +284,40 @@ textarea{min-height:90px;font-size:13px!important;font-family:ui-monospace,monos
 
 /* 押せない間のボタン（おわかれの歌の「つぎへ」など）は うすく */
 .btn:disabled{opacity:.45;box-shadow:none;cursor:default}
+
+/* ---------- おへやモード（#roomView：全画面の別画面。モーダル 20・fx 30・トースト 40 より下） ---------- */
+body.inroom{overflow:hidden;overscroll-behavior:none}
+.roomview{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;gap:8px;background:var(--bg);
+  padding:calc(10px + env(safe-area-inset-top,0px)) 16px calc(12px + env(safe-area-inset-bottom,0px))}
+.rtop{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.rtop .rname{flex:1;min-width:0;font-size:24px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.roomview .pill{min-height:48px;min-width:48px}
+/* 部屋：残りの高さいっぱい。Canvas は room.js が大きさを合わせる */
+.rstage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;border-radius:28px;background:var(--screen);border:3px solid var(--frame-dk);order:1}
+.rscene{position:absolute;inset:0}
+.rscene canvas{display:block;max-width:none}
+/* なでる：透明なボタン。位置と大きさは room.js が入れる（入るまでは 0） */
+.rpet{position:absolute;left:0;top:0;width:0;height:0;z-index:1;margin:0;padding:0;border:0;background:none;border-radius:40%;touch-action:none;user-select:none;-webkit-user-select:none}
+.editing .rpet,.editing #roomPet{pointer-events:none}
+.rbubble{order:2;margin:10px 2px 0;padding:10px 16px;min-height:52px;flex:0 0 auto}
+.rbubble p{font-size:18px;line-height:1.5}
+.rbar{order:3;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.rgauges{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center;min-height:44px;background:var(--card);border:2px solid var(--line);border-radius:999px;padding:4px 16px}
+.rbtns{display:flex;gap:10px;margin-left:auto}
+.rtray{order:4;flex:0 0 auto}
+.rshop{z-index:2}
+@media (max-width:520px){
+  .rtop .rname{font-size:20px}
+  .rbtns .pill{padding:8px 12px;font-size:15px}
+}
+
+/* おみせ */
+
+
+
+
+
+
+
+/* もようがえ */
+

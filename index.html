@@ -23,6 +23,7 @@
   <div class="topbtns">
     <span class="coin" id="coin" role="status"></span>
     <button class="pill" id="zukanBtn">📚 ずかん</button>
+    <button class="pill" id="oheyaBtn">🏠 おへや</button>
     <button class="gear" id="gear" aria-label="おうちの方の設定（長押し）">⚙️</button>
   </div>
 </header>
@@ -57,6 +58,65 @@
     </div>
   </section>
 </main>
+
+<div class="roomview" id="roomView" hidden>
+  <div class="rtop">
+    <button class="pill" id="roomBack">← もどる</button>
+    <b class="rname" id="roomName"></b>
+    <span class="coin" id="roomCoin" role="status"></span>
+  </div>
+  <div class="rstage" id="roomStage">
+    <div class="rscene" id="roomScene"></div>
+    <button class="rpet" id="roomPet" aria-label="なでる"></button>
+  </div>
+  <div class="rbar">
+    <div class="rgauges" id="roomGauges"></div>
+    <div class="rbtns">
+      <button class="pill" id="shopBtn">🛒 おみせ</button>
+      <button class="pill" id="editBtn">🛠 もようがえ</button>
+      <button class="pill" id="editDone" hidden>おわり</button>
+    </div>
+  </div>
+  <div class="bubble rbubble" aria-live="polite">
+    <p id="roomBubbleText"></p>
+    <p id="roomBubbleZh" class="zh"></p>
+  </div>
+  <div class="rtray" id="roomTray" hidden>
+    <div class="ttabs">
+      <button class="ttab" data-tab="kagu">かぐ</button>
+      <button class="ttab" data-tab="yuka">ゆか</button>
+      <button class="ttab" data-tab="kabe">かべ</button>
+    </div>
+    <div class="tlist" id="trayList"></div>
+    <div class="tacts">
+      <button class="pill" id="trayRotate">まわす</button>
+      <button class="pill" id="trayStore">しまう</button>
+    </div>
+  </div>
+  <div class="rshop" id="roomShop" hidden>
+    <div class="shead">
+      <h2>おみせ</h2>
+      <span class="coin" id="shopCoin" role="status"></span>
+      <button class="pill" id="shopClose">とじる</button>
+    </div>
+    <div class="stabs">
+      <button class="stab" data-cat="kagu">かぐ</button>
+      <button class="stab" data-cat="yuka">ゆか</button>
+      <button class="stab" data-cat="kabe">かべ</button>
+      <button class="stab" data-cat="hiroge">ひろげる</button>
+    </div>
+    <div class="scards" id="shopCards"></div>
+    <div class="sconfirm" id="shopConfirm" hidden>
+      <div class="sconfirm-art" id="shopConfirmArt"></div>
+      <p class="sconfirm-name" id="shopConfirmName"></p>
+      <p class="sconfirm-price" id="shopConfirmPrice"></p>
+      <div class="btns">
+        <button class="btn" id="shopBuy">かう</button>
+        <button class="btn ghost" id="shopCancel">やめる</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="modal" id="modal" hidden><div class="sheet" id="sheet"></div></div>
 

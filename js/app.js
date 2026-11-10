@@ -5,6 +5,7 @@ import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
 import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
 import {speak,sfx,setSound,unlock,sing} from './sound.js';
+import {initRoomUI,openRoom,isRoomOpen,refreshRoom,roomPoke} from './room-ui.js';
 const APP_VERSION='v2.5.1'; // sw.js の VERSION と同じ値にそろえる
 
 const $=s=>document.querySelector(s);
@@ -40,9 +41,9 @@ function say(ja,zh){bubble={ja:ja,zh:zh||''};renderBubble();replay($('.bubble'),
 function replay(el,cls){if(!el)return;el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);}
 const line=k=>pickLine(k,S,new Date());
 function sayWord(pre){const w=Math.random()<.5?rnd(WORDS):rnd(PHRASES);say(`${pre}「${w[1]}」は ちゅうごくごで「${w[2]}」だよ！`,w[0]);}
-/* 星やハートがはじける。from を省くと ぷにちゃんの所から */
+/* 星やハートがはじける。from を省くと ぷにちゃんの所から（おへやが開いていれば おへやの ぷに） */
 function fxBurst(icon,from){
-  const r=(from||$('#pet')).getBoundingClientRect(),list=Array.isArray(icon)?icon:[icon];
+  const r=(from||(isRoomOpen()?$('#roomPet'):$('#pet'))).getBoundingClientRect(),list=Array.isArray(icon)?icon:[icon];
   for(let i=0;i<5;i++){
     const s=document.createElement('span');s.className='fx';s.textContent=list[i%list.length];
     s.style.left=(r.left+r.width/2-17+(Math.random()*80-40))+'px';
@@ -160,7 +161,7 @@ function showEvolve(){
 }
 /* ゆらす演出は 1 回だけ。終わったらクラスを外してポーズのアニメーションに戻す */
 let wobT=null;
-function wobble(){const el=$('#pet');el.classList.remove('wobble');void el.offsetWidth;el.classList.add('wobble');clearTimeout(wobT);wobT=setTimeout(()=>el.classList.remove('wobble'),700);}
+function wobble(){if(isRoomOpen())roomPoke();const el=$('#pet');el.classList.remove('wobble');void el.offsetWidth;el.classList.add('wobble');clearTimeout(wobT);wobT=setTimeout(()=>el.classList.remove('wobble'),700);}
 $('#pet').addEventListener('animationend',e=>{if(e.animationName==='wob')$('#pet').classList.remove('wobble');});
 /* タッチ（spec §6）：kind = head / belly / stroke / hug / mash */
 const TOUCH_LINE={head:'tapHead',belly:'tapBelly',stroke:'stroke',hug:'hug',mash:'dizzy'};
@@ -324,11 +325,12 @@ function openSettings(){
 }
 
 /* ---------- render ---------- */
-function renderBubble(){$('#bubbleText').textContent=bubble.ja;$('#bubbleZh').textContent=bubble.zh;$('#bubbleZh').hidden=!bubble.zh;}
+function renderBubble(){$('#bubbleText').textContent=bubble.ja;$('#bubbleZh').textContent=bubble.zh;$('#bubbleZh').hidden=!bubble.zh;
+  $('#roomBubbleText').textContent=bubble.ja;$('#roomBubbleZh').textContent=bubble.zh;$('#roomBubbleZh').hidden=!bubble.zh;}
 /* ゲージ：前より ふえた所に boing を付ける */
 function icons(ic,n,prev){let s='';for(let i=0;i<4;i++)s+=`<span class="gi ${i<n?'on':''} ${i>=prev&&i<n?'boing':''}">${ic}</span>`;return s;}
 /* できたこと・エサ の動きの目印（1 回の描画で使って消す）と、前回のゲージ・ポイント */
-let mark={},lastG=null,lastPts=null;
+let mark={},lastG=null,lastPts=null,lastSnap=null;
 /* エサが トレイから ぷにちゃんへ飛んでいく */
 function flyFood(fid){
   const b=document.querySelector(`#tray [data-food="${fid}"]`);if(!b)return;
@@ -394,6 +396,10 @@ function render(){
     document.querySelectorAll('[data-w]').forEach(el=>{el.style.width=Math.max(0,Math.min(100,+el.dataset.w||0))+'%';});
   renderBubble();
   setCoin(S.coin);
+  /* おへや（開いていなければ何もしない） */
+  const mode=S.stage===0?'egg':sleeping?'sleep':S.sick?'sick':now<danceUntil?'dance':S.hunger===0?'hungry':'awake';
+  lastSnap={view:{form:S.form,face:L.face,arms:L.arms,think:L.think,pose:L.pose,shiny:S.shiny,final:S.stage===4,pts:S.pts},mode,band:bd,now};
+  refreshRoom(lastSnap);
 }
 
 /* ---------- events ---------- */
@@ -406,29 +412,36 @@ $('#badges').addEventListener('click',e=>{
 });
 $('#tasks').addEventListener('click',e=>{const b=e.target.closest('[data-task]');if(b&&!b.disabled)confirmTask(b.dataset.task);});
 $('#tray').addEventListener('click',e=>{const b=e.target.closest('[data-food]');if(b)feed(b.dataset.food);});
-/* なでなで＝押したまま合計80px、ぎゅー＝700ms ほぼ動かさない、れんだ＝2.5秒に5回、あたま＝上40% */
-let ptr=null,holdT2=null,taps=[];
-const pet=$('#pet');
-pet.addEventListener('pointerdown',e=>{
-  const r=pet.getBoundingClientRect();
-  ptr={x:e.clientX,y:e.clientY,dist:0,done:false,top:(e.clientY-r.top)/r.height<.4};
-  try{pet.setPointerCapture(e.pointerId);}catch(err){}
-  clearTimeout(holdT2);holdT2=setTimeout(()=>{if(ptr&&!ptr.done&&ptr.dist<12){ptr.done=true;petAct('hug');}},700);
-});
-pet.addEventListener('pointermove',e=>{
-  if(!ptr)return;
-  ptr.dist+=Math.hypot(e.clientX-ptr.x,e.clientY-ptr.y);ptr.x=e.clientX;ptr.y=e.clientY;
-  if(!ptr.done&&ptr.dist>=80){ptr.done=true;clearTimeout(holdT2);petAct('stroke');}
-});
-pet.addEventListener('pointerup',()=>{
-  clearTimeout(holdT2);if(!ptr)return;
-  const p=ptr;ptr=null;if(p.done)return;
-  const now=Date.now();taps=taps.filter(t=>now-t<2500);taps.push(now);
-  if(taps.length>=5){taps=[];petAct('mash');}else petAct(p.top?'head':'belly');
-});
-pet.addEventListener('pointercancel',()=>{clearTimeout(holdT2);ptr=null;});
-pet.addEventListener('click',e=>{if(e.detail===0)petAct('belly');});
+/* なでなで＝押したまま合計80px、ぎゅー＝700ms ほぼ動かさない、れんだ＝2.5秒に5回、あたま＝上40%。
+   #pet と #roomPet の両方に付ける。hooks.down／up は おへや側だけが渡す */
+function bindPet(el,hooks){
+  const hk=hooks||{},up=()=>{if(hk.up)hk.up();};
+  let ptr=null,holdT2=null,taps=[];
+  el.addEventListener('pointerdown',e=>{
+    const r=el.getBoundingClientRect();
+    ptr={x:e.clientX,y:e.clientY,dist:0,done:false,top:(e.clientY-r.top)/r.height<.4};
+    try{el.setPointerCapture(e.pointerId);}catch(err){}
+    if(hk.down)hk.down();
+    clearTimeout(holdT2);holdT2=setTimeout(()=>{if(ptr&&!ptr.done&&ptr.dist<12){ptr.done=true;petAct('hug');}},700);
+  });
+  el.addEventListener('pointermove',e=>{
+    if(!ptr)return;
+    ptr.dist+=Math.hypot(e.clientX-ptr.x,e.clientY-ptr.y);ptr.x=e.clientX;ptr.y=e.clientY;
+    if(!ptr.done&&ptr.dist>=80){ptr.done=true;clearTimeout(holdT2);petAct('stroke');}
+  });
+  el.addEventListener('pointerup',()=>{
+    up();clearTimeout(holdT2);if(!ptr)return;
+    const p=ptr;ptr=null;if(p.done)return;
+    const now=Date.now();taps=taps.filter(t=>now-t<2500);taps.push(now);
+    if(taps.length>=5){taps=[];petAct('mash');}else petAct(p.top?'head':'belly');
+  });
+  el.addEventListener('pointercancel',()=>{up();clearTimeout(holdT2);ptr=null;});
+  if(hk.up)el.addEventListener('lostpointercapture',up);
+  el.addEventListener('click',e=>{if(e.detail===0)petAct('belly');});
+}
+bindPet($('#pet'));
 $('#zukanBtn').addEventListener('click',openZukan);
+$('#oheyaBtn').addEventListener('click',()=>{sfx('pop');openRoom();});
 $('#speakBtn').addEventListener('click',()=>speak(bubble.ja,bubble.zh));
 /* iPad はタッチの pointerdown では音を有効にできないことがあるので、離した時・click でも試す */
 ['pointerdown','pointerup','touchend','click'].forEach(ev=>document.addEventListener(ev,unlock,true));
@@ -457,6 +470,7 @@ function idle(now){
   if(S.stage===0||S.sick||asleep(S,now)||!$('#modal').hidden)return;
   if(now-lastInteract>=90e3&&idleFor!==lastInteract){idleFor=lastInteract;say(line('idle'));}
 }
+initRoomUI({getS:()=>S,save,render,say,sfx,toast,bindPet});
 tick(Date.now());
 greet();
 setSound(S.sound);

@@ -55,12 +55,37 @@ test('render() の最後で こいんの表示を更新する',()=>{
   assert.ok(r.indexOf('setCoin(S.coin)')>r.indexOf('renderBubble()'),'最後に呼ぶ');
 });
 
-test('ヘッダーの並びは こいん・ずかん・せってい',()=>{
+test('ヘッダーの並びは こいん・ずかん・おへや・せってい',()=>{
   const i=HTML.indexOf('class="topbtns"');assert.ok(i>=0);
   const t=HTML.slice(i,HTML.indexOf('</header>',i));
-  const c=t.indexOf('<span class="coin" id="coin" role="status"></span>'),z=t.indexOf('id="zukanBtn"'),g=t.indexOf('id="gear"');
-  assert.ok(c>=0&&z>=0&&g>=0,'#coin・#zukanBtn・#gear がある');
-  assert.ok(c<z&&z<g,'順番');
+  const c=t.indexOf('<span class="coin" id="coin" role="status"></span>'),z=t.indexOf('id="zukanBtn"'),o=t.indexOf('<button class="pill" id="oheyaBtn">🏠 おへや</button>'),g=t.indexOf('id="gear"');
+  assert.ok(c>=0&&z>=0&&o>=0&&g>=0,'#coin・#zukanBtn・#oheyaBtn・#gear がある');
+  assert.ok(c<z&&z<o&&o<g,'順番');
+});
+
+test('fxBurst() の既定の対象は おへやが開いているかで分かれる',()=>{
+  const f=body('fxBurst');
+  assert.ok(/isRoomOpen\(\)\?\$\('#roomPet'\):\$\('#pet'\)/.test(f),'isRoomOpen()?#roomPet:#pet');
+  assert.ok(/import \{[^}]*\bisRoomOpen\b[^}]*\} from '\.\/room-ui\.js'/.test(APP),'isRoomOpen を room-ui.js から読む');
+});
+
+test('#roomView は hidden で始まる静的な枠。インラインの style・onclick なし',()=>{
+  const m=HTML.match(/<div[^>]*\bid="roomView"[^>]*>/);
+  assert.ok(m,'#roomView');
+  assert.ok(/\shidden(\s|>|=)/.test(m[0]),'hidden');
+  assert.ok(!/\sstyle=/.test(HTML),'style= が無い');
+  assert.ok(!/onclick/i.test(HTML),'onclick が無い');
+  for(const id of ['roomBack','roomName','roomCoin','roomStage','roomScene','roomPet','roomGauges','shopBtn','editBtn','editDone','roomBubbleText','roomBubbleZh','roomTray','roomShop',
+    'shopCoin','shopClose','shopCards','shopConfirm','shopConfirmArt','shopConfirmName','shopConfirmPrice','shopBuy','shopCancel','trayList','trayRotate','trayStore'])
+    assert.ok(HTML.includes('id="'+id+'"'),'#'+id);
+});
+
+test('room-ui*.js は innerHTML を使わない（textContent・createElement だけ）',()=>{
+  for(const f of ['js/room-ui.js','js/room-ui-shop.js','js/room-ui-edit.js']){
+    const src=read(f);
+    assert.ok(!src.includes('innerHTML'),f+' に innerHTML');
+    assert.ok(!src.includes('outerHTML')&&!src.includes('insertAdjacentHTML'),f+' に HTML の差し込み');
+  }
 });
 
 test('こいんの見た目（.coin と 0.5 秒の coinpop）がある',()=>{

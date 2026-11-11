@@ -1,7 +1,7 @@
 // room.js の純関数と SpriteCache のテスト
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {toScreen,fromScreen,sortByDepth,NIGHT,NIGHT_COLOR,approach,fitScale,fitOffset,petBox,yawBucket,SpriteCache,spriteMaker,cellAt,sortForDraw,maskSlot,freeCv,pruneArts} from '../js/room.js';
+import {toScreen,fromScreen,sortByDepth,NIGHT,NIGHT_COLOR,approach,fitScale,fitOffset,petBox,yawBucket,SpriteCache,spriteMaker,cellAt,sortForDraw,maskSlot,freeCv,pruneArts,pickItem} from '../js/room.js';
 import {defaultRoom} from '../js/room-data.js';
 
 test('toScreen と fromScreen は往復する',()=>{
@@ -174,4 +174,42 @@ test('pruneArts：置いていない id の絵を捨てる（onerror を先に�
   pruneArts(m,new Set());
   assert.equal(m.size,0);
   assert.equal(a.img.onerror,null);
+});
+
+// もようがえ：見えている家具の絵を押して選ぶ（G1 の指摘：棚は上の方を押したくなる）
+test('pickItem：高い家具は 絵の上の方を押しても選べる（足あとのマスが部屋の外でも）',()=>{
+  const n=6,shelf={i:3,x:0,y:2,w:1,h:2,ay:120,flat:false};
+  const T=toScreen(0,2,n),B=toScreen(1,4,n);
+  const top={x:T.x,y:T.y-110};                 // 絵のてっぺん近く（かべの前）
+  assert.equal(pickItem(top.x,top.y,[shelf],n),3);
+  assert.notDeepEqual(cellAt(top.x,top.y,0,0,1,n),{x:0,y:2}); // 床のマスでは棚にならない
+  const mid={x:(T.x+B.x)/2,y:(T.y+B.y)/2-60};
+  assert.equal(pickItem(mid.x,mid.y,[shelf],n),3);
+});
+test('pickItem：絵の外・何も無い床は -1',()=>{
+  const n=6,shelf={i:0,x:0,y:2,w:1,h:2,ay:120,flat:false};
+  const T=toScreen(0,2,n);
+  assert.equal(pickItem(T.x,T.y-130,[shelf],n),-1);  // てっぺんより上
+  const far=toScreen(4.5,4.5,n);
+  assert.equal(pickItem(far.x,far.y,[shelf],n),-1);
+  assert.equal(pickItem(NaN,1,[shelf],n),-1);
+  assert.equal(pickItem(1,1,[],n),-1);
+});
+test('pickItem：重なったら 手前（あとから描く方）を選ぶ',()=>{
+  const n=6,back={i:0,x:1,y:1,w:1,h:1,ay:100,flat:false},front={i:1,x:2,y:2,w:1,h:1,ay:60,flat:false};
+  const c=toScreen(2.5,2.5,n);                     // 手前の家具の足もと（奥の家具の絵とも重なる）
+  const p={x:c.x,y:c.y-40};
+  assert.equal(pickItem(p.x,p.y,[back,front],n),1);
+  assert.equal(pickItem(p.x,p.y,[front,back],n),1); // 並び順に関係なく 手前
+  const T=toScreen(1,1,n);
+  assert.equal(pickItem(T.x,T.y-90,[back,front],n),0); // 奥の家具の上の方は 奥の家具
+});
+test('pickItem：平たいもの（ラグ）は足あとのひし形だけ・立っている家具が優先',()=>{
+  const n=6,rug={i:0,x:2,y:2,w:2,h:2,ay:9,flat:true},chair={i:1,x:3,y:3,w:1,h:1,ay:70,flat:false};
+  const c=toScreen(3,3,n);
+  assert.equal(pickItem(c.x,c.y,[rug],n),0);
+  const above=toScreen(2,2,n);
+  assert.equal(pickItem(above.x,above.y-20,[rug],n),-1);
+  const onChair=toScreen(3.5,3.5,n);
+  assert.equal(pickItem(onChair.x,onChair.y-10,[chair,rug],n),1);
 });

@@ -120,16 +120,28 @@ function apply(room){
   refresh();
 }
 
-/** 床のマスを押したとき（§4.4 の 4 つの場合） */
-function cell(x,y){
+/** 選んでいるものを (x,y) に置ける（動かせる）か */
+function canPut(room,s,x,y){
+  if(!sel)return false;
+  return !!(sel.kind==='own'?place(room,s.own,sel.id,x,y,sel.r):move(room,sel.index,x,y));
+}
+
+/** 部屋を押したとき（§4.4 の 4 つの場合）。hit＝押した点に見えている家具（無ければ -1）
+ * 何かを選んでいて、押した床のマスが空いていて置ける（動かせる）なら、置くのを先にする
+ * （編集中は家具が半透明なので、家具の後ろの みどりのマスにも置ける）。そうでなければ見えている家具を選ぶ */
+function cell(x,y,hit=-1){
   if(!editing||!ctx)return;
   const s=S(),room=s.room,h=ctx.host;
-  const i=itemAt(room,x,y);
-  // 1. 置いた家具があれば それを選ぶ
-  if(i>=0){
-    sel={kind:'placed',index:i};tab='kagu';
+  const onFloor=x>=0&&y>=0,under=onFloor?itemAt(room,x,y):-1;
+  const pick=Number.isInteger(hit)&&hit>=0&&hit<room.items.length?hit:under;
+  const self=!!sel&&sel.kind==='placed'&&pick===sel.index;  // 選んでいる家具そのものを押した → 動かさない
+  const tryPut=!!sel&&!self&&onFloor&&under<0;
+  // 1. 置いた家具を選ぶ（見えている絵のどこを押しても）
+  if(pick>=0&&!(tryPut&&canPut(room,s,x,y))){
+    sel={kind:'placed',index:pick};tab='kagu';
     h.sfx('pop');h.say(MSG.pick);refresh();return;
   }
+  if(!onFloor){h.sfx('pop');h.say(sel?MSG.cant:MSG.hint);return;}
   // 2. 持ちものを置く
   if(sel&&sel.kind==='own'){
     const next=place(room,s.own,sel.id,x,y,sel.r);

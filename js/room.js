@@ -56,6 +56,30 @@ export function maskSlot(sorted){
   return i<0?sorted.length:i;
 }
 
+/** もようがえ：押した点（部屋の SVG と同じ座標）に見えている家具の番号。無ければ -1
+ * 形は「足あとのひし形を、絵の高さ ay だけ上へのばした六角形」（平たいものは ひし形だけ）。重なれば手前（あとから描く方）
+ * @param {number} px @param {number} py
+ * @param {{i:number,x:number,y:number,w:number,h:number,ay:number,flat:boolean}[]} list
+ * @param {number} n @returns {number} */
+export function pickItem(px,py,list,n){
+  if(!Number.isFinite(px)||!Number.isFinite(py)||!Array.isArray(list))return -1;
+  const order=sortForDraw(list.map(e=>({x:e.x+e.w/2,y:e.y+e.h/2,flat:!!e.flat,e})));
+  for(let k=order.length-1;k>=0;k--){
+    const e=order[k].e,H=e.flat?0:Math.max(0,+e.ay||0);
+    const T=toScreen(e.x,e.y,n),R=toScreen(e.x+e.w,e.y,n),B=toScreen(e.x+e.w,e.y+e.h,n),L=toScreen(e.x,e.y+e.h,n);
+    if(inPoly(px,py,[[L.x,L.y-H],[T.x,T.y-H],[R.x,R.y-H],[R.x,R.y],[B.x,B.y],[L.x,L.y]]))return e.i;
+  }
+  return -1;
+}
+function inPoly(x,y,P){
+  let inside=false;
+  for(let a=0,b=P.length-1;a<P.length;b=a++){
+    const [xa,ya]=P[a],[xb,yb]=P[b];
+    if((ya>y)!==(yb>y)&&x<(xb-xa)*(y-ya)/(yb-ya)+xa)inside=!inside;
+  }
+  return inside;
+}
+
 /** 時間帯ごとの夜の暗さ（0〜1） */
 export const NIGHT={asa:0,hiru:0,yuu:0.10,yoru:0.42};
 export const NIGHT_COLOR='#1E2350';
@@ -241,8 +265,10 @@ export function setEdit(edit){
   r.edit={mask:edit.mask instanceof Uint8Array?edit.mask:null,sel:Number.isInteger(edit.sel)?edit.sel:-1};
 }
 
-/** 床のマスを押したときに呼ぶ関数（範囲外は呼ばない）。null で外す。mount 前は何もしない
- * @param {((x:number,y:number)=>void)|null} cb */
+/** 部屋を押したときに呼ぶ関数。null で外す。mount 前は何もしない
+ * (x,y)＝押した床のマス（床の外なら -1,-1）、hit＝そこに見えている家具の番号（room.items の添字。無ければ -1）。
+ * 床の外で家具も無いときは呼ばない
+ * @param {((x:number,y:number,hit:number)=>void)|null} cb */
 export function onCell(cb){
   if(R)R.cellCb=typeof cb==='function'?cb:null;
 }
@@ -303,13 +329,16 @@ function applyRoom(r,room){
   if(grown)resize(r,true);
 }
 
-/** Canvas を押した点 → マス */
+/** Canvas を押した点 → マスと、そこに見えている家具（どちらも無ければ呼ばない） */
 function tapCell(r,e){
   if(R!==r||!r.cellCb)return;
   const rect=r.cv.getBoundingClientRect();
   const kx=rect.width>0?r.cssW/rect.width:1,ky=rect.height>0?r.cssH/rect.height:1;
-  const c=cellAt((e.clientX-rect.left)*kx,(e.clientY-rect.top)*ky,r.ox,r.oy,r.s,r.n);
-  if(c)r.cellCb(c.x,c.y);
+  const px=(e.clientX-rect.left)*kx,py=(e.clientY-rect.top)*ky;
+  const c=cellAt(px,py,r.ox,r.oy,r.s,r.n);
+  const hit=r.s>0?pickItem((px-r.ox)/r.s,(py-r.oy)/r.s,
+    r.placed.map(o=>({i:o.i,x:o.p.x,y:o.p.y,w:o.f.w,h:o.f.h,ay:o.a.art.ay,flat:o.flat})),r.n):-1;
+  if(c||hit>=0)r.cellCb(c?c.x:-1,c?c.y:-1,hit);
 }
 
 function stop(r){

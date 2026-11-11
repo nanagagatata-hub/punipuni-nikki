@@ -1,8 +1,10 @@
 // おへやモードの画面（#roomView）：開く・閉じる・なでる・ゲージ・失敗したとき
 // 設計書 docs/superpowers/specs/2026-11-10-oheya-room-mode-and-stage2-design.md §4.2
+// 段階4（タップのきまり）: docs/superpowers/specs/2026-11-11-oheya-stage4-furniture-play-design.md §4.2
 // app.js は host を渡すだけ。おへやの DOM は ここ（と room-ui-shop.js・room-ui-edit.js）だけが触る。
 // 文字は textContent・createElement だけで入れる（なまえ も）。
-import {mount,unmount,update,hold,poke,setRoom} from './room.js';
+import {mount,unmount,update,hold,poke,setRoom,onTap,useItem,callTo,wiggle,burstAt} from './room.js';
+import {USES,has} from './room-data.js';
 import {openShop,closeShop} from './room-ui-shop.js';
 import {startEdit,endEdit,isEditing} from './room-ui-edit.js';
 
@@ -11,6 +13,9 @@ import {startEdit,endEdit,isEditing} from './room-ui-edit.js';
 /** @typedef {{host:RoomHost, commit:()=>void}} RoomCtx */
 
 const FAIL_MSG='おへや を ひらけなかったよ';
+const FAR_MSG='とどかないよ';
+/** 行けないときの ひとこと（mode ごと。egg・dance は言わない） */
+const BUSY_MSG={sleep:'いまは ねむいの…',sick:'ちょっと しんどいの…',hungry:'おなか すいて うごけないよ'};
 const $=id=>document.getElementById(id);
 
 /** @type {RoomHost|null} */
@@ -19,6 +24,7 @@ let host=null;
 let ctx=null;
 let open=false;
 let lastRoom=null;   // setRoom に渡した S.room（入れ替わったら渡し直す）
+let mode='awake';    // refreshRoom の snap.mode（行けないときの ひとこと に使う）
 
 /** こいんの表示（#roomCoin・#shopCoin） */
 function showCoin(){
@@ -53,6 +59,31 @@ function setBack(on){
   document.body.classList.toggle('inroom',on);
 }
 
+/** ぷにが家具を使い始めたとき（room.js から）：その家具の ひとこと */
+function onUse(id){
+  if(!host||!has(USES,id))return;
+  const u=USES[id];
+  if(u&&u.say)host.say(u.say);
+}
+
+/** 行けなかったときの ひとこと */
+function sayResult(res){
+  if(res==='busy'){if(has(BUSY_MSG,mode))host.say(BUSY_MSG[mode]);}
+  else if(res==='far')host.say(FAR_MSG);
+}
+
+/** ふだんの タップ（もようがえ中は何もしない）。家具 → ゆらして使いに行く、床 → ★ を出して呼ぶ */
+function tap(x,y,hit,px,py){
+  if(!open||!host||isEditing())return;
+  if(hit>=0){
+    wiggle(hit);host.sfx('pop');
+    sayResult(useItem(hit)); // 'none'（USES に無い）は何も言わない
+  }else if(x>=0&&y>=0){
+    burstAt(px,py);host.sfx('pop');
+    sayResult(callTo(x,y));
+  }
+}
+
 function fail(){
   if(!open)return;
   closeRoom();
@@ -81,7 +112,7 @@ export function openRoom(){
   $('roomView').hidden=false; // 先に見せる（大きさが測れるように）
   setBack(true);
   let ok=false;
-  try{ok=mount($('roomScene'),$('roomPet'),{room:S.room,onFail:fail});}catch(e){ok=false;}
+  try{ok=mount($('roomScene'),$('roomPet'),{room:S.room,onFail:fail,onUse});onTap(tap);}catch(e){ok=false;}
   if(!ok||!open){fail();return false;}
   lastRoom=S.room;
   try{host.render();}catch(e){fail();return false;} // render の最後で refreshRoom が呼ばれる
@@ -112,6 +143,7 @@ export function refreshRoom(snap){
   if(!open||!host)return;
   const S=host.getS();
   if(S.room!==lastRoom){lastRoom=S.room;setRoom(S.room);} // 世代交代・復元などで入れ替わった
+  mode=snap&&typeof snap.mode==='string'?snap.mode:'awake';
   try{update(snap);}catch(e){fail();return;}
   $('roomName').textContent=S.name;
   showCoin();

@@ -336,11 +336,13 @@
 | `js/state.js` | 保存形式（`DEF`・`sanitize`・バックアップコード） |
 | `js/art.js` | SVG 描画（`petSVG` は向き `opt.yaw` を受ける。渡さないときの出力は従来と同じ） |
 | `js/sound.js` | 効果音・鳴き声・読み上げ |
-| `js/room.js` | おへや：Canvas 描画・rAF ループ・投影・深度ソート・夜の暗さ・`#roomPet` の位置合わせ・`setRoom`/`setEdit`/`onCell`（DOM はここだけ） |
+| `js/room.js` | おへや：Canvas 描画・rAF ループ・投影・深度ソート・夜の暗さ・らんぷのあかり・`#roomPet` の位置合わせ・`setRoom`/`setEdit`/`onCell`/`onTap`（DOM はここだけ） |
 | `js/room-ai.js` | おへやのぷにの行動（状態機械・BFS・つぶれて伸びる動き）。DOM に触れない純粋なルール |
 | `js/room-art.js` | `roomSVG(n,band,floor,wall)`（床・壁・まど・カーテン）・`itemSVG(id)`・`patternSVG(id)` |
 | `js/room-art-kit.js` / `room-art-a.js` / `-b.js` / `-c.js` | 家具 17 種の絵（共通部品とグループ別の表） |
-| `js/room-data.js` | カタログ（`ITEMS`・`FLOORS`・`WALLS`・`EXPANDS`）・上限・`defaultOwn()`・`defaultRoom()` |
+| `js/room-data.js` | カタログ（`ITEMS`・`FLOORS`・`WALLS`・`EXPANDS`・`USES`）・上限・`defaultOwn()`・`defaultRoom()` |
+| `js/room-use.js` | 家具を使う純ロジック（`useSpot`・`pickUse`・`homeWithBed`・`slideMotion`・`ballMotion`） |
+| `js/room-fx.js` | 頭の上の絵と ★ の SVG、手ごたえ・あかりの計算（DOM に触れない） |
 | `js/room-edit.js` | 配置の純ロジック（`canPlace`・`place`・`move`・`rotate`・`remove`・`stock`・`placeMask`・`cleanOwn`・`cleanRoom` ほか） |
 | `js/room-shop.js` | 買い物の純ロジック（`cardState`・`shopCards`・`buy`） |
 | `js/room-ui.js` / `room-ui-shop.js` / `room-ui-edit.js` | おへやモード・おみせ・もようがえの画面 |
@@ -422,5 +424,12 @@
 ### 14.5 v2.5 から続く仕様
 部屋の描画・夜の暗さ（あさ 0／ひる 0／ゆうがた 0.10／よる 0.42）・まどの空・ぷにの行動（たちどまり 35／あるく 30／きょろきょろ 15／ぴょん 10／ダンス 10）・歩く速さ 1.2 マス/秒（視差効果を減らすで 0.6 倍・ぴょん/ダンスなし）・毎秒 360°・24 方向・さわって 3 秒／エサのあと 3 秒は止まる、は v2.5.0 のまま。ねんね はラグ（`home`）へ歩いて寝る。
 
-### 14.6 範囲外（やらない）
-ずかんのぷにを部屋に呼ぶ／家具を使う行動／ランプの明かり／部屋の回転／壁かけ／ドラッグ操作／報告以外のこいん入手／こいんを遡って付けること。
+### 14.6 v2.7.0 の追加（家具であそぶ・タップで呼ぶ）
+設計：[`superpowers/specs/2026-11-11-oheya-stage4-furniture-play-design.md`](superpowers/specs/2026-11-11-oheya-stage4-furniture-play-design.md)。
+- 家具であそぶ：起きているぷには、自分でも家具を選んで使う（`USES`：すわる・ねんね・ごほん・すべりだい・ぼーる など）。使いはじめに家具ごとの ひとこと。頭の上に小さな絵（Z・本・おんぷ など）。べっど があれば ねんね は べっど で。
+- タップ（もようがえ中でないとき）：家具を押すと ぶるんっ とゆれ、`USES` にある家具なら ぷにが正面へ歩いて使う。床を押すと押した点に ★ が出て、ぷにがそのマスへ来る。歩いている途中のタップは行き先を変える。
+- 行けないとき：手ごたえ（ゆれ・★・音）は出し、ひとことだけ（ねむい「いまは ねむいの…」／ぐあいがわるい「ちょっと しんどいの…」／おなかぺこぺこ「おなか すいて うごけないよ」／たまご・ダンス中は言わない）。立つ場所・道が無いときは「とどかないよ」。
+- らんぷ のあかり：ぷにが らんぷ を使うと つく／きえる が切り替わる（保存しない。開き直すと全部つく）。ゆうがた・よる は らんぷ のまわりだけ暗さが抜けて あたたかく光る（ぷにに近い 6 こまで、1 秒でふわっと変わる）。
+
+### 14.7 範囲外（やらない）
+ずかんのぷにを部屋に呼ぶ／部屋の回転／壁かけ／ドラッグ操作／報告以外のこいん入手／こいんを遡って付けること。

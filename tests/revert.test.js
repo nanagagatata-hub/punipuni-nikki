@@ -124,9 +124,14 @@ function reachable(){
   return [...seen];
 }
 
-test('版は v2.6.4（sw.js の VERSION と app.js の APP_VERSION）',()=>{
-  assert.ok(/const VERSION = 'v2\.6\.4';/.test(SW),'sw.js VERSION');
-  assert.ok(APP.includes("const APP_VERSION='v2.6.4';"),'app.js APP_VERSION');
+test('版は v2.7.0（sw.js の VERSION と app.js の APP_VERSION）',()=>{
+  assert.ok(/const VERSION = 'v2\.7\.0';/.test(SW),'sw.js VERSION');
+  assert.ok(APP.includes("const APP_VERSION='v2.7.0';"),'app.js APP_VERSION');
+});
+
+test('sw.js の ASSETS に 段階4 の room-use.js・room-fx.js がある',()=>{
+  const a=new Set(swAssets());
+  for(const f of ['./js/room-use.js','./js/room-fx.js'])assert.ok(a.has(f),'ASSETS に無い: '+f);
 });
 
 test('sw.js の ASSETS に app.js から読み込まれる js がすべてある',()=>{

@@ -19,7 +19,6 @@ let host=null;
 let ctx=null;
 let open=false;
 let lastRoom=null;   // setRoom に渡した S.room（入れ替わったら渡し直す）
-let gaugeKey='';     // ゲージを作り直すのは中身が変わったときだけ
 
 /** こいんの表示（#roomCoin・#shopCoin） */
 function showCoin(){
@@ -27,28 +26,6 @@ function showCoin(){
   for(const id of ['roomCoin','shopCoin']){
     const el=$(id);if(!el)continue;
     el.textContent='🪙 '+n;el.setAttribute('aria-label','こいん '+n+' まい');
-  }
-}
-
-/** おなか・ごきげん（見るだけ）。たまごは ひとこと */
-function showGauges(){
-  const S=host.getS(),egg=S.stage===0;
-  const key=egg?'egg':S.hunger+'|'+S.mood;
-  if(key===gaugeKey)return;
-  gaugeKey=key;
-  const box=$('roomGauges');
-  box.replaceChildren();
-  if(egg){
-    const s=document.createElement('span');s.className='glabel';s.textContent='たまご を あたためよう';
-    box.appendChild(s);return;
-  }
-  for(const [label,ic,n] of [['おなか','🍙',S.hunger],['ごきげん','🌸',S.mood]]){
-    const g=document.createElement('div');g.className='gauge';
-    const l=document.createElement('span');l.className='glabel';l.textContent=label;g.appendChild(l);
-    for(let i=0;i<4;i++){
-      const s=document.createElement('span');s.className='gi'+(i<n?' on':'');s.textContent=ic;g.appendChild(s);
-    }
-    box.appendChild(g);
   }
 }
 
@@ -100,7 +77,7 @@ export function openRoom(){
   if(open)return true;
   if(!host)return false;
   const S=host.getS();
-  open=true;gaugeKey='';
+  open=true;
   $('roomView').hidden=false; // 先に見せる（大きさが測れるように）
   setBack(true);
   let ok=false;
@@ -138,7 +115,6 @@ export function refreshRoom(snap){
   try{update(snap);}catch(e){fail();return;}
   $('roomName').textContent=S.name;
   showCoin();
-  showGauges();
 }
 
 /** さわったときの ぷるん（おへやが開いているときだけ） */

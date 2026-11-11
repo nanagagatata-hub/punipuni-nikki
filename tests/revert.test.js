@@ -75,9 +75,19 @@ test('#roomView は hidden で始まる静的な枠。インラインの style�
   assert.ok(/\shidden(\s|>|=)/.test(m[0]),'hidden');
   assert.ok(!/\sstyle=/.test(HTML),'style= が無い');
   assert.ok(!/onclick/i.test(HTML),'onclick が無い');
-  for(const id of ['roomBack','roomName','roomCoin','roomStage','roomScene','roomPet','roomGauges','shopBtn','editBtn','editDone','roomBubbleText','roomBubbleZh','roomTray','roomShop',
+  for(const id of ['roomBack','roomName','roomCoin','roomStage','roomScene','roomPet','shopBtn','editBtn','editDone','roomBubbleText','roomBubbleZh','roomTray','roomShop',
     'shopCoin','shopClose','shopCards','shopConfirm','shopConfirmArt','shopConfirmName','shopConfirmPrice','shopBuy','shopCancel','trayList','trayRotate','trayStore'])
     assert.ok(HTML.includes('id="'+id+'"'),'#'+id);
+});
+
+test('おへやの上の帯：もどる・なまえ・こいん・おみせ・もようがえ・おわり の順。ゲージは無い（部屋を大きく見せる）',()=>{
+  const top=HTML.match(/<div class="rtop">([\s\S]*?)<\/div>/);
+  assert.ok(top,'.rtop');
+  const ids=[...top[1].matchAll(/id="([^"]+)"/g)].map(m=>m[1]);
+  assert.deepEqual(ids,['roomBack','roomName','roomCoin','shopBtn','editBtn','editDone']);
+  assert.ok(!HTML.includes('roomGauges'),'#roomGauges が無い');
+  assert.ok(!HTML.includes('class="rbar"'),'.rbar が無い');
+  assert.ok(!read('js/room-ui.js').includes('roomGauges'),'room-ui.js がゲージを描かない');
 });
 
 test('room-ui*.js は innerHTML を使わない（textContent・createElement だけ）',()=>{
@@ -114,9 +124,9 @@ function reachable(){
   return [...seen];
 }
 
-test('版は v2.6.3（sw.js の VERSION と app.js の APP_VERSION）',()=>{
-  assert.ok(/const VERSION = 'v2\.6\.3';/.test(SW),'sw.js VERSION');
-  assert.ok(APP.includes("const APP_VERSION='v2.6.3';"),'app.js APP_VERSION');
+test('版は v2.6.4（sw.js の VERSION と app.js の APP_VERSION）',()=>{
+  assert.ok(/const VERSION = 'v2\.6\.4';/.test(SW),'sw.js VERSION');
+  assert.ok(APP.includes("const APP_VERSION='v2.6.4';"),'app.js APP_VERSION');
 });
 
 test('sw.js の ASSETS に app.js から読み込まれる js がすべてある',()=>{

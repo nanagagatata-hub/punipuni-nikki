@@ -11,7 +11,7 @@ import {itemSVG,patternSVG} from './room-art.js';
 const $=id=>document.getElementById(id);
 const COIN='🪙 ';
 /** おみせ を開いている間 さわれなくする、おへや の部分 */
-const BEHIND=['roomStage','.rbar','.rbubble'];
+const BEHIND=['roomStage','shopBtn','editBtn','.rbubble'];
 
 /** @type {RoomCtx|null} */
 let ctx=null;

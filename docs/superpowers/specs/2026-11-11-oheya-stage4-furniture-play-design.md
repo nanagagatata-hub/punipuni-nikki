@@ -90,7 +90,7 @@
 - `relocateBrain`（部屋が変わった）で `use` と `goal` を捨てる。家具の番号がずれても、使っている家具を描き間違えないため。
 
 ### 3.4 夜は べっど で寝る
-- `homeFor(room)` を変える：べっど があれば、べっど の `useSpot` の `stand` をおうち（寝る場所）にし、寝ている間は `at`・`lift` で べっど の上に描く。無ければ今までどおり（ラグ → 部屋の中央）。
+- `homeWithBed(room)`（`js/room-use.js`）を足し、`room.js` は `homeFor` の代わりにこれを使う：べっど があれば、べっど の `useSpot` の `stand` をおうち（寝る場所）にし、寝ている間は `at`・`lift` で べっど の上に描く。無ければ今までどおり（ラグ → 部屋の中央）。
 - 寝る場所の決め方の変更は、べっど が無い部屋の見た目を変えない。
 
 ### 3.5 専用の動き（B）
@@ -128,7 +128,7 @@
 - ぷにが自分から らんぷ を使うことはない（`w:0`）。
 
 ### 5.2 見え方
-- 絵：`lampSVG(on)` ではなく、`itemSVG('lamp')`（ついている）に加えて `itemSVG('lamp_off')`（かさの色を少し暗く・電球なし）を `room-art-a.js` に足す。`lamp_off` は `ITEMS` に入れない（おみせ・保存に出ない）。描くときに消えているらんぷだけ差し替える。
+- 絵：`itemSVG('lamp')`（ついている）に加えて、消えている絵 `lampOffSVG()`（かさの色を少し暗く・電球なし。足あと・基準点は lamp と同じ）を `room-art-a.js` から別に export し、`room-art.js` から出す。`ART_A`・`ITEMS` には入れない（おみせ・保存・絵の検査表に出ない）。描くときに消えているらんぷだけ差し替える。
 - 夕方・夜（`r.dark>0`）：暗さを重ねたあと、ついている らんぷ のかさの位置を中心に、半径 2.5 マス（部屋の SVG で 80px）の放射グラデーションで
   1. 暗さを抜く（`destination-out`、中心 85% → 外 0%）
   2. あたたかい色 `#FFD9A0` を少し足す（`lighter`、中心 0.18 → 外 0）
@@ -151,10 +151,9 @@
 | `js/room-data.js` | `USES` を足す（§2） |
 | `js/room-use.js`（新） | `useSpot`・`slideMotion`・`ballMotion`・`pickUse`（自分で使う家具を重みで選ぶ） |
 | `js/room-ai.js` | `use` 動作・`goUse`・`goTo`・重み `use`・mode 変化でやめる |
-| `js/room-edit.js` | `homeFor` に べっど を足す |
 | `js/room.js` | `onTap`・`useItem`・`callTo`・`wiggle`・★・頭の上の絵・てんとの clip・らんぷのあかり・`use` 中の描き方 |
-| `js/room-fx.js`（新） | 頭の上の絵と ★ の SVG |
-| `js/room-art-a.js` | `lamp_off` の絵 |
+| `js/room-fx.js`（新） | 頭の上の絵と ★ の SVG。DOM に触れない計算（`wiggleScale`・`starBurst`・`glowLevel`・`pickLights`） |
+| `js/room-art-a.js`・`js/room-art.js` | `lampOffSVG()` |
 | `js/room-ui.js` | `onTap` を受けてきまり（§4.2）どおりに動かす。ひとことを言う。使いはじめのひとことは `room.js` から `opt.onUse(id)` で受けて `host.say` |
 | `sw.js` | `ASSETS` に `js/room-use.js`・`js/room-fx.js`。`VERSION` v2.7.0 |
 | `js/app.js` | `APP_VERSION` v2.7.0（ほかは触らない） |
@@ -173,8 +172,8 @@
 - `room-data`：`USES` の全行が `ITEMS` にある ID、`spot`・`act`・`fx` が決まった値、`dur` が正、`say` がひらがな・記号だけ。
 - `room-use`：全家具 × 全 `r` × n=6/8/10 で `useSpot` の `stand` が部屋の中の通れるマス。正面がふさがれたら別のマス。囲まれたら `null`。`slideMotion`・`ballMotion` の始まりと終わり。
 - `room-ai`：`goUse` → 歩く → `use` → 終わって idle。途中で `goUse` を呼び直すと行き先が変わる。`mode` が `sleep` になると `use` をやめる。`relocateBrain` で `use` が消える。家具の無い部屋では `use` を選ばない。
-- `room-edit`：べっど があると `homeFor` が べっど のそば、無ければ今と同じ。
-- `room`（純関数部分）：光の強さ（昼・夜・消灯）、6 こまでの選び方、wiggle の 0.4 秒後に 1 に戻る、★ の組が 4 つまで。
+- `room-use`：べっど があると `homeWithBed` が べっど のそば、無ければ `homeFor` と同じ。
+- `room-fx`：光の強さ（昼・夜・消灯）、6 こまでの選び方、wiggle の 0.4 秒後に 1 に戻る、★ の組が 4 つまで。
 - `revert`：版が v2.7.0、`sw.js` の `ASSETS` に新しい 2 ファイル。
 
 ### 9.2 Playwright MCP（`http://localhost:8000` のみ、820×1180）

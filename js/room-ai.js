@@ -5,19 +5,26 @@
 //  - bfs（マス目の経路探索）は新規。
 //  - ときどき止まる・夜は決まった場所へ集まって眠る は oekaki `src/tank/walk.ts`・`sleep.ts`（b1611f5）の考え方。
 //    1 次元の歩きをマス目＋BFS に変更。
+//  - use（家具を使う）・goUse・goTo は新規（設計書 docs/superpowers/specs/2026-11-11-oheya-stage4-furniture-play-design.md §3.3）。
 //  - motion は odori `src/core/puppet-motion.ts`（9cef958）の移植。拍を秒に変え、act と pose の種類を増やした。横×縦＝1 を保つ。
+
+import {USES,has} from './room-data.js';
 
 /** @typedef {() => number} Random  0以上1未満 */
 /** @typedef {{n:number, block:Uint8Array}} Grid  block[gy*n+gx]=1 は通れない */
 /** @typedef {'egg'|'sleep'|'sick'|'dance'|'hungry'|'awake'} Mode */
 /** @typedef {'asa'|'hiru'|'yuu'|'yoru'} Band */
-/** @typedef {'idle'|'walk'|'look'|'hop'|'dance'|'sleep'|'rest'|'sad'} Act */
+/** @typedef {'idle'|'walk'|'look'|'hop'|'dance'|'sleep'|'rest'|'sad'|'use'} Act */
+/** @typedef {import('./room-use.js').Spot} Spot  room-use.js は import しない（向こうがこちらを import する）。Spot は読むだけで変えない */
 /** @typedef {{x:number, y:number, act:Act, t:number, dur:number,
  *   path:{x:number,y:number}[], yaw:number, want:number, hold:number, held:boolean, n:number,
- *   mode:Mode, then:Act|null, lookT:number}} Brain
+ *   mode:Mode, then:Act|null, lookT:number,
+ *   use:{spot:Spot,t:number,dur:number}|null, pending:{spot:Spot,dur:number}|null}} Brain
  *   x,y は足もとのマス座標（マスの中心は i+0.5）。yaw は今の向き・want は向きたい向き（度。0 が正面、+ で見ている人から見て右、±180 が後ろ）。
- *   hold はタッチ後に止まっている残り秒。mode は前回の mode（切り替わりの検出用）・then は歩き終わったあとの行動・lookT は次に目線を変えるまでの秒 */
-/** @typedef {{mode:Mode, band:Band, reduced:boolean, home:{x:number,y:number}}} BrainCtx  home はねんねのマス */
+ *   hold はタッチ後に止まっている残り秒。mode は前回の mode（切り替わりの検出用）・then は歩き終わったあとの行動・lookT は次に目線を変えるまでの秒
+ *   use は使っている家具（t は経過秒）・pending は歩き終わったら使う家具。then==='idle' は goTo で呼ばれた歩き */
+/** @typedef {{mode:Mode, band:Band, reduced:boolean, home:{x:number,y:number}, uses?:Spot[]}} BrainCtx
+ *   home はねんねのマス・uses は自分で使う候補の家具（無ければ []） */
 /** @typedef {{scaleX:number, scaleY:number, lift:number, tilt:number, yaw:number}} Motion  yaw は絵を選ぶ向き（度。spin のときは一回転を足す） */
 /** @typedef {{form:string, face:string, arms:string, think:string|null, pose:string,
  *   shiny:boolean, final:boolean, pts:number}} PetView  look() と S から作る、絵のキーになる値 */
@@ -82,11 +89,16 @@ export function bfs(grid,from,to){
 
 // ---- ぷにの行動 ----
 export const TURN_GATE=60;
-export const WEIGHTS={idle:35,walk:30,look:15,hop:10,dance:10};
+export const WEIGHTS={idle:35,walk:30,look:15,hop:10,dance:10,use:15};
 export const BAND_MUL={asa:{look:1.5},hiru:{walk:1.3,hop:1.3},yuu:{idle:1.5},yoru:{}};
 export const SPEED=1.2;
 export const DUR={idle:[3,6],look:2,hop:0.6,dance:3};
 const FIN={sleep:'sleep',sick:'rest',hungry:'sad'};
+/** goTo で着いたあと止まる秒 */
+const CALL_IDLE=1.5;
+
+/** 自分で使う重み（USES に無い ID は 0） @param {Spot} s @returns {number} */
+const useW=s=>s&&has(USES,s.id)?Math.max(0,USES[s.id].w)||0:0;
 
 /** 角度を -180 以上 180 未満にする @param {number} d @returns {number} */
 export function normDeg(d){return ((d+180)%360+360)%360-180;}
@@ -107,7 +119,8 @@ export function turnToward(cur,want,dt,rate=360){
  * @param {BrainCtx} ctx @param {Random} rng @returns {Act} */
 export function pickAct(ctx,rng){
   const mul=BAND_MUL[ctx.band]||{},keys=Object.keys(WEIGHTS);
-  const w=keys.map(k=>(ctx.reduced&&(k==='hop'||k==='dance'))?0:WEIGHTS[k]*(mul[k]??1));
+  const canUse=(ctx.uses||[]).some(s=>useW(s)>0); // 使える家具が無ければ use は 0（今までと同じ確率）
+  const w=keys.map(k=>(ctx.reduced&&(k==='hop'||k==='dance'))||(k==='use'&&!canUse)?0:WEIGHTS[k]*(mul[k]??1));
   let r=rng()*w.reduce((a,b)=>a+b,0);
   for(let i=0;i<keys.length;i++){r-=w[i];if(r<0)return /** @type {Act} */(keys[i]);}
   return 'idle';
@@ -116,13 +129,13 @@ export function pickAct(ctx,rng){
 /** @param {number} n @param {BrainCtx} ctx @returns {Brain} */
 export function createBrain(n,ctx){
   return {x:ctx.home.x+0.5,y:ctx.home.y+0.5,act:ctx.mode==='sleep'?'sleep':'idle',t:0,dur:0,path:[],
-    yaw:0,want:0,hold:0,held:false,n,mode:ctx.mode,then:null,lookT:0};
+    yaw:0,want:0,hold:0,held:false,n,mode:ctx.mode,then:null,lookT:0,use:null,pending:null};
 }
 
 /** タッチで押さえている間は止まって正面を向く。離したら 3 秒止まる
  * @param {Brain} b @param {boolean} on */
 export function holdBrain(b,on){
-  if(on){b.held=true;b.act='idle';b.path=[];b.then=null;}
+  if(on){b.held=true;b.act='idle';b.path=[];b.then=null;b.use=null;b.pending=null;}
   else{b.held=false;b.hold=3;}
 }
 
@@ -130,7 +143,7 @@ export function holdBrain(b,on){
  * @param {Brain} b @param {number} sec */
 export function pauseBrain(b,sec){
   b.hold=Math.max(b.hold,sec);b.path=[];
-  if(b.act==='walk'){b.act='idle';b.then=null;b.t=0;b.dur=0;}
+  if(b.act==='walk'){b.act='idle';b.then=null;b.t=0;b.dur=0;b.pending=null;}
 }
 
 /** 部屋が変わったとき（家具を置いた・ひろげた）：b.n を合わせ、今のマスが通れない（または force）なら to の中心へ移す。
@@ -140,8 +153,8 @@ export function relocateBrain(b,grid,to,force){
   b.n=grid.n;
   const c=nearest(b);
   if(force||!passable(grid,c.x,c.y)){b.x=to.x+0.5;b.y=to.y+0.5;}
-  b.path=[];
-  if(b.act==='walk'){b.act='idle';b.then=null;b.t=0;b.dur=0;b.want=0;}
+  b.path=[];b.use=null;b.pending=null; // 家具の番号がずれるので使うのもやめる
+  if(b.act==='walk'||b.act==='use'){b.act='idle';b.then=null;b.t=0;b.dur=0;b.want=0;}
 }
 
 /** いちばん近いマス */
@@ -163,7 +176,8 @@ function planTo(b,grid,goal,then){
 /** mode が変わった瞬間の切り替え */
 function enter(b,ctx,grid){
   const m=ctx.mode;
-  b.mode=m;b.t=0;b.dur=0;b.lookT=0;
+  b.mode=m;b.t=0;b.dur=0;b.lookT=0;b.use=null;b.pending=null;
+  if(b.act==='use')b.act='idle';
   if(m==='egg'){b.x=ctx.home.x+0.5;b.y=ctx.home.y+0.5;b.act='idle';b.path=[];b.then=null;}
   else if(m==='awake'){b.act='idle';b.path=[];b.then=null;}
   else if(m==='dance'){b.act='dance';b.path=[];b.then=null;}
@@ -179,8 +193,11 @@ function walkStep(b,dt,ctx,rng){
     b.x=b.path[0].x+0.5;b.y=b.path[0].y+0.5;b.path.shift();
   }
   if(!b.path.length){ // 着いた
-    b.act=b.then||'idle';b.then=null;b.t=0;b.dur=0;b.want=0;
-    if(b.mode==='awake')b.dur=between(rng,1,2.5); // 歩いたあとは少し休む
+    const then=b.then,p=b.pending;
+    b.act=then||'idle';b.then=null;b.t=0;b.dur=0;b.want=0;b.pending=null;
+    if(then==='use'&&p&&b.mode==='awake'){b.use={spot:p.spot,t:0,dur:p.dur};b.want=p.spot.face;return;}
+    if(then==='use')b.act='idle';
+    if(b.mode==='awake')b.dur=then==='idle'?CALL_IDLE:between(rng,1,2.5); // 歩いたあとは少し休む（呼ばれたときは 1.5 秒）
     return;
   }
   const c=b.path[0],dx=c.x+0.5-b.x,dy=c.y+0.5-b.y,d=Math.hypot(dx,dy); // d>1e-9
@@ -191,6 +208,53 @@ function walkStep(b,dt,ctx,rng){
   const step=Math.min(d,SPEED*(ctx.reduced?0.6:1)*dt);
   if(step>=d){b.x=c.x+0.5;b.y=c.y+0.5;}
   else{b.x+=dx/d*step;b.y+=dy/d*step;}
+}
+
+/** awake で、cell まで歩く経路を引く（今の歩き・使う・行き先はすべて捨てる）。届かなければ null */
+function callPath(b,grid,cell){
+  if(b.mode!=='awake'||!cell)return null;
+  const start=walking(b)?b.path[0]:nearest(b);
+  return bfs(grid,start,cell);
+}
+
+/** 経路 p を歩き始め、着いたら then */
+function startWalk(b,p,then,pending){
+  b.use=null;b.pending=pending;b.path=p;b.act='walk';b.then=then;b.t=0;b.dur=0;
+}
+
+/** 家具を使いに行く（タップで呼ぶ）。spot.stand まで歩き、着いたら dur 秒使う。awake でない・届かないなら false
+ * @param {Brain} b @param {Grid} grid @param {Spot} spot @param {number} dur @returns {boolean} */
+export function goUse(b,grid,spot,dur){
+  const p=spot?callPath(b,grid,spot.stand):null;
+  if(!p)return false;
+  startWalk(b,p,'use',{spot,dur:Number.isFinite(dur)&&dur>0?dur:0});
+  return true;
+}
+
+/** 床のマスへ呼ぶ。着いたら正面を向いて 1.5 秒 idle。awake でない・通れない・届かないなら false
+ * @param {Brain} b @param {Grid} grid @param {{x:number,y:number}} cell @returns {boolean} */
+export function goTo(b,grid,cell){
+  const p=callPath(b,grid,cell);
+  if(!p)return false;
+  startWalk(b,p,'idle',null);
+  return true;
+}
+
+/** 使っている家具を終える。すべりだい は着地のマスへ */
+function endUse(b,rng){
+  const end=b.use.spot.end;
+  if(end){b.x=end.x+0.5;b.y=end.y+0.5;}
+  b.use=null;b.act='idle';b.t=0;b.want=0;b.dur=between(rng,1,2.5);
+}
+
+/** w の重みで家具を 1 つ選ぶ（room-use.js の pickUse と同じ選び方）。重みが無ければ null
+ * @param {Spot[]} uses @param {Random} rng @returns {Spot|null} */
+function pickSpot(uses,rng){
+  const total=uses.reduce((a,s)=>a+useW(s),0);
+  if(!(total>0))return null;
+  let r=rng()*total,last=null;
+  for(const s of uses){const k=useW(s);if(k<=0)continue;last=s;if(r<k)return s;r-=k;}
+  return last;
 }
 
 /** 次の行動を始める */
@@ -205,6 +269,11 @@ function startAct(b,ctx,grid,rng){
     }
     if(cand.length){b.path=cand[Math.floor(rng()*cand.length)];b.act='walk';b.dur=0;return;}
     b.act='idle';b.dur=between(rng,DUR.idle[0],DUR.idle[1])*(ctx.reduced?1.5:1);return;
+  }
+  if(a==='use'){ // w の重みで家具を選んで、その stand まで歩く
+    const spot=pickSpot(ctx.uses||[],rng),p=spot&&bfs(grid,nearest(b),spot.stand);
+    if(p){const d=USES[spot.id].dur;startWalk(b,p,'use',{spot,dur:between(rng,d[0],d[1])});return;}
+    b.act='idle';b.path=[];b.dur=between(rng,DUR.idle[0],DUR.idle[1])*(ctx.reduced?1.5:1);return;
   }
   b.act=a;b.path=[];
   if(a==='idle')b.dur=between(rng,DUR.idle[0],DUR.idle[1])*(ctx.reduced?1.5:1);
@@ -238,7 +307,13 @@ export function stepBrain(b,dt,ctx,grid,rng){
   }else if(m==='awake'){
     b.t+=dt;
     if(b.act==='walk')walkStep(b,dt,ctx,rng);
-    else{
+    else if(b.act==='use'){ // 使っている間は歩かず、家具の向きを向く
+      if(!b.use){b.act='idle';b.dur=0;}
+      else{
+        b.use.t=b.t;b.want=b.use.spot.face;
+        if(b.t>=b.use.dur)endUse(b,rng);
+      }
+    }else{
       if(b.act==='look'){
         b.lookT-=dt;
         if(b.lookT<=0){b.want=-b.want;b.lookT=between(rng,0.6,0.8);}

@@ -2,7 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mulberry32, makeGrid, passable, bfs, createBrain, stepBrain, holdBrain, pauseBrain,
-  normDeg, dirYaw, turnToward, pickAct, motion, TURN_GATE, WEIGHTS, BAND_MUL, SPEED, DUR, relocateBrain} from '../js/room-ai.js';
+  normDeg, dirYaw, turnToward, pickAct, motion, TURN_GATE, WEIGHTS, BAND_MUL, SPEED, DUR, relocateBrain, goUse, goTo} from '../js/room-ai.js';
+import {useSpot, roomUses, slideMotion, SLIDE_T} from '../js/room-use.js';
 import {blockedCells, homeFor} from '../js/room-edit.js';
 
 const isStep=(a,b)=>Math.abs(a.x-b.x)+Math.abs(a.y-b.y)===1;
@@ -62,7 +63,7 @@ const pos=b=>[b.x,b.y];
 
 test('定数', ()=>{
   assert.equal(TURN_GATE,60);assert.equal(SPEED,1.2);
-  assert.deepEqual(WEIGHTS,{idle:35,walk:30,look:15,hop:10,dance:10});
+  assert.deepEqual(WEIGHTS,{idle:35,walk:30,look:15,hop:10,dance:10,use:15});
   assert.deepEqual(BAND_MUL,{asa:{look:1.5},hiru:{walk:1.3,hop:1.3},yuu:{idle:1.5},yoru:{}});
   assert.deepEqual(DUR,{idle:[3,6],look:2,hop:0.6,dance:3});
 });
@@ -362,3 +363,56 @@ test('とじこめ：通れるマスが 1 つだけでも例外・NaN なし',()
     assert.deepEqual(pos(b),[4.5,1.5]);
   }
 });
+
+
+// ---- 家具を使う（段階4）----
+{
+const R6=items=>({n:6,floor:'f_honey',wall:'w_pink',items});
+const awake={mode:'awake',band:'hiru',reduced:false,home:{x:0,y:0},uses:[]};
+const run=(b,ctx,grid,sec,rng=mulberry32(1))=>{for(let t=0;t<sec;t+=0.05)stepBrain(b,0.05,ctx,grid,rng);};
+test('goUse：歩いて stand に着くと use、dur 秒で idle に戻る',()=>{
+  const room=R6([{id:'shelf',x:4,y:0,r:0}]),grid=makeGrid(6,blockedCells(room)),s=useSpot(room,0);
+  const b=createBrain(6,awake);
+  assert.equal(goUse(b,grid,s,2),true);
+  run(b,awake,grid,10);          // 着くまで（約 7 秒）＋使う 2 秒
+  // 使い終わったあとは idle 系、use は null
+  assert.equal(b.use,null);assert.notEqual(b.act,'use');
+  assert.deepEqual([Math.floor(b.x),Math.floor(b.y)],[s.stand.x,s.stand.y]);
+});
+test('goUse の途中で goTo すると行き先が変わる',()=>{
+  const room=R6([{id:'shelf',x:4,y:0,r:0}]),grid=makeGrid(6,blockedCells(room));
+  const b=createBrain(6,awake);goUse(b,grid,useSpot(room,0),2);
+  run(b,awake,grid,0.3);goTo(b,grid,{x:0,y:5});run(b,awake,grid,7); // 約 5.9 秒で着き、1.5 秒 止まっている間に見る
+  assert.deepEqual([Math.floor(b.x),Math.floor(b.y)],[0,5]);assert.equal(b.pending,null);
+});
+test('sleep に変わると use をやめる、awake 以外では goUse・goTo は false',()=>{
+  const room=R6([{id:'rug',x:2,y:2,r:0}]),grid=makeGrid(6,blockedCells(room)),s=useSpot(room,0);
+  const b=createBrain(6,awake);goUse(b,grid,s,30);run(b,awake,grid,6);
+  assert.equal(b.act,'use');
+  const night={...awake,mode:'sleep'};run(b,night,grid,0.1);
+  assert.equal(b.use,null);
+  assert.equal(goUse(b,grid,s,3),false);assert.equal(goTo(b,grid,{x:0,y:0}),false);
+});
+test('relocateBrain で use と pending が消える',()=>{
+  const room=R6([{id:'rug',x:2,y:2,r:0}]),grid=makeGrid(6,blockedCells(room));
+  const b=createBrain(6,awake);goUse(b,grid,useSpot(room,0),30);run(b,awake,grid,6);
+  relocateBrain(b,grid,{x:0,y:0});assert.equal(b.use,null);assert.equal(b.pending,null);
+});
+test('uses が空、または w がすべて 0 なら pickAct は use を選ばない',()=>{
+  const lamp=useSpot(R6([{id:'lamp',x:1,y:1,r:0}]),0);
+  for(const uses of [[],[lamp]])for(let i=0;i<200;i++)assert.notEqual(pickAct({...awake,uses},mulberry32(i)),'use');
+});
+test('家具があれば いつか自分で use を選ぶ',()=>{
+  const room=R6([{id:'rug',x:2,y:2,r:0}]),grid=makeGrid(6,blockedCells(room));
+  const ctx={...awake,uses:roomUses(room)},b=createBrain(6,ctx);
+  let seen=false;const rng=mulberry32(3);
+  for(let t=0;t<300&&!seen;t+=0.05){stepBrain(b,0.05,ctx,grid,rng);seen=b.act==='use';}
+  assert.ok(seen);
+});
+test('すべりだい の use が終わると end のマスへ',()=>{
+  const room=R6([{id:'slide',x:2,y:1,r:0}]),grid=makeGrid(6,blockedCells(room)),s=useSpot(room,0);
+  const b=createBrain(6,{...awake,home:s.stand});b.x=s.stand.x+.5;b.y=s.stand.y+.5;
+  goUse(b,grid,s,SLIDE_T);run(b,awake,grid,SLIDE_T+0.5);
+  const e=slideMotion(s,SLIDE_T).end;assert.deepEqual([b.x,b.y],[e.x+.5,e.y+.5]);
+});
+}

@@ -100,7 +100,10 @@ const rug_pink=()=>rugArt({base:'#FFC4D8',inner:'#FFE4EE',mid:'#F2A9C3',dark:'#E
 const rug_mint=()=>rugArt({base:'#A9E2C8',inner:'#DDF5EA',mid:'#8DD0B2',dark:'#74BD9D',petal:'#FFC1D8',heart:'#FFFFFF'});
 
 // らんぷ（足あと 1×1）。まるい台・ほそい柱・すそが波の かさ。かさは 上＝明るい・左＝ふつう・右＝暗い
-function lamp(){
+// c＝かさ（top・mid・dark）と柱の電球（bulb）の色。ついている／消えている で色だけ変える
+const LAMP_ON={top:'#FFE6EF',mid:'#FFC6D9',dark:'#F5A6C2',bulb:'#FFD27A'};
+const LAMP_OFF={top:'#F0DCE3',mid:'#E6C3CF',dark:'#D6AEBD',bulb:'#D8CFC0'};
+function lampArt(c){
   const w=76, ax=38, ay=112, h=ay+32+6, cx=ax, cy=ay+16;
   const tY=cy-100, bY=cy-66, tw=15, bw=27; // かさの上・下の y と はば（半分）
   let s=`<ellipse cx="${cx}" cy="${cy}" rx="24" ry="10" fill="${SHADOW}"/>`;
@@ -112,19 +115,26 @@ function lamp(){
   s+=`<path d="M${cx} ${cy-6}L${cx} ${bY+2}" stroke="${OL}" stroke-width="8" stroke-linecap="round"/>`
     +`<path d="M${cx} ${cy-6}L${cx} ${bY+2}" stroke="#F4DDB4" stroke-width="4" stroke-linecap="round"/>`
     +`<path d="M${cx+1} ${cy-6}L${cx+1} ${bY+2}" stroke="#E3C89E" stroke-width="1.5"/>`;
-  s+=`<ellipse cx="${cx}" cy="${cy-30}" rx="5" ry="3.2" fill="#FFD27A" ${ST}/>`;
+  s+=`<ellipse cx="${cx}" cy="${cy-30}" rx="5" ry="3.2" fill="${c.bulb}" ${ST}/>`;
   // かさ：形（ふつう）→ 右の暗いところ → 線 → 上の明るい だ円 → すその波
   const shade=`M${cx-tw} ${tY}L${cx+tw} ${tY}L${cx+bw} ${bY}Q${cx} ${bY+7} ${cx-bw} ${bY}Z`;
-  s+=`<path d="${shade}" fill="#FFC6D9"/>`;
-  s+=`<path d="M${cx+5} ${tY}L${cx+tw} ${tY}L${cx+bw} ${bY}Q${cx+18} ${bY+4.6} ${cx+9} ${bY+5.6}Z" fill="#F5A6C2"/>`;
+  s+=`<path d="${shade}" fill="${c.mid}"/>`;
+  s+=`<path d="M${cx+5} ${tY}L${cx+tw} ${tY}L${cx+bw} ${bY}Q${cx+18} ${bY+4.6} ${cx+9} ${bY+5.6}Z" fill="${c.dark}"/>`;
   s+=`<path d="M${cx-tw+4} ${tY+4}L${cx-bw+7} ${bY-1}" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity=".6"/>`;
-  for(let k=0;k<5;k++){const u=(k+.5)/5, x=cx-bw+u*bw*2, y=bY+7*(1-Math.pow(2*u-1,2))-.5;s+=`<circle cx="${f1(x)}" cy="${f1(y+2)}" r="4.4" fill="${k>=3?'#F5A6C2':'#FFC6D9'}" ${ST}/>`;}
+  for(let k=0;k<5;k++){const u=(k+.5)/5, x=cx-bw+u*bw*2, y=bY+7*(1-Math.pow(2*u-1,2))-.5;s+=`<circle cx="${f1(x)}" cy="${f1(y+2)}" r="4.4" fill="${k>=3?c.dark:c.mid}" ${ST}/>`;}
   s+=`<path d="${shade}" fill="none" ${ST}/>`;
-  s+=`<ellipse cx="${cx}" cy="${tY}" rx="${tw}" ry="5" fill="#FFE6EF" ${ST}/>`;
+  s+=`<ellipse cx="${cx}" cy="${tY}" rx="${tw}" ry="5" fill="${c.top}" ${ST}/>`;
   // ひも と 玉
   s+=`<path d="M${cx+14} ${bY+4}L${cx+14} ${bY+16}" stroke="${OL}" stroke-width="1.6"/><circle cx="${cx+14}" cy="${bY+18}" r="3" fill="#FFE89A" ${ST}/>`;
   return {svg:wrapSVG(w,h,s),w,h,ax,ay};
 }
+const lamp=()=>lampArt(LAMP_ON);
+/**
+ * 消えている らんぷ（かさを少し暗く、電球を灰色に）。足あと・基準点は lamp と同じ。
+ * ART_A・ITEMS には入れない（おみせ・保存・絵の検査表に出さない）。room.js が消えている らんぷ だけ差し替える。
+ * @returns {ItemArt}
+ */
+export const lampOffSVG=()=>lampArt(LAMP_OFF);
 
 // ぼーる（足あと 1×1）。ピンクの玉に みんとの帯と黄色い星。左上が明るく、右下に暗いかげ
 function ball(){

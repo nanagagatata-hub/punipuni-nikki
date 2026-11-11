@@ -12,6 +12,8 @@ import {ART_B} from './room-art-b.js';
 import {ART_C} from './room-art-c.js';
 
 export {TILE_W,TILE_H,WALL_H} from './room-art-kit.js';
+/** 消えている らんぷ の絵（ART_A には入れない。room.js が消えている らんぷ だけ差し替える） */
+export {lampOffSVG} from './room-art-a.js';
 
 /** @typedef {import('./room-art-kit.js').ItemArt} ItemArt */
 

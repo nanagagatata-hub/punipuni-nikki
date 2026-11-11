@@ -68,20 +68,20 @@ export const EXPANDS=table([
  * @typedef {{id:string,spot:'on'|'front'|'side'|'in',seat:number,act:string,face:string,fx:string,dur:[number,number],say:string,w:number,front?:'gx'|'gy'}} UseDef */
 export const USE_ACTS=Object.freeze(['sit','sleep','read','study','eat','play','hug','water','lamp','peek','kick','slide']);
 export const USE_FX=Object.freeze(['','z','book','pencil','snack','note','heart','drop','star']);
-const use=(id,spot,seat,act,face,fx,dur,say,w)=>({id,spot,seat,act,face,fx,dur:Object.freeze(dur),say,w});
+const use=(id,spot,seat,act,face,fx,dur,say,w,front)=>({id,spot,seat,act,face,fx,dur:Object.freeze(dur),say,w,...(front?{front}:{})});
 
-/** 家具の使い方（ITEMS と同じ id） @type {Readonly<{[id:string]:UseDef}>} */
+/** 家具の使い方（ITEMS と同じ id）。front:'gx' は絵の顔（本・引き出し・すわる側）が +gx 側のもの @type {Readonly<{[id:string]:UseDef}>} */
 export const USES=table([
   use('rug','on',0,'sit','happy','note',[6,10],'ふかふか だね',3),
   use('rug_pink','on',0,'sit','happy','note',[6,10],'ふかふか だね',3),
   use('rug_mint','on',0,'sit','happy','note',[6,10],'ふかふか だね',3),
   use('cushion','on',6,'sit','happy','star',[6,10],'おほしさま すき',3),
-  use('sofa','on',18,'sit','happy','note',[8,12],'そふぁ で ひとやすみ',3),
-  use('chair','on',20,'sit','normal','',[5,8],'よいしょ',2),
-  use('bed','on',22,'sleep','sleep','z',[10,15],'ちょっと おひるね',2),
+  use('sofa','on',18,'sit','happy','note',[8,12],'そふぁ で ひとやすみ',3,'gx'),
+  use('chair','on',20,'sit','normal','',[5,8],'よいしょ',2,'gx'),
+  use('bed','on',22,'sleep','sleep','z',[10,15],'ちょっと おひるね',2,'gx'),
   use('tent','in',0,'peek','giggle','',[6,10],'ここ だよ〜',2),
-  use('shelf','front',0,'read','normal','book',[8,12],'ごほん よもう',3),
-  use('desk','front',0,'study','sparkle','pencil',[8,12],'おべんきょう する！',3),
+  use('shelf','front',0,'read','normal','book',[8,12],'ごほん よもう',3,'gx'),
+  use('desk','front',0,'study','sparkle','pencil',[8,12],'おべんきょう する！',3,'gx'),
   use('table','front',0,'eat','happy','snack',[6,9],'おやつ たべよ',3),
   use('toybox','front',0,'play','giggle','note',[6,9],'なに で あそぼう',3),
   use('plush','side',0,'hug','hug','heart',[5,8],'ぎゅー',3),

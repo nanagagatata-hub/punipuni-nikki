@@ -1,7 +1,7 @@
 // room-data.js（おへやのカタログと型）のテスト
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ITEMS,FLOORS,WALLS,EXPANDS,SIZES,MAX_ITEMS,MAX_OWN,MAX_COIN,MAX_GRANT,DEFAULT_FLOOR,DEFAULT_WALL,has,defaultOwn,defaultRoom} from '../js/room-data.js';
+import {ITEMS,FLOORS,WALLS,EXPANDS,USES,USE_ACTS,USE_FX,SIZES,MAX_ITEMS,MAX_OWN,MAX_COIN,MAX_GRANT,DEFAULT_FLOOR,DEFAULT_WALL,has,defaultOwn,defaultRoom} from '../js/room-data.js';
 
 const TABLES=[ITEMS,FLOORS,WALLS,EXPANDS];
 const ID_RE=/^[a-z][a-z0-9_]{0,15}$/;
@@ -138,4 +138,22 @@ test('凍結：表も中身も変えられない',()=>{
     for(const d of Object.values(t))assert.ok(Object.isFrozen(d),d.id);
   }
   assert.ok(Object.isFrozen(SIZES));
+});
+
+test('USES は ITEMS の 17 種すべてにあり、値が決まった範囲',()=>{
+  assert.deepEqual(Object.keys(USES).sort(),Object.keys(ITEMS).sort());
+  for(const [id,u] of Object.entries(USES)){
+    assert.ok(['on','front','side','in'].includes(u.spot)||u.act==='slide',id);
+    assert.ok(USE_ACTS.includes(u.act),id);
+    assert.ok(USE_FX.includes(u.fx),id);
+    assert.ok(u.dur[0]>0&&u.dur[1]>=u.dur[0],id);
+    assert.ok(u.seat>=0&&u.w>=0,id);
+    assert.match(u.say,/^[ぁ-ゟー〜…！？、。 ]+$/u,id); // ひらがな・記号だけ
+    if(u.front!==undefined)assert.ok(u.front==='gx'||u.front==='gy',id);
+  }
+});
+test('らんぷは自分では使わない（w=0）、USES は凍結',()=>{
+  assert.equal(USES.lamp.w,0);assert.equal(USES.lamp.act,'lamp');
+  assert.ok(Object.isFrozen(USES)&&Object.isFrozen(USES.bed)&&Object.isFrozen(USES.bed.dur));
+  assert.equal(has(USES,'__proto__'),false);
 });

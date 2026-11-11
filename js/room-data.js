@@ -62,6 +62,35 @@ export const EXPANDS=table([
   {id:'x10',name:'もっと ひろい おへや',price:200,from:8,to:10},
 ]);
 
+/** 家具の使い方。spot＝どこで使う（on 上に乗る／front 正面／side となり／in 入口で下半分を隠す）、seat＝on の高さ(px)、
+ * act＝動き、face＝petSVG の顔、fx＝頭の上の小さな絵、dur＝使う秒数[最小,最大]、say＝ひとこと、w＝自分で使う重み（0 なら使わない）、
+ * front＝正面が gx 側か gy 側か（省略時 gy）
+ * @typedef {{id:string,spot:'on'|'front'|'side'|'in',seat:number,act:string,face:string,fx:string,dur:[number,number],say:string,w:number,front?:'gx'|'gy'}} UseDef */
+export const USE_ACTS=Object.freeze(['sit','sleep','read','study','eat','play','hug','water','lamp','peek','kick','slide']);
+export const USE_FX=Object.freeze(['','z','book','pencil','snack','note','heart','drop','star']);
+const use=(id,spot,seat,act,face,fx,dur,say,w)=>({id,spot,seat,act,face,fx,dur:Object.freeze(dur),say,w});
+
+/** 家具の使い方（ITEMS と同じ id） @type {Readonly<{[id:string]:UseDef}>} */
+export const USES=table([
+  use('rug','on',0,'sit','happy','note',[6,10],'ふかふか だね',3),
+  use('rug_pink','on',0,'sit','happy','note',[6,10],'ふかふか だね',3),
+  use('rug_mint','on',0,'sit','happy','note',[6,10],'ふかふか だね',3),
+  use('cushion','on',6,'sit','happy','star',[6,10],'おほしさま すき',3),
+  use('sofa','on',18,'sit','happy','note',[8,12],'そふぁ で ひとやすみ',3),
+  use('chair','on',20,'sit','normal','',[5,8],'よいしょ',2),
+  use('bed','on',22,'sleep','sleep','z',[10,15],'ちょっと おひるね',2),
+  use('tent','in',0,'peek','giggle','',[6,10],'ここ だよ〜',2),
+  use('shelf','front',0,'read','normal','book',[8,12],'ごほん よもう',3),
+  use('desk','front',0,'study','sparkle','pencil',[8,12],'おべんきょう する！',3),
+  use('table','front',0,'eat','happy','snack',[6,9],'おやつ たべよ',3),
+  use('toybox','front',0,'play','giggle','note',[6,9],'なに で あそぼう',3),
+  use('plush','side',0,'hug','hug','heart',[5,8],'ぎゅー',3),
+  use('plant','front',0,'water','happy','drop',[5,7],'おみず あげるね',2),
+  use('lamp','front',0,'lamp','happy','',[1.5,1.5],'ぱちっ',0),
+  use('ball','front',0,'kick','sparkle','',[2.5,2.5],'えいっ',3),
+  use('slide','front',0,'slide','sparkle','',[4,4],'すべりだい だ〜',3),
+]);
+
 /** 部屋の 1 辺のマス数（小さい順） */
 export const SIZES=Object.freeze([6,8,10]);
 /** 部屋に置ける家具の最大数 */

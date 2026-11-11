@@ -1,10 +1,13 @@
 // おへや：投影・深度ソート・夜の暗さ・当たり判定・絵のキャッシュ（DOM に触れない純関数。import しただけで Node でも読める）
 // 設計書：docs/superpowers/specs/2026-11-10-oheya-stage0-1-design.md §3.1・§3.4・§3.5、
 //         docs/superpowers/specs/2026-11-10-oheya-room-mode-and-stage2-design.md §7（部屋の状態から描く）
-import {TILE_W,TILE_H,WALL_H,roomSVG,itemSVG} from './room-art.js';
-import {normDeg,mulberry32,makeGrid,createBrain,stepBrain,holdBrain,pauseBrain,relocateBrain,motion} from './room-ai.js';
-import {ITEMS,SIZES,has,defaultRoom} from './room-data.js';
-import {footprint,blockedCells,homeFor,nearestFree} from './room-edit.js';
+//         docs/superpowers/specs/2026-11-11-oheya-stage4-furniture-play-design.md §4.3・§5・§6（家具を使う・タップ・らんぷ）
+import {TILE_W,TILE_H,WALL_H,roomSVG,itemSVG,lampOffSVG} from './room-art.js';
+import {normDeg,mulberry32,between,makeGrid,createBrain,stepBrain,holdBrain,pauseBrain,relocateBrain,motion,goUse,goTo} from './room-ai.js';
+import {ITEMS,USES,SIZES,has,defaultRoom} from './room-data.js';
+import {footprint,blockedCells,nearestFree} from './room-edit.js';
+import {useSpot,roomUses,homeWithBed,slideMotion,ballMotion} from './room-use.js';
+import {fxSVG,wiggleScale,starBurst,addBurst,glowLevel,pickLights} from './room-fx.js';
 import {petSVG} from './art.js';
 import {FORMS} from './data.js';
 
@@ -171,6 +174,11 @@ let R=null; // 動いているおへやの状態（無ければ null）
 
 // もようがえの表示（設計書 §7 の setEdit）
 const EDIT_FADE=0.55, EDIT_SEL='#FFD84D', EDIT_OK='#7BD8A0', EDIT_NG='#FF9AA8', EDIT_MASK=0.45;
+// らんぷの光（部屋の SVG の px）：半径・昼の半径・かさの高さ（足もとから上へ）・点灯の速さ（approach の tau。約 1 秒）・数
+const GLOW_R=80, GLOW_DAY_R=20, GLOW_UP=85, LAMP_TAU=0.3, LAMP_MAX=6, WARM='255,217,160';
+// 頭の上の絵・★ の大きさ（px）
+const FX_S=20, STAR_S=14;
+const TAU=Math.PI*2;
 
 const makeImg=svg=>{const im=new Image();im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);return im;};
 const usable=im=>!!im&&im.complete&&im.naturalWidth>0;
@@ -186,7 +194,8 @@ const okRoom=room=>room&&typeof room==='object'&&SIZES.includes(room.n)&&Array.i
 
 /** 部屋を sceneEl に出す。Canvas が使えなければ false。画像の読み込み失敗は opt.onFail（呼ぶ前に unmount する）
  * @param {HTMLElement} sceneEl @param {HTMLElement} petBtn
- * @param {{room:Room,reduced?:boolean,onFail?:()=>void}} opt @returns {boolean} */
+ * opt.onUse(id)＝ぷにが家具を使い始めたコマで 1 回
+ * @param {{room:Room,reduced?:boolean,onFail?:()=>void,onUse?:(id:string)=>void}} opt @returns {boolean} */
 export function mount(sceneEl,petBtn,opt){
   if(R)unmount();
   opt=opt||{};
@@ -205,6 +214,9 @@ export function mount(sceneEl,petBtn,opt){
     sprites:new SpriteCache(120,spriteMaker(()=>r.fail(),svg=>{const im=makeImg(svg);im.onerror=()=>r.fail();return im;})),
     bgImgs:{},bgKey:'',bgCur:null,bgOld:null,bgCurBand:null,fade:1,
     edit:null,cellCb:null,layer:null,
+    // 家具であそぶ：使える家具・べっど・らんぷ（消えている番号・点灯 0..1）・ぶるんっ（番号→始めた時刻）・★・頭の上の絵
+    tapCb:null,uses:[],bed:null,lampOff:new Set(),lampOn:new Map(),lampOffArt:null,lampOffImg:null,shade:null,
+    wig:new Map(),bursts:[],fxImgs:new Map(),useNow:null,red:false,
     view:null,mode:'awake',band:'hiru',brain:null,dark:0,darkTarget:0,first:true,
     clock:0,lastDraw:0,lastT:0,raf:0,pokeAt:-9,spinAt:-9,lastAct:'',lastPose:'',
     box:{l:-1,t:-1,s:-1},failed:false,handlers:[],ro:null,fail:null
@@ -236,10 +248,11 @@ export function unmount(){
   for(const k in r.bgImgs)r.bgImgs[k].onerror=null;
   r.bgImgs={};
   r.sprites.make=svg=>svg?makeImg(svg):{complete:true,naturalWidth:0}; // 以後の失敗通知は不要
-  r.cellCb=null;
+  r.cellCb=null;r.tapCb=null;
   // Canvas のメモリをすぐ返す（開け閉めを くりかえしても 上限に届かないように）
   dropBg(r);
   if(r.layer){freeCv(r.layer.cv);r.layer=null;}
+  if(r.shade){freeCv(r.shade.cv);r.shade=null;}
   if(r.cv.parentNode)r.cv.parentNode.removeChild(r.cv);
   freeCv(r.cv);
 }
@@ -249,6 +262,8 @@ export function unmount(){
 export function setRoom(room){
   const r=R,ok=okRoom(room);
   if(!r||!ok)return;
+  // 家具の番号がずれるので、らんぷの点灯と ぶるんっ は はじめから
+  r.lampOff.clear();r.lampOn.clear();r.wig.clear();
   applyRoom(r,ok);
 }
 
@@ -273,6 +288,48 @@ export function onCell(cb){
   if(R)R.cellCb=typeof cb==='function'?cb:null;
 }
 
+/** ふだん（もようがえ中でないとき）に部屋を押したときに呼ぶ関数。null で外す。mount 前は何もしない
+ * (x,y)・hit は onCell と同じ。(px,py)＝押した点（部屋の SVG の座標）。床の外で家具も無いときは呼ばない
+ * @param {((x:number,y:number,hit:number,px:number,py:number)=>void)|null} cb */
+export function onTap(cb){
+  if(R)R.tapCb=typeof cb==='function'?cb:null;
+}
+
+/** ぷにを家具（room.items の番号）へ使いに行かせる。
+ * 'none'＝範囲外・USES に無い、'busy'＝起きていない、'far'＝立つ場所・経路が無い
+ * @param {number} index @returns {'go'|'busy'|'far'|'none'} */
+export function useItem(index){
+  const r=R;
+  if(!r||!r.brain||!Number.isInteger(index)||index<0||index>=r.room.items.length)return 'none';
+  const p=r.room.items[index];
+  if(!p||!has(USES,p.id))return 'none';
+  if(r.brain.mode!=='awake')return 'busy';
+  const spot=r.uses.find(s=>s.index===index)||useSpot(r.room,index);
+  if(!spot)return 'far';
+  const d=USES[p.id].dur;
+  return goUse(r.brain,r.grid,spot,between(r.rng,d[0],d[1]))?'go':'far';
+}
+
+/** ぷにを床のマスへ呼ぶ。'busy'＝起きていない、'far'＝通れない・届かない
+ * @param {number} x @param {number} y @returns {'go'|'busy'|'far'} */
+export function callTo(x,y){
+  const r=R;
+  if(!r||!r.brain||r.brain.mode!=='awake')return 'busy';
+  return goTo(r.brain,r.grid,{x,y})?'go':'far';
+}
+
+/** 家具（room.items の番号）を ぶるんっ とゆらす
+ * @param {number} index */
+export function wiggle(index){
+  if(R&&Number.isInteger(index)&&index>=0)R.wig.set(index,R.clock);
+}
+
+/** 押した点（部屋の SVG の座標）から ★ を出す
+ * @param {number} px @param {number} py */
+export function burstAt(px,py){
+  if(R&&Number.isFinite(px)&&Number.isFinite(py))R.bursts=addBurst(R.bursts,{x:px,y:py,t:R.clock});
+}
+
 /** 見た目の元を覚えるだけ（描くのはループ）
  * @param {{view:any,mode:string,band:string,now:number}} s */
 export function update(s){
@@ -290,8 +347,9 @@ export function hold(on){if(R&&R.brain)holdBrain(R.brain,!!on);}
 export function pauseFor(sec){if(R&&R.brain)pauseBrain(R.brain,sec);}
 export function poke(){if(R)R.pokeAt=R.clock;}
 
+const isReduced=r=>!!(r.opt.reduced||(r.mq&&r.mq.matches));
 function bctx(r){
-  return {mode:r.mode,band:r.band,reduced:!!(r.opt.reduced||(r.mq&&r.mq.matches)),home:r.home};
+  return {mode:r.mode,band:r.band,reduced:isReduced(r),home:r.home,uses:r.uses};
 }
 
 /** 部屋の状態から、家具の絵・通れるマス・おうち を作り直し、ぷにを通れるマスへ移す */
@@ -320,7 +378,10 @@ function applyRoom(r,room){
   });
   pruneArts(r.arts,new Set(r.placed.map(o=>o.p.id))); // しまった家具の絵は捨てる
   r.grid=makeGrid(n,blockedCells(room));
-  r.home=homeFor(room);
+  // 使える家具と ねんねの場所（べっど があれば その前）。重いので部屋が変わったときだけ
+  r.uses=roomUses(room);
+  const hb=homeWithBed(room);
+  r.home=hb.home;r.bed=hb.bed;
   const b=r.brain;
   if(b){
     if(b.mode==='egg'||r.mode==='egg')relocateBrain(b,r.grid,r.home,true);
@@ -331,14 +392,16 @@ function applyRoom(r,room){
 
 /** Canvas を押した点 → マスと、そこに見えている家具（どちらも無ければ呼ばない） */
 function tapCell(r,e){
-  if(R!==r||!r.cellCb)return;
+  if(R!==r||!(r.cellCb||r.tapCb))return;
   const rect=r.cv.getBoundingClientRect();
   const kx=rect.width>0?r.cssW/rect.width:1,ky=rect.height>0?r.cssH/rect.height:1;
   const px=(e.clientX-rect.left)*kx,py=(e.clientY-rect.top)*ky;
   const c=cellAt(px,py,r.ox,r.oy,r.s,r.n);
   const hit=r.s>0?pickItem((px-r.ox)/r.s,(py-r.oy)/r.s,
     r.placed.map(o=>({i:o.i,x:o.p.x,y:o.p.y,w:o.f.w,h:o.f.h,ay:o.a.art.ay,flat:o.flat})),r.n):-1;
-  if(c||hit>=0)r.cellCb(c?c.x:-1,c?c.y:-1,hit);
+  if(!(c||hit>=0))return;
+  if(r.cellCb)r.cellCb(c?c.x:-1,c?c.y:-1,hit); // もようがえ中
+  else r.tapCb(c?c.x:-1,c?c.y:-1,hit,(px-r.ox)/r.s,(py-r.oy)/r.s);
 }
 
 function stop(r){
@@ -398,7 +461,7 @@ function frame(r,t){
   r.raf=0;
   if(document.hidden)return;
   r.raf=requestAnimationFrame(t2=>frame(r,t2));
-  const sleeping=r.brain&&r.brain.act==='sleep';
+  const sleeping=r.brain&&r.brain.act==='sleep'&&!r.bursts.length&&!r.wig.size; // ★・ぶるんっ の間は 30fps
   if(r.lastDraw&&t-r.lastDraw<(sleeping?100:33)-2)return;
   const dt=r.lastT?Math.min(Math.max((t-r.lastT)/1000,0),0.1):0;
   r.lastT=t;r.lastDraw=t;
@@ -410,7 +473,14 @@ function draw(r,dt){
   const {ctx,cv}=r;
   if(!r.brain||!(r.cssW>0))return;
   stepBrain(r.brain,dt,bctx(r),r.grid,r.rng);
+  r.red=isReduced(r);
+  const bu=r.brain.act==='use'?r.brain.use:null;
+  if(bu&&bu!==r.useNow)startUse(r,bu.spot);
+  r.useNow=bu;
+  for(const [i,t0] of r.wig)if(!(r.clock-t0<0.4))r.wig.delete(i);
+  r.bursts=r.bursts.filter(s=>r.clock-s.t<0.6);
   r.dark=approach(r.dark,r.darkTarget,dt);
+  const lights=lampLights(r,dt);
   // 背景：時間帯が変わったら古い背景を 3 秒でフェードアウト（ゆか・かべ・広さが変わったときは すぐ入れ替える）
   if(r.bgCurBand!==r.band||!r.bgCur){
     const nb=buildBg(r,r.band);
@@ -430,46 +500,50 @@ function draw(r,dt){
   const b=r.brain,ed=r.edit;
   const v=r.view||{form:'puni',face:'normal',arms:'',think:null,pose:'none',shiny:false,final:false,pts:0};
   const list=r.placed.map(o=>({x:o.p.x+o.f.w/2,y:o.p.y+o.f.h/2,flat:o.flat,o}));
-  list.push({x:b.x,y:b.y,pet:true});
+  // ぷに：使っている家具の上（on・in・べっど）なら その家具と同じ深さで直後（同じ値は並べ替えで順が変わらない）
+  const pp=petPlace(r,b),on=pp.after>=0?list.find(e=>e.o.i===pp.after&&!e.flat):null;
+  list.push(on?{x:on.x,y:on.y,pet:true}:{x:pp.x,y:pp.y,pet:true});
   ctx.setTransform(r.k,0,0,r.k,r.ox*r.dpr,r.oy*r.dpr);
   let petX=0,petY=0;
   const one=e=>{
     if(e.pet){
-      const p=toScreen(b.x,b.y,r.n);
-      petX=p.x;petY=p.y;
-      drawPet(r,v,p.x,p.y);
+      const p=toScreen(pp.x,pp.y,r.n);
+      petX=p.x;petY=p.y-pp.lift;
+      drawPet(r,v,p.x,p.y,pp.lift,pp.clip);
     }else drawItem(r,e.o,ed&&!e.flat&&e.o.i!==ed.sel?EDIT_FADE:1);
   };
+  // 立っている家具とぷに（ぷには必ずこちら）→ 頭の上の絵
+  const rest=()=>{for(let i=cut;i<sorted.length;i++)one(sorted[i]);if(bu)drawFx(r,bu,petX,petY);};
   const sorted=sortForDraw(list),cut=maskSlot(sorted),night=r.dark>0.001;
   for(let i=0;i<cut;i++)one(sorted[i]);
   if(ed&&ed.mask&&night){
     // 夜のもようがえ：ゆか・ラグを暗くしてからマスを明るいまま描き、
     // 立っている家具とぷには別の板で暗くしてから重ねる（見た目の前後は昼と同じ）
-    darken(ctx,cv,r.dark);
+    shade(r,ctx,lights);
     ctx.setTransform(r.k,0,0,r.k,r.ox*r.dpr,r.oy*r.dpr);
     drawMask(r,ed.mask);
     if(cut<sorted.length){
-      const lc=layerCtx(r);
+      const lc=layerCtx(r,'layer');
       if(lc){
         lc.setTransform(1,0,0,1,0,0);lc.globalAlpha=1;lc.globalCompositeOperation='source-over';
         lc.clearRect(0,0,cv.width,cv.height);
         lc.setTransform(r.k,0,0,r.k,r.ox*r.dpr,r.oy*r.dpr);
         r.ctx=lc;
-        try{for(let i=cut;i<sorted.length;i++)one(sorted[i]);}finally{r.ctx=ctx;}
+        try{rest();}finally{r.ctx=ctx;}
         lc.globalCompositeOperation='source-atop'; // 描いたところだけ暗くする
-        darken(lc,cv,r.dark);
+        shade(r,lc,lights);
         lc.globalCompositeOperation='source-over';
         ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(lc.canvas,0,0);
-      }else{
-        for(let i=cut;i<sorted.length;i++)one(sorted[i]);
-      }
+      }else rest();
     }
   }else{
     if(ed&&ed.mask)drawMask(r,ed.mask);
-    for(let i=cut;i<sorted.length;i++)one(sorted[i]);
-    // 夜の暗さ
-    if(night)darken(ctx,cv,r.dark);
+    rest();
+    // 夜の暗さ（らんぷのまわりは抜く）
+    if(night)shade(r,ctx,lights);
   }
+  warmLights(r,lights);
+  drawBursts(r);
   // 選んだ家具の足あと（暗くしたあとに、いちばん上へ）
   if(ed&&ed.sel>=0){
     const o=r.placed.find(q=>q.i===ed.sel);
@@ -498,16 +572,157 @@ function darken(c,cv,a){
   c.globalAlpha=1;
 }
 
-/** 夜のもようがえ用の重ね板（メインと同じ大きさ。作れなければ null） */
-function layerCtx(r){
+/** 重ね板（メインと同じ大きさ。作れなければ null）。key＝'layer'（夜のもようがえ）・'shade'（らんぷで抜いた暗さ） */
+function layerCtx(r,key){
   const w=r.cv.width,h=r.cv.height;
-  let L=r.layer;
+  let L=r[key];
   if(!L){
-    try{const c=document.createElement('canvas');L=r.layer={cv:c,ctx:c.getContext('2d')};}catch(e){return null;}
-    if(!L.ctx){r.layer=null;return null;}
+    try{const c=document.createElement('canvas');L=r[key]={cv:c,ctx:c.getContext('2d')};}catch(e){return null;}
+    if(!L.ctx){r[key]=null;return null;}
   }
   if(L.cv.width!==w||L.cv.height!==h){L.cv.width=w;L.cv.height=h;}
   return L.ctx;
+}
+
+// ---- 家具であそぶ・らんぷ・★ ----
+
+/** ぷにが家具を使い始めたコマ：らんぷ なら点灯を切り替え、opt.onUse に知らせる */
+function startUse(r,spot){
+  if(spot.act==='lamp'){
+    if(r.lampOff.has(spot.index))r.lampOff.delete(spot.index);else r.lampOff.add(spot.index);
+  }
+  const f=r.opt.onUse;
+  if(typeof f==='function')try{f(spot.id);}catch(e){}
+}
+
+/** ぷにを描く位置（マス座標）・持ち上げ（px）・直後に描く家具の番号（無ければ -1）・てんと の clip */
+function petPlace(r,b){
+  const u=b.act==='use'?b.use:null;
+  if(u){
+    const s=u.spot;
+    if(s.act==='slide'){const m=slideMotion(s,u.t);return {x:m.x,y:m.y,lift:m.lift,after:m.lift>0?s.index:-1,clip:false};}
+    if(s.act==='kick')return {x:b.x,y:b.y,lift:0,after:-1,clip:false};
+    const on=s.spot==='on'||s.spot==='in';
+    return {x:s.at.x,y:s.at.y,lift:s.lift,after:on?s.index:-1,clip:s.spot==='in'};
+  }
+  const h=r.home,bed=r.bed;
+  if(b.act==='sleep'&&bed&&Math.abs(b.x-h.x-0.5)<1e-6&&Math.abs(b.y-h.y-0.5)<1e-6)
+    return {x:bed.at.x,y:bed.at.y,lift:bed.lift,after:bed.index,clip:false};
+  return {x:b.x,y:b.y,lift:0,after:-1,clip:false};
+}
+
+/** 使っている間の小さな動き（すわる＝ゆらゆら、あそぶ＝ぴょん、ぎゅー＝家具のほうへ かたむく）。動きを減らすときは半分 */
+function useMotion(m,u,red){
+  const k=red?0.5:1,t=u.t;
+  switch(u.spot.act){
+    case 'sit': m.tilt=0.05*k*Math.sin(TAU*t/2.4);break;
+    case 'play':{const p=(t%0.8)/0.8;m.lift=0.2*k*4*p*(1-p);break;}
+    case 'hug': m.tilt=0.12*k*Math.sign(Math.sin(u.spot.face*Math.PI/180));break; // 向きの sin＞0 は画面の右
+  }
+}
+
+/** 頭の上の絵（kind ごとに 1 枚。読めなければ描かない。r.fail は呼ばない） */
+function fxImg(r,kind){
+  let im=r.fxImgs.get(kind);
+  if(!im){const svg=fxSVG(kind);if(!svg)return null;im=makeImg(svg);r.fxImgs.set(kind,im);}
+  return usable(im)?im:null;
+}
+
+/** 頭の上の絵。sx,top＝ぷにの足もと（持ち上げ込み）。z は 3 つ順に浮かぶ、drop は植物の上から 3 つ落ちる */
+function drawFx(r,u,sx,top){
+  const kind=has(USES,u.spot.id)?USES[u.spot.id].fx:'';
+  const im=kind?fxImg(r,kind):null;
+  if(!im)return;
+  const c=r.ctx,t=u.t;
+  const put=(x,y,s,a)=>{c.globalAlpha=a;c.drawImage(im,x-s/2,y-s/2,s,s);};
+  if(kind==='z'){
+    for(let k=0;k<3;k++){
+      if(t<k*0.5)continue;
+      const p=((t-k*0.5)%1.5)/1.5;
+      put(sx+14+p*8,top-TILE_W-p*20,FX_S*(0.6+0.4*p),Math.sin(Math.PI*p));
+    }
+  }else if(kind==='drop'){
+    const o=r.placed.find(q=>q.i===u.spot.index);
+    if(!o)return;
+    const C=toScreen(o.p.x+o.f.w/2,o.p.y+o.f.h/2,r.n),y0=toScreen(o.p.x,o.p.y,r.n).y-o.a.art.ay;
+    for(let k=0;k<3;k++){
+      const p=((t+k/3)%1);
+      put(C.x+(k-1)*8,y0-6+p*24,12,1-p);
+    }
+  }else{
+    const bob=r.red?0:2*Math.sin(TAU*r.clock/1.5);
+    put(sx+16,top-TILE_W-4+bob,FX_S,1);
+  }
+  c.globalAlpha=1;
+}
+
+/** らんぷ ごとの点灯（0..1、1 秒で近づける）を進め、光らせる 6 こ（ぷにに近い順）の中心（部屋の SVG の px）と強さ */
+function lampLights(r,dt){
+  const lamps=[];
+  for(const o of r.placed){
+    if(!(has(USES,o.p.id)&&USES[o.p.id].act==='lamp'))continue;
+    const want=r.lampOff.has(o.i)?0:1,cur=r.lampOn.has(o.i)?r.lampOn.get(o.i):want;
+    r.lampOn.set(o.i,approach(cur,want,dt,LAMP_TAU));
+    lamps.push({i:o.i,x:o.p.x+o.f.w/2,y:o.p.y+o.f.h/2});
+  }
+  if(!lamps.length)return [];
+  const b=r.brain;
+  return pickLights(lamps,{x:b.x,y:b.y},LAMP_MAX).map(i=>{
+    const l=lamps.find(q=>q.i===i),p=toScreen(l.x,l.y,r.n);
+    return {x:p.x,y:p.y-GLOW_UP,L:glowLevel(r.dark,r.lampOn.get(i))};
+  });
+}
+
+/** 放射グラデーションの丸（rgb の色、中心 a → 外 0） */
+function glow(c,x,y,rad,rgb,a){
+  const g=c.createRadialGradient(x,y,0,x,y,rad);
+  g.addColorStop(0,'rgba('+rgb+','+a.toFixed(3)+')');g.addColorStop(1,'rgba('+rgb+',0)');
+  c.fillStyle=g;c.beginPath();c.arc(x,y,rad,0,TAU);c.fill();
+}
+
+/** 夜の暗さを c に重ねる。ついている らんぷ があれば、暗さの板から光のまわりを抜いて（destination-out）から重ねる。
+ * c の合成のしかた（source-atop など）は呼ぶ側のまま */
+function shade(r,c,lights){
+  const cuts=lights.filter(l=>l.L.cut>0);
+  const d=cuts.length?layerCtx(r,'shade'):null;
+  if(!d){
+    if(!cuts.length&&r.shade){freeCv(r.shade.cv);r.shade=null;} // 光が無い間は板を返す
+    darken(c,r.cv,r.dark);return;
+  }
+  d.setTransform(1,0,0,1,0,0);d.globalCompositeOperation='source-over';
+  d.clearRect(0,0,r.cv.width,r.cv.height);
+  darken(d,r.cv,r.dark);
+  d.globalCompositeOperation='destination-out';
+  d.setTransform(r.k,0,0,r.k,r.ox*r.dpr,r.oy*r.dpr);
+  for(const l of cuts)glow(d,l.x,l.y,GLOW_R,'0,0,0',l.L.cut);
+  d.globalCompositeOperation='source-over';
+  c.setTransform(1,0,0,1,0,0);c.drawImage(d.canvas,0,0);
+}
+
+/** らんぷの あたたかい色（夜）と小さな光（昼）を足す（lighter） */
+function warmLights(r,lights){
+  if(!lights.length)return;
+  const c=r.ctx;
+  c.setTransform(r.k,0,0,r.k,r.ox*r.dpr,r.oy*r.dpr);
+  c.globalCompositeOperation='lighter';
+  for(const l of lights){
+    if(l.L.warm>0)glow(c,l.x,l.y,GLOW_R,WARM,l.L.warm);
+    if(l.L.day>0)glow(c,l.x,l.y,GLOW_DAY_R,WARM,l.L.day);
+  }
+  c.globalCompositeOperation='source-over';
+}
+
+/** 床の ★（いちばん上に描く） */
+function drawBursts(r){
+  if(!r.bursts.length)return;
+  const im=fxImg(r,'star'),c=r.ctx;
+  if(!im)return;
+  c.setTransform(r.k,0,0,r.k,r.ox*r.dpr,r.oy*r.dpr);
+  for(const s of r.bursts)for(const p of starBurst(r.clock-s.t,r.red)){
+    const z=STAR_S*p.s;
+    c.globalAlpha=p.a;c.drawImage(im,s.x+p.x-z/2,s.y+p.y-z/2,z,z);
+  }
+  c.globalAlpha=1;
 }
 
 /** 床のひし形（マス (x,y) から w×h。in だけ内側へ縮める）のパスを作る */
@@ -537,31 +752,55 @@ function drawMask(r,mask){
   ctx.globalAlpha=1;
 }
 
-/** 家具 1 つ。基準点＝足あとの上の頂点。r が奇数なら基準点を軸に左右反転 */
+/** 家具 1 つ。基準点＝足あとの上の頂点。r が奇数なら基準点を軸に左右反転。
+ * 消えている らんぷ は消えた絵、ぶるんっ（タップ・おみず）は足もとを軸に、ぼーる は けられて ころがる */
 function drawItem(r,o,alpha){
-  const im=o.a.img,art=o.a.art;
+  let im=o.a.img,art=o.a.art;
+  if(r.lampOff.has(o.i)){
+    if(!r.lampOffImg){r.lampOffArt=lampOffSVG();r.lampOffImg=makeImg(r.lampOffArt.svg);} // 読めなければ ついている絵のまま
+    if(usable(r.lampOffImg)){im=r.lampOffImg;art=r.lampOffArt;}
+  }
   if(!usable(im))return;
-  const ctx=r.ctx,P=toScreen(o.p.x,o.p.y,r.n);
+  const ctx=r.ctx,P=toScreen(o.p.x,o.p.y,r.n),b=r.brain,u=b.act==='use'&&b.use&&b.use.spot.index===o.i?b.use:null;
   ctx.save();
   ctx.globalAlpha=alpha;
   ctx.translate(P.x,P.y);
+  let age=r.wig.has(o.i)?r.clock-r.wig.get(o.i):-1;
+  if(u&&u.spot.act==='water'&&!(age>=0&&age<0.4))age=u.t%1; // おみず の間は 1 秒ごとに ゆれる
+  const w=wiggleScale(age,r.red);
+  if(w.sx!==1||w.sy!==1){
+    const F=toScreen(o.p.x+o.f.w/2,o.p.y+o.f.h/2,r.n),fx=F.x-P.x,fy=F.y-P.y;
+    ctx.translate(fx,fy);ctx.scale(w.sx,w.sy);ctx.translate(-fx,-fy);
+  }
+  if(u&&u.spot.act==='kick'){
+    // ぷに → ぼーる の向きへ ころがす（マスのずれを画面へ。回転は玉の中心＝足もとの 3px 上）
+    const m=ballMotion(u.t,{dx:o.p.x+o.f.w/2-b.x,dy:o.p.y+o.f.h/2-b.y});
+    ctx.translate((m.dx-m.dy)*TILE_W/2,(m.dx+m.dy)*TILE_H/2-3);ctx.rotate(m.rot);ctx.translate(0,3);
+  }
   if(o.p.r%2)ctx.scale(-1,1);
   ctx.drawImage(im,-art.ax,-art.ay,art.w,art.h);
   ctx.restore();
 }
 
-function drawPet(r,v,sx,sy){
+/** ぷに。lift＝家具の上に乗る高さ（px）、clip＝てんと の中（体の下 45% を隠す） */
+function drawPet(r,v,sx,sy,lift,clip){
   const {ctx,brain:b}=r;
   const isEgg=v.form==='egg';
+  const u=b.act==='use'?b.use:null;
+  if(u&&has(USES,u.spot.id))v={...v,face:USES[u.spot.id].face}; // 使っている間は家具の顔
   // spin：idle に入るたびに 1 回だけ
   if(v.pose!=='spin')r.lastPose=v.pose;
   else if(r.lastPose!=='spin'||(r.lastAct!=='idle'&&b.act==='idle')){r.spinAt=r.clock;r.lastPose='spin';}
   r.lastAct=b.act;
   const m=motion(b,r.clock,isEgg?'none':v.pose,r.clock-r.pokeAt,r.clock-r.spinAt);
-  // 足もとの影
+  if(u)useMotion(m,u,r.red);
+  sy-=lift; // 家具の上に乗るときは、乗っている面が足もと
+  // 足もとの影（てんと の中では見えない）
   const sh=1-m.lift*0.5;
-  ctx.fillStyle='rgba(60,40,70,.14)';
-  ctx.beginPath();ctx.ellipse(sx,sy,20*sh,7*sh,0,0,Math.PI*2);ctx.fill();
+  if(!clip){
+    ctx.fillStyle='rgba(60,40,70,.14)';
+    ctx.beginPath();ctx.ellipse(sx,sy,20*sh,7*sh,0,0,Math.PI*2);ctx.fill();
+  }
   const yb=isEgg?0:yawBucket(m.yaw);
   const stage=(FORMS[v.form]||{}).stage||0;
   const key=[v.form,v.face,v.arms||'',v.think||'',v.shiny?1:0,v.final?1:0,stage,isEgg?'c'+(v.pts>=2?1:0):yb].join('|');
@@ -572,6 +811,7 @@ function drawPet(r,v,sx,sy){
   });
   if(!usable(im))return; // 最初の 1 枚が読めるまでは描かない（影だけ）
   ctx.save();
+  if(clip){ctx.beginPath();ctx.rect(sx-TILE_W,sy-3*TILE_W,TILE_W*2,3*TILE_W+6-0.45*TILE_W);ctx.clip();} // 絵の下端は sy+6
   ctx.translate(sx,sy+4-m.lift*TILE_W);
   ctx.rotate(m.tilt);
   ctx.scale(m.scaleX,m.scaleY);

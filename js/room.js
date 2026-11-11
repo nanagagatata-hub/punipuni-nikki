@@ -415,6 +415,7 @@ function resume(r){
   r.lastT=0;r.lastDraw=0;
   r.dark=r.darkTarget;
   dropBg(r);
+  if(r.shade)r.shade.key=''; // 板の中身が消えていても描き直す
   const reload=im=>{if(im&&!usable(im)){const src=im.src;im.src='';im.src=src;}};
   for(const a of r.arts.values())reload(a.img);
   for(const k in r.bgImgs)reload(r.bgImgs[k]);
@@ -662,7 +663,8 @@ function lampLights(r,dt){
   for(const o of r.placed){
     if(!(has(USES,o.p.id)&&USES[o.p.id].act==='lamp'))continue;
     const want=r.lampOff.has(o.i)?0:1,cur=r.lampOn.has(o.i)?r.lampOn.get(o.i):want;
-    r.lampOn.set(o.i,approach(cur,want,dt,LAMP_TAU));
+    const v=approach(cur,want,dt,LAMP_TAU);
+    r.lampOn.set(o.i,Math.abs(v-want)<0.005?want:v); // 近づいたら ぴったりに（消えた らんぷ を描きつづけない）
     lamps.push({i:o.i,x:o.p.x+o.f.w/2,y:o.p.y+o.f.h/2});
   }
   if(!lamps.length)return [];
@@ -680,36 +682,62 @@ function glow(c,x,y,rad,rgb,a){
   c.fillStyle=g;c.beginPath();c.arc(x,y,rad,0,TAU);c.fill();
 }
 
-/** 夜の暗さを c に重ねる。ついている らんぷ があれば、暗さの板から光のまわりを抜いて（destination-out）から重ねる。
- * c の合成のしかた（source-atop など）は呼ぶ側のまま */
-function shade(r,c,lights){
-  const cuts=lights.filter(l=>l.L.cut>0);
-  const d=cuts.length?layerCtx(r,'shade'):null;
-  if(!d){
-    if(!cuts.length&&r.shade){freeCv(r.shade.cv);r.shade=null;} // 光が無い間は板を返す
-    darken(c,r.cv,r.dark);return;
-  }
-  d.setTransform(1,0,0,1,0,0);d.globalCompositeOperation='source-over';
-  d.clearRect(0,0,r.cv.width,r.cv.height);
-  darken(d,r.cv,r.dark);
-  d.globalCompositeOperation='destination-out';
-  d.setTransform(r.k,0,0,r.k,r.ox*r.dpr,r.oy*r.dpr);
-  for(const l of cuts)glow(d,l.x,l.y,GLOW_R,'0,0,0',l.L.cut);
-  d.globalCompositeOperation='source-over';
-  c.setTransform(1,0,0,1,0,0);c.drawImage(d.canvas,0,0);
+/** 部屋の形（かべ＋ゆか）のパスを作る（部屋の SVG の座標）。らんぷの光をこの中だけにする */
+function roomPath(c,n){
+  const P=(gx,gy,h)=>{const p=toScreen(gx,gy,n);return [p.x,p.y-h];};
+  const pts=[P(0,n,0),P(0,n,WALL_H),P(0,0,WALL_H),P(n,0,WALL_H),P(n,0,0),P(n,n,0)];
+  c.beginPath();c.moveTo(pts[0][0],pts[0][1]);
+  for(let i=1;i<pts.length;i++)c.lineTo(pts[i][0],pts[i][1]);
+  c.closePath();
 }
 
-/** らんぷの あたたかい色（夜）と小さな光（昼）を足す（lighter） */
+/** 夜の暗さを c に重ねる。ついている らんぷ があれば、光のまわりを抜いた暗さの板（キャッシュ）を 1 回重ねる。
+ * らんぷが無ければ今までどおり全体に塗る。c の合成のしかた（source-atop など）は呼ぶ側のまま */
+function shade(r,c,lights){
+  const d=lights.some(l=>l.L.cut>0)?shadeCv(r,lights):null;
+  if(!d){
+    if(r.shade&&!lights.some(l=>l.L.cut>0)){freeCv(r.shade.cv);r.shade=null;} // 光が無い間は板を返す
+    darken(c,r.cv,r.dark);return;
+  }
+  c.setTransform(1,0,0,1,0,0);c.drawImage(d,0,0);
+}
+
+/** 抜いた暗さの板。暗さ（0.005 きざみ）・光の強さと位置・大きさ・倍率が変わったときだけ描き直す。作れなければ null */
+function shadeCv(r,lights){
+  const dq=Math.round(r.dark/0.005)*0.005;
+  const cuts=lights.map(l=>({x:l.x,y:l.y,a:Math.round(l.L.cut*200)/200})).filter(l=>l.a>0)
+    .sort((p,q)=>p.x-q.x||p.y-q.y); // ぷにが動いて近い順が変わっても描き直さない
+  const key=[r.cv.width,r.cv.height,r.k,r.ox,r.oy,r.dpr,r.n,dq,...cuts.map(l=>l.x+','+l.y+','+l.a)].join('|');
+  const d=layerCtx(r,'shade');
+  if(!d)return null;
+  if(r.shade.key===key)return d.canvas;
+  r.shade.key=key;
+  d.setTransform(1,0,0,1,0,0);d.globalCompositeOperation='source-over';
+  d.clearRect(0,0,r.cv.width,r.cv.height);
+  darken(d,r.cv,dq);
+  d.save();
+  d.setTransform(r.k,0,0,r.k,r.ox*r.dpr,r.oy*r.dpr);
+  roomPath(d,r.n);d.clip(); // 部屋の外（余白）の暗さは抜かない
+  d.globalCompositeOperation='destination-out';
+  for(const l of cuts)glow(d,l.x,l.y,GLOW_R,'0,0,0',l.a);
+  d.restore();
+  return d.canvas;
+}
+
+/** らんぷの あたたかい色（夜）と小さな光（昼）を足す（lighter）。部屋の形の中だけ。
+ * 光は小さな丸だけなので毎コマ描く（全面の板は使わない） */
 function warmLights(r,lights){
-  if(!lights.length)return;
+  if(!lights.some(l=>l.L.warm>0||l.L.day>0))return;
   const c=r.ctx;
+  c.save();
   c.setTransform(r.k,0,0,r.k,r.ox*r.dpr,r.oy*r.dpr);
+  roomPath(c,r.n);c.clip();
   c.globalCompositeOperation='lighter';
   for(const l of lights){
     if(l.L.warm>0)glow(c,l.x,l.y,GLOW_R,WARM,l.L.warm);
     if(l.L.day>0)glow(c,l.x,l.y,GLOW_DAY_R,WARM,l.L.day);
   }
-  c.globalCompositeOperation='source-over';
+  c.restore();
 }
 
 /** 床の ★（いちばん上に描く） */

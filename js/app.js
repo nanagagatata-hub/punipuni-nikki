@@ -6,7 +6,7 @@ import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
 import {speak,sfx,setSound,unlock,sing} from './sound.js';
 import {initRoomUI,openRoom,isRoomOpen,refreshRoom,roomPoke} from './room-ui.js';
-const APP_VERSION='v2.6.0'; // sw.js の VERSION と同じ値にそろえる
+const APP_VERSION='v2.6.1'; // sw.js の VERSION と同じ値にそろえる
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -446,6 +446,7 @@ bindPet($('#pet'));
 $('#zukanBtn').addEventListener('click',openZukan);
 $('#oheyaBtn').addEventListener('click',()=>{sfx('pop');openRoom();});
 $('#speakBtn').addEventListener('click',()=>speak(bubble.ja,bubble.zh));
+$('#roomSpeakBtn').addEventListener('click',()=>speak(bubble.ja,bubble.zh)); // おへやの ふきだし でも 同じ ことば を よみあげる
 /* iPad はタッチの pointerdown では音を有効にできないことがあるので、離した時・click でも試す */
 ['pointerdown','pointerup','touchend','click'].forEach(ev=>document.addEventListener(ev,unlock,true));
 let holdT=null,held=false;

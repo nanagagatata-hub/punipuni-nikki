@@ -301,7 +301,7 @@ body.inroom .layout,body.inroom .top{visibility:hidden}
 /* なでる：透明なボタン。位置と大きさは room.js が入れる（入るまでは 0） */
 .rpet{position:absolute;left:0;top:0;width:0;height:0;z-index:1;margin:0;padding:0;border:0;background:none;border-radius:40%;touch-action:none;user-select:none;-webkit-user-select:none}
 .editing .rpet,.editing #roomPet{pointer-events:none}
-.rbubble{order:2;margin:10px 2px 0;padding:10px 16px;min-height:52px;flex:0 0 auto}
+.rbubble{order:2;margin:10px 2px 0;padding:10px 60px 10px 16px;min-height:52px;flex:0 0 auto}
 .rbubble p{font-size:18px;line-height:1.5}
 .rbar{order:3;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .rgauges{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center;min-height:44px;background:var(--card);border:2px solid var(--line);border-radius:999px;padding:4px 16px}

@@ -18,7 +18,7 @@ import {makeGrid,passable,dirYaw} from './room-ai.js';
 export const SLIDE_T=4, BALL_T=2.5;
 
 /** すべりだい の形（room-art-c.js の slide() と同じ値）。台の上の gy・すべる面の始まりと終わりの gy・台の高さ(px)・下のはしの高さ(px) */
-const SL={top:.33,from:.62,to:1.95,hi:62,lo:6};
+const SL={top:.33,from:.62,to:1.95,hi:62,lo:6,edge:.15}; // edge＝すべり始めのうち 台の上を進む割合
 /** ぼーる：ころがす長さ（マス）と、絵の半径（マス。回転の量に使う） */
 const BALL_GO=.6, BALL_R=.59;
 
@@ -155,8 +155,11 @@ export function slideMotion(spot,t){
   if(tt<1.5){const u=tt/1.5;pos=at(s,top,u);lift=lerp(0,SL.hi,u);}
   else if(tt<2){pos=top;lift=SL.hi;}
   else if(tt<3.5){
-    // すべる面の高さは絵と同じ曲がり方（はじめ急・さいごは ほぼ平ら）
-    const u=(tt-2)/1.5;pos=at(a,b,u);lift=SL.lo+(SL.hi-SL.lo)*Math.pow(1-u,1.7);
+    // はじめの 0.225 秒は 台の上を すべる面の始まりまで進み（とばないように）、
+    // そのあと すべる面にそって降りる。高さは絵と同じ曲がり方（はじめ急・さいごは ほぼ平ら）
+    const u=(tt-2)/1.5;
+    if(u<SL.edge){pos=at(top,a,u/SL.edge);lift=SL.hi;}
+    else{const v=(u-SL.edge)/(1-SL.edge);pos=at(a,b,v);lift=SL.lo+(SL.hi-SL.lo)*Math.pow(1-v,1.7);}
   }else{
     // 着地して ぴょん
     const u=(tt-3.5)/.5;pos=at(b,e,u);lift=lerp(SL.lo,0,u)+Math.sin(Math.PI*u)*10;

@@ -297,7 +297,7 @@ body.inroom .layout,body.inroom .top{visibility:hidden}
 /* 部屋：残りの高さいっぱい。Canvas は room.js が大きさを合わせる */
 .rstage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;border-radius:28px;background:var(--screen);border:3px solid var(--frame-dk);order:1}
 .rscene{position:absolute;inset:0}
-.rscene canvas{display:block;max-width:none}
+.rscene canvas{display:block;max-width:none;touch-action:manipulation}
 /* なでる：透明なボタン。位置と大きさは room.js が入れる（入るまでは 0） */
 .rpet{position:absolute;left:0;top:0;width:0;height:0;z-index:1;margin:0;padding:0;border:0;background:none;border-radius:40%;touch-action:none;user-select:none;-webkit-user-select:none}
 .editing .rpet,.editing #roomPet{pointer-events:none}

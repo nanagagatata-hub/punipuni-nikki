@@ -43,6 +43,15 @@ test('slideMotion：始まりは stand・lift 0、終わりは done・end・lift
   assert.equal(z.done,true);assert.equal(z.lift,0);assert.deepEqual([z.x,z.y],[z.end.x+.5,z.end.y+.5]);
   assert.ok(Math.max(...[1.6,1.8].map(t=>slideMotion(s,t).lift))>=60);
 });
+test('slideMotion：台の上から すべり始めで とばない（t=2.0 の前後でつながる）',()=>{
+  for(const r of [0,1]){
+    const s=useSpot(room(6,[{id:'slide',x:2,y:2,r}]),0),e=1e-6;
+    const p=slideMotion(s,2-e),q=slideMotion(s,2+e);
+    assert.ok(Math.hypot(p.x-q.x,p.y-q.y)<0.05,`r${r}`);assert.ok(Math.abs(p.lift-q.lift)<1,`r${r}`);
+    // 0.05 秒きざみで見ても 1 コマの動きは小さい
+    for(let t=0;t<4;t+=0.05){const A=slideMotion(s,t),B=slideMotion(s,t+0.05);assert.ok(Math.hypot(A.x-B.x,A.y-B.y)<0.2,`r${r} t${t}`);}
+  }
+});
 test('ballMotion：始まりと終わりでずれ 0',()=>{
   const a=ballMotion(0,{dx:1,dy:0}),z=ballMotion(BALL_T,{dx:1,dy:0});
   assert.deepEqual([a.dx,a.dy],[0,0]);assert.deepEqual([z.dx,z.dy,z.done],[0,0,true]);

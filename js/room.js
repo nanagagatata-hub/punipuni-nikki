@@ -296,27 +296,30 @@ export function onTap(cb){
 }
 
 /** ぷにを家具（room.items の番号）へ使いに行かせる。
- * 'none'＝範囲外・USES に無い、'busy'＝起きていない、'far'＝立つ場所・経路が無い
+ * 'none'＝範囲外・USES に無い、'busy'＝起きていない・すべりだい の途中、'far'＝立つ場所・経路が無い
  * @param {number} index @returns {'go'|'busy'|'far'|'none'} */
 export function useItem(index){
   const r=R;
   if(!r||!r.brain||!Number.isInteger(index)||index<0||index>=r.room.items.length)return 'none';
   const p=r.room.items[index];
   if(!p||!has(USES,p.id))return 'none';
-  if(r.brain.mode!=='awake')return 'busy';
+  if(busyNow(r.brain))return 'busy';
   const spot=r.uses.find(s=>s.index===index)||useSpot(r.room,index);
   if(!spot)return 'far';
   const d=USES[p.id].dur;
   return goUse(r.brain,r.grid,spot,between(r.rng,d[0],d[1]))?'go':'far';
 }
 
-/** ぷにを床のマスへ呼ぶ。'busy'＝起きていない、'far'＝通れない・届かない
+/** ぷにを床のマスへ呼ぶ。'busy'＝起きていない・すべりだい の途中、'far'＝通れない・届かない
  * @param {number} x @param {number} y @returns {'go'|'busy'|'far'} */
 export function callTo(x,y){
   const r=R;
-  if(!r||!r.brain||r.brain.mode!=='awake')return 'busy';
+  if(!r||!r.brain||busyNow(r.brain))return 'busy';
   return goTo(r.brain,r.grid,{x,y})?'go':'far';
 }
+
+/** 呼べない：起きていない、または すべりだい の途中（台の上から とばさない。長くて 4 秒） */
+const busyNow=b=>b.mode!=='awake'||(b.act==='use'&&!!b.use&&b.use.spot.act==='slide');
 
 /** 家具（room.items の番号）を ぶるんっ とゆらす
  * @param {number} index */
@@ -543,6 +546,7 @@ function draw(r,dt){
     // 夜の暗さ（らんぷのまわりは抜く）
     if(night)shade(r,ctx,lights);
   }
+  if(!night&&r.shade){freeCv(r.shade.cv);r.shade=null;} // 昼は暗さの板を返す
   warmLights(r,lights);
   drawBursts(r);
   // 選んだ家具の足あと（暗くしたあとに、いちばん上へ）

@@ -21,45 +21,45 @@ const pat=(id,name,price)=>({id,name,price});
 
 /** 家具（挿入順＝カタログの順） @type {Readonly<{[id:string]:ItemDef}>} */
 export const ITEMS=table([
-  item('rug','むらさきの らぐ',25,2,2,true,true),
-  item('rug_pink','ももいろの らぐ',25,2,2,true,true),
-  item('rug_mint','みんといろの らぐ',25,2,2,true,true),
-  item('shelf','ほんだな',40,1,2),
-  item('plant','かんようしょくぶつ',15,1,1),
-  item('lamp','らんぷ',20,1,1),
-  item('ball','ぼーる',15,1,1),
-  item('plush','ぬいぐるみ',10,1,1),
-  item('bed','べっど',60,2,2),
-  item('sofa','そふぁ',50,1,2),
-  item('table','ちゃぶだい',30,1,1),
-  item('chair','いす',20,1,1),
-  item('desk','つくえ',40,1,2),
-  item('toybox','おもちゃばこ',30,1,1),
-  item('cushion','おほしさま くっしょん',15,1,1),
-  item('tent','てんと',60,2,2),
-  item('slide','すべりだい',70,1,2),
+  item('rug','むらさきの らぐ',12,2,2,true,true),
+  item('rug_pink','ももいろの らぐ',12,2,2,true,true),
+  item('rug_mint','みんといろの らぐ',12,2,2,true,true),
+  item('shelf','ほんだな',20,1,2),
+  item('plant','かんようしょくぶつ',8,1,1),
+  item('lamp','らんぷ',10,1,1),
+  item('ball','ぼーる',8,1,1),
+  item('plush','ぬいぐるみ',5,1,1),
+  item('bed','べっど',30,2,2),
+  item('sofa','そふぁ',25,1,2),
+  item('table','ちゃぶだい',15,1,1),
+  item('chair','いす',10,1,1),
+  item('desk','つくえ',20,1,2),
+  item('toybox','おもちゃばこ',15,1,1),
+  item('cushion','おほしさま くっしょん',8,1,1),
+  item('tent','てんと',30,2,2),
+  item('slide','すべりだい',35,1,2),
 ]);
 
 /** ゆか @type {Readonly<{[id:string]:PatternDef}>} */
 export const FLOORS=table([
   pat('f_honey','はちみついろの ゆか',0),
-  pat('f_mint','みんといろの ゆか',30),
-  pat('f_check','いちまつもようの ゆか',30),
-  pat('f_cloud','くもの じゅうたん',30),
+  pat('f_mint','みんといろの ゆか',15),
+  pat('f_check','いちまつもようの ゆか',15),
+  pat('f_cloud','くもの じゅうたん',15),
 ]);
 
 /** かべ @type {Readonly<{[id:string]:PatternDef}>} */
 export const WALLS=table([
   pat('w_pink','みずたまの かべ',0),
-  pat('w_stripe','しましまの かべ',30),
-  pat('w_star','おほしさまの かべ',30),
-  pat('w_sky','そらいろの かべ',30),
+  pat('w_stripe','しましまの かべ',15),
+  pat('w_star','おほしさまの かべ',15),
+  pat('w_sky','そらいろの かべ',15),
 ]);
 
 /** ひろげる @type {Readonly<{[id:string]:ExpandDef}>} */
 export const EXPANDS=table([
-  {id:'x8',name:'ひろい おへや',price:200,from:6,to:8},
-  {id:'x10',name:'もっと ひろい おへや',price:400,from:8,to:10},
+  {id:'x8',name:'ひろい おへや',price:100,from:6,to:8},
+  {id:'x10',name:'もっと ひろい おへや',price:200,from:8,to:10},
 ]);
 
 /** 部屋の 1 辺のマス数（小さい順） */

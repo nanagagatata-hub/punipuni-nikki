@@ -9,23 +9,23 @@ const NAME_RE=/^[ぁ-ゟー ]+$/;
 
 test('表の値：アイテム 17 種（設計書 §8 の順）',()=>{
   const want=[
-    ['rug','むらさきの らぐ',25,2,2,true,true],
-    ['rug_pink','ももいろの らぐ',25,2,2,true,true],
-    ['rug_mint','みんといろの らぐ',25,2,2,true,true],
-    ['shelf','ほんだな',40,1,2,false,false],
-    ['plant','かんようしょくぶつ',15,1,1,false,false],
-    ['lamp','らんぷ',20,1,1,false,false],
-    ['ball','ぼーる',15,1,1,false,false],
-    ['plush','ぬいぐるみ',10,1,1,false,false],
-    ['bed','べっど',60,2,2,false,false],
-    ['sofa','そふぁ',50,1,2,false,false],
-    ['table','ちゃぶだい',30,1,1,false,false],
-    ['chair','いす',20,1,1,false,false],
-    ['desk','つくえ',40,1,2,false,false],
-    ['toybox','おもちゃばこ',30,1,1,false,false],
-    ['cushion','おほしさま くっしょん',15,1,1,false,false],
-    ['tent','てんと',60,2,2,false,false],
-    ['slide','すべりだい',70,1,2,false,false],
+    ['rug','むらさきの らぐ',12,2,2,true,true],
+    ['rug_pink','ももいろの らぐ',12,2,2,true,true],
+    ['rug_mint','みんといろの らぐ',12,2,2,true,true],
+    ['shelf','ほんだな',20,1,2,false,false],
+    ['plant','かんようしょくぶつ',8,1,1,false,false],
+    ['lamp','らんぷ',10,1,1,false,false],
+    ['ball','ぼーる',8,1,1,false,false],
+    ['plush','ぬいぐるみ',5,1,1,false,false],
+    ['bed','べっど',30,2,2,false,false],
+    ['sofa','そふぁ',25,1,2,false,false],
+    ['table','ちゃぶだい',15,1,1,false,false],
+    ['chair','いす',10,1,1,false,false],
+    ['desk','つくえ',20,1,2,false,false],
+    ['toybox','おもちゃばこ',15,1,1,false,false],
+    ['cushion','おほしさま くっしょん',8,1,1,false,false],
+    ['tent','てんと',30,2,2,false,false],
+    ['slide','すべりだい',35,1,2,false,false],
   ];
   assert.equal(want.length,17);
   assert.deepEqual(Object.values(ITEMS).map(d=>[d.id,d.name,d.price,d.w,d.h,d.walk,d.flat]),want);
@@ -36,19 +36,19 @@ test('表の値：ゆか・かべ・ひろげる',()=>{
   const row=d=>[d.id,d.name,d.price];
   assert.deepEqual(Object.values(FLOORS).map(row),[
     ['f_honey','はちみついろの ゆか',0],
-    ['f_mint','みんといろの ゆか',30],
-    ['f_check','いちまつもようの ゆか',30],
-    ['f_cloud','くもの じゅうたん',30],
+    ['f_mint','みんといろの ゆか',15],
+    ['f_check','いちまつもようの ゆか',15],
+    ['f_cloud','くもの じゅうたん',15],
   ]);
   assert.deepEqual(Object.values(WALLS).map(row),[
     ['w_pink','みずたまの かべ',0],
-    ['w_stripe','しましまの かべ',30],
-    ['w_star','おほしさまの かべ',30],
-    ['w_sky','そらいろの かべ',30],
+    ['w_stripe','しましまの かべ',15],
+    ['w_star','おほしさまの かべ',15],
+    ['w_sky','そらいろの かべ',15],
   ]);
   assert.deepEqual(Object.values(EXPANDS).map(d=>[d.id,d.name,d.price,d.from,d.to]),[
-    ['x8','ひろい おへや',200,6,8],
-    ['x10','もっと ひろい おへや',400,8,10],
+    ['x8','ひろい おへや',100,6,8],
+    ['x10','もっと ひろい おへや',200,8,10],
   ]);
   // 値は 4 つの欄だけ（余計なキーを持たない）
   for(const d of [...Object.values(FLOORS),...Object.values(WALLS)])assert.deepEqual(Object.keys(d),['id','name','price']);
@@ -56,9 +56,9 @@ test('表の値：ゆか・かべ・ひろげる',()=>{
   for(const d of Object.values(ITEMS))assert.deepEqual(Object.keys(d),['id','name','price','w','h','walk','flat']);
 });
 
-test('表の値：全部で 1,330 こいん（設計書 §8）',()=>{
+test('表の値：全部で 665 こいん（設計書 §8）',()=>{
   const sum=TABLES.flatMap(t=>Object.values(t)).reduce((a,d)=>a+d.price,0);
-  assert.equal(sum,1330);
+  assert.equal(sum,665);
 });
 
 test('定数',()=>{

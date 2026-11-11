@@ -13,7 +13,7 @@ test('SHOP_CATS：かぐ・ゆか・かべ・ひろげる の順',()=>{
 });
 
 test('ちょうど：こいんが値段と同じなら買えて 0 になる',()=>{
-  const S=DEF();S.coin=60;
+  const S=DEF();S.coin=30;
   assert.equal(cardState(S,'bed'),'ok');
   assert.equal(buy(S,'bed'),true);
   assert.equal(S.coin,0);
@@ -24,7 +24,7 @@ test('ちょうど：こいんが値段と同じなら買えて 0 になる',()=
 });
 
 test('足りない：short・need は足りない分・buy しても何も変わらない',()=>{
-  const S=DEF();S.coin=59;
+  const S=DEF();S.coin=29;
   assert.equal(cardState(S,'bed'),'short');
   const c=card(S,'kagu','bed');
   assert.equal(c.state,'short');
@@ -43,7 +43,7 @@ test('99 個：max で買えない',()=>{
 });
 
 test('連続：同じ家具を続けて買える・こいんが尽きたら買えない',()=>{
-  const S=DEF();S.coin=30;
+  const S=DEF();S.coin=15;
   for(let i=0;i<3;i++)assert.equal(buy(S,'plush'),true);
   assert.equal(S.coin,0);
   assert.equal(S.own.plush,3);
@@ -56,7 +56,7 @@ test('ゆか：ただの柄は owned・買うとその柄になり room は別�
   assert.equal(cardState(S,'f_honey'),'owned');
   assert.equal(buy(S,'f_honey'),false);
   assert.equal(cardState(S,'f_mint'),'short');
-  S.coin=30;
+  S.coin=15;
   assert.equal(cardState(S,'f_mint'),'ok');
   const room=S.room,items=snap(room.items);
   assert.equal(buy(S,'f_mint'),true);
@@ -75,7 +75,7 @@ test('ゆか：ただの柄は owned・買うとその柄になり room は別�
 test('かべ：ただの柄は owned・買うとその柄になり room は別のオブジェクト',()=>{
   const S=DEF();
   assert.equal(cardState(S,'w_pink'),'owned');
-  S.coin=30;
+  S.coin=15;
   assert.equal(cardState(S,'w_star'),'ok');
   const room=S.room;
   assert.equal(buy(S,'w_star'),true);
@@ -95,7 +95,7 @@ test('ひろげる：順番にしか買えず、家具はそのまま、own に�
   S.coin=400;
   assert.equal(buy(S,'x10'),false);
   assert.equal(S.coin,400);
-  S.coin=200;
+  S.coin=100;
   assert.equal(cardState(S,'x8'),'ok');
   const room=S.room,items=snap(room.items);
   assert.equal(buy(S,'x8'),true);
@@ -106,7 +106,7 @@ test('ひろげる：順番にしか買えず、家具はそのまま、own に�
   assert.equal(S.own.x8,undefined);
   assert.equal(cardState(S,'x8'),'owned');
   assert.equal(cardState(S,'x10'),'short');
-  S.coin=400;
+  S.coin=200;
   assert.equal(cardState(S,'x10'),'ok');
   assert.equal(buy(S,'x10'),true);
   assert.equal(S.room.n,10);
@@ -138,7 +138,7 @@ test('こわれた こいん：数でなければ買えない',()=>{
 });
 
 test('カード：カタログの順・数・have と need',()=>{
-  const S=DEF();S.coin=20;
+  const S=DEF();S.coin=10;
   const kagu=shopCards(S,'kagu');
   assert.equal(kagu.length,17);
   assert.deepEqual(kagu.map(c=>c.id),Object.keys(ITEMS));
@@ -146,7 +146,7 @@ test('カード：カタログの順・数・have と need',()=>{
     assert.equal(c.name,ITEMS[c.id].name);
     assert.equal(c.price,ITEMS[c.id].price);
     assert.equal(c.have,S.own[c.id]||0);
-    assert.equal(c.need,Math.max(0,c.price-20));
+    assert.equal(c.need,Math.max(0,c.price-10));
     assert.equal(c.state,cardState(S,c.id));
   }
   assert.equal(card(S,'kagu','rug').have,1);
@@ -161,8 +161,8 @@ test('カード：カタログの順・数・have と need',()=>{
   assert.equal(hiroge.length,2);
   assert.equal(yuka[0].state,'owned');
   assert.equal(yuka[0].need,0);
-  assert.equal(yuka[1].need,10);
-  assert.equal(hiroge[0].need,180);
+  assert.equal(yuka[1].need,5);
+  assert.equal(hiroge[0].need,90);
   assert.equal(hiroge[1].state,'locked');
   assert.deepEqual(shopCards(S,'zzz'),[]);
 });

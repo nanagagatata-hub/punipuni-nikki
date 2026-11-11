@@ -29,6 +29,19 @@ function artOf(id){
   return '';
 }
 
+/** id → data: URI（たな を切りかえる・かう たびに 作り直さない。絵が無ければ ''） @type {Map<string,string>} */
+const uriCache=new Map();
+function artURI(id){
+  let u=uriCache.get(id);
+  if(u===undefined){
+    let svg='';
+    try{svg=artOf(id);}catch(e){svg='';}
+    u=svg?'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg):'';
+    uriCache.set(id,u);
+  }
+  return u;
+}
+
 /** 絵の <img>（ひろげる は 絵の代わりに 大きな文字） */
 function artEl(id){
   if(has(EXPANDS,id)){
@@ -38,8 +51,8 @@ function artEl(id){
   }
   const im=document.createElement('img');
   im.className='sart';im.alt='';im.decoding='async';
-  const svg=artOf(id);
-  if(svg)im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+  const u=artURI(id);
+  if(u)im.src=u;
   return im;
 }
 
@@ -112,7 +125,7 @@ function doBuy(){
   hideAsk(); // 2 回目の「かう」は ここで止まる
   const S=ctx.host.getS();
   const kagu=has(ITEMS,id);
-  if(!buy(S,id)){ctx.host.sfx('pop');renderCards();return;}
+  if(!buy(S,id)){ctx.host.sfx('pop');ctx.host.say('ごめんね、いまは かえなかったよ');renderCards();return;}
   ctx.commit();          // 保存・部屋の描き直し・おへや の こいん
   try{ctx.host.render();}catch(e){} // 普段の画面の こいん（#coin）
   ctx.host.sfx('chime');

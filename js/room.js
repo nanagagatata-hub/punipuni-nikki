@@ -97,6 +97,22 @@ export function yawBucket(deg,n=24){
   return normDeg(Math.round(deg/step)*step);
 }
 
+/** Canvas を 0×0 にしてメモリを返す（iPad Safari は GC まで Canvas のメモリを数え、上限で getContext が null になる）。null は何もしない
+ * @param {{width:number,height:number}|null|undefined} c */
+export function freeCv(c){
+  if(c){c.width=0;c.height=0;}
+}
+
+/** 家具の絵のうち keep に無い id を捨てる（読み込み失敗の通知 onerror を先に外す）
+ * @param {Map<string,{img:{onerror:any}}>} arts @param {Set<string>} keep */
+export function pruneArts(arts,keep){
+  for(const [id,a] of arts){
+    if(keep.has(id))continue;
+    if(a&&a.img)a.img.onerror=null;
+    arts.delete(id);
+  }
+}
+
 /** SVG 文字列から画像を作る関数を返す。空（絵が作れない）なら fail を呼んで使えない絵を返す
  * @param {()=>void} fail @param {(svg:string)=>any} mk */
 export function spriteMaker(fail,mk){
@@ -156,7 +172,7 @@ export function mount(sceneEl,petBtn,opt){
     cv=document.createElement('canvas');
     ctx=cv.getContext('2d');
   }catch(e){ctx=null;}
-  if(!ctx)return false;
+  if(!ctx){freeCv(cv);return false;}
   const mq=typeof matchMedia==='function'?matchMedia('(prefers-reduced-motion: reduce)'):null;
   const r=R={
     sceneEl,petBtn,opt,n:room.n,cv,ctx,mq,rng:mulberry32(Date.now()>>>0),
@@ -192,11 +208,16 @@ export function unmount(){
   cancelAnimationFrame(r.raf);
   if(r.ro)r.ro.disconnect();
   for(const [t,type,fn] of r.handlers)t.removeEventListener(type,fn);
-  for(const a of r.arts.values())a.img.onerror=null;
+  pruneArts(r.arts,new Set());
   for(const k in r.bgImgs)r.bgImgs[k].onerror=null;
+  r.bgImgs={};
   r.sprites.make=svg=>svg?makeImg(svg):{complete:true,naturalWidth:0}; // 以後の失敗通知は不要
-  r.cellCb=null;r.layer=null;
+  r.cellCb=null;
+  // Canvas のメモリをすぐ返す（開け閉めを くりかえしても 上限に届かないように）
+  dropBg(r);
+  if(r.layer){freeCv(r.layer.cv);r.layer=null;}
   if(r.cv.parentNode)r.cv.parentNode.removeChild(r.cv);
+  freeCv(r.cv);
 }
 
 /** 部屋（家具・ゆか・かべ・広さ）を入れ替える。mount 前は何もしない
@@ -212,7 +233,11 @@ export function setRoom(room){
  * @param {{mask:Uint8Array|null,sel:number}|null} edit */
 export function setEdit(edit){
   const r=R;if(!r)return;
-  if(!edit||typeof edit!=='object'){r.edit=null;return;}
+  if(!edit||typeof edit!=='object'){
+    r.edit=null;
+    if(r.layer){freeCv(r.layer.cv);r.layer=null;} // 夜の重ね板は もようがえ の間だけ
+    return;
+  }
   r.edit={mask:edit.mask instanceof Uint8Array?edit.mask:null,sel:Number.isInteger(edit.sel)?edit.sel:-1};
 }
 
@@ -251,7 +276,8 @@ function applyRoom(r,room){
   const key=n+'|'+room.floor+'|'+room.wall;
   if(key!==r.bgKey){
     for(const k in r.bgImgs)r.bgImgs[k].onerror=null;
-    r.bgImgs={};r.bgKey=key;r.bgCurBand=null;r.bgOld=null;r.fade=1;
+    r.bgImgs={};r.bgKey=key;r.bgCurBand=null;
+    freeCv(r.bgOld);r.bgOld=null;r.fade=1;
   }
   // 家具の絵は ID ごとに 1 枚
   r.placed=[];
@@ -266,6 +292,7 @@ function applyRoom(r,room){
     }
     r.placed.push({p,f,a,i,flat:has(ITEMS,p.id)&&!!ITEMS[p.id].flat});
   });
+  pruneArts(r.arts,new Set(r.placed.map(o=>o.p.id))); // しまった家具の絵は捨てる
   r.grid=makeGrid(n,blockedCells(room));
   r.home=homeFor(room);
   const b=r.brain;
@@ -294,8 +321,8 @@ function resume(r){
   if(R!==r||document.hidden)return;
   stop(r);
   r.lastT=0;r.lastDraw=0;
-  r.dark=r.darkTarget;r.fade=1;r.bgOld=null;
-  r.bgCur=null;r.bgCurBand=null;
+  r.dark=r.darkTarget;
+  dropBg(r);
   const reload=im=>{if(im&&!usable(im)){const src=im.src;im.src='';im.src=src;}};
   for(const a of r.arts.values())reload(a.img);
   for(const k in r.bgImgs)reload(r.bgImgs[k]);
@@ -314,9 +341,16 @@ function resize(r,force){
   r.s=f.s;r.k=r.s*dpr;r.ox=f.ox;r.oy=f.oy;
   r.cv.width=Math.round(w*dpr);r.cv.height=Math.round(h*dpr);
   r.cv.style.width=w+'px';r.cv.style.height=h+'px';
-  r.bgCur=null;r.bgCurBand=null;r.bgOld=null;r.fade=1;
+  dropBg(r);
   r.box.l=-1; // #pet を置き直す
   if(r.brain&&!document.hidden)try{draw(r,0);}catch(e){} // キャンバスが空のまま 1 コマ待たない
+}
+
+/** 背景の Canvas を捨てる（メモリを返してから外す） */
+function dropBg(r){
+  if(r.bgOld!==r.bgCur)freeCv(r.bgOld);
+  freeCv(r.bgCur);
+  r.bgCur=null;r.bgOld=null;r.bgCurBand=null;r.fade=1;
 }
 
 /** 時間帯の背景を、部屋の大きさに合わせてオフスクリーンに描く。画像が未読込なら null */
@@ -352,11 +386,12 @@ function draw(r,dt){
   if(r.bgCurBand!==r.band||!r.bgCur){
     const nb=buildBg(r,r.band);
     if(nb){
-      if(r.bgCur&&r.bgCurBand!==null&&r.bgCurBand!==r.band){r.bgOld=r.bgCur;r.fade=0;}
+      if(r.bgCur&&r.bgCurBand!==null&&r.bgCurBand!==r.band){freeCv(r.bgOld);r.bgOld=r.bgCur;r.fade=0;}
+      else freeCv(r.bgCur); // フェードしない入れ替え：前の背景は もう使わない
       r.bgCur=nb;r.bgCurBand=r.band;
     }
   }
-  if(r.fade<1){r.fade=Math.min(1,r.fade+dt/3);if(r.fade>=1)r.bgOld=null;}
+  if(r.fade<1){r.fade=Math.min(1,r.fade+dt/3);if(r.fade>=1){freeCv(r.bgOld);r.bgOld=null;}}
   ctx.setTransform(1,0,0,1,0,0);
   ctx.globalAlpha=1;
   ctx.clearRect(0,0,cv.width,cv.height);

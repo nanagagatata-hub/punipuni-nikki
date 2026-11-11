@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DEF} from '../js/state.js';
-import {grantCoin,undoReport} from '../js/rules.js';
+import {grantCoin,undoReport,canUndo,undoSpent} from '../js/rules.js';
 
 test('grantCoin：0〜20 の整数に丸めて足し、増えた数を返す',()=>{
   let S={coin:0};
@@ -42,10 +42,38 @@ test('取り消しで戻る',()=>{
   assert.equal(S.cnt.jishu,undefined);
   assert.equal(S.undo.length,0);
 });
-test('使ったあと：取り消しても 0 で止まる（借金にしない）',()=>{
+test('使ったあと：取り消せない（何も変わらない）',()=>{
   const S=reported(0,1);
+  assert.equal(canUndo(S,'jishu'),false);
+  assert.equal(undoSpent(S,'jishu'),true);
+  assert.equal(undoReport(S,'jishu'),false);
+  assert.equal(S.coin,0);
+  assert.equal(S.inv.kotoba,1);
+  assert.equal(S.cnt.jishu,1);
+  assert.equal(S.undo.length,1);
+});
+test('使ったあと 少しだけ ためなおした：もらった数に足りなければ 取り消せない',()=>{
+  const S=reported(2,3); // 3 もらって 使い、2 だけ ためなおした
+  assert.equal(canUndo(S,'jishu'),false);
+  assert.equal(undoSpent(S,'jishu'),true);
+  assert.equal(undoReport(S,'jishu'),false);
+  assert.equal(S.coin,2);
+  S.coin=3; // もらった数まで ためなおせば 取り消せる
+  assert.equal(canUndo(S,'jishu'),true);
+  assert.equal(undoSpent(S,'jishu'),false);
   assert.equal(undoReport(S,'jishu'),true);
   assert.equal(S.coin,0);
+});
+test('c が 0 の項目は こいん が 0 でも 取り消せる',()=>{
+  const S=reported(0,0);
+  assert.equal(canUndo(S,'jishu'),true);
+  assert.equal(undoSpent(S,'jishu'),false);
+  assert.equal(undoReport(S,'jishu'),true);
+  assert.equal(S.coin,0);
+});
+test('エサを食べたあとは undoSpent も false（こいん の一言は出さない）',()=>{
+  const S=reported(0,1);S.inv={};
+  assert.equal(undoSpent(S,'jishu'),false);
 });
 test('古い undo：c の無い項目では coin は変わらない',()=>{
   const S=reported(5);

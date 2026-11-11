@@ -165,10 +165,24 @@ export function pickLine(key,S,d,rnd){
 
 /* できたこと の取り消し：その日の報告で、もらったエサをまだ食べていないときだけ（最後の 1 回分を戻す）。
    n＝報告した直後のそのエサの数。いまの数が n より少なければ、同じ種類を食べたので戻さない（前の日の残りがあっても） */
-function lastUndo(S,tid){
+/* もらった こいん（0〜MAX_GRANT。c の無い古い項目は 0） */
+function grantOf(u){const c=Math.floor(Number(u.c));return isFinite(c)?Math.min(MAX_GRANT,Math.max(0,c)):0;}
+/* エサの条件だけ見た 最後の回（無ければ -1） */
+function lastFed(S,tid){
   const u=S.undo||[];
   for(let i=u.length-1;i>=0;i--) if(u[i].t===tid){const have=S.inv[u[i].f]||0;return have>0&&have>=u[i].n?i:-1;}
   return -1;
+}
+/* もらった こいん を もう使っていたら（いまの こいん が足りなければ）戻さない。
+   戻すと 報告→かう→取り消し で 何度でも買えてしまうため */
+function lastUndo(S,tid){
+  const i=lastFed(S,tid);
+  return i>=0&&grantOf(S.undo[i])>coinOf(S)?-1:i;
+}
+/** こいん を使ったせい だけで 取り消せないとき true（「こいん を つかったから もどせないよ」を出す） */
+export function undoSpent(S,tid){
+  const i=lastFed(S,tid);
+  return i>=0&&grantOf(S.undo[i])>coinOf(S);
 }
 /* 戻す回の名前（はみがきは あさ／よる を出す） */
 export function undoLabel(S,tid){
@@ -183,9 +197,8 @@ export function undoReport(S,tid){
   if((S.cnt[u.k]||0)>1)S.cnt[u.k]--;else delete S.cnt[u.k];
   if(S.inv[u.f]>1)S.inv[u.f]--;else delete S.inv[u.f];
   if(u.t==='lesson')S.boostUntil=u.b;
-  /* もらった こいんも戻す。もう使っていたら 0 で止める（借金にしない）。c の無い古い項目は 0 */
-  const c=Math.floor(Number(u.c));
-  S.coin=Math.max(0,coinOf(S)-(isFinite(c)?Math.min(MAX_GRANT,Math.max(0,c)):0));
+  /* もらった こいんも戻す（使っていたら lastUndo で断っている。念のため 0 で止める＝借金にしない） */
+  S.coin=Math.max(0,coinOf(S)-grantOf(u));
   return true;
 }
 /* こいん：報告でもらう。amount を 0〜20 の整数に丸めて足し、999999 で止める。実際に増えた数を返す */

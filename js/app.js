@@ -1,6 +1,6 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
 import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES,SONG} from './data.js';
-import {dayKey,band,isNight,asleep,nightKey,minLabel,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine,canUndo,undoReport,undoLabel,taskLimit,secretLeft,grantCoin} from './rules.js';
+import {dayKey,band,isNight,asleep,nightKey,minLabel,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine,canUndo,undoReport,undoLabel,undoSpent,taskLimit,secretLeft,grantCoin} from './rules.js';
 import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
 import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
@@ -74,6 +74,8 @@ $('#modal').addEventListener('click',e=>{if(e.target===$('#modal')&&modalDismiss
 function confirmTask(id){
   ensureDay();
   const t=TASKS.find(x=>x.id===id);const st=taskState(t,S,new Date()),undo=canUndo(S,t.id);
+  /* こいん を もう使ったので戻せない：ひとことだけ（借金にも 買い直しの くりかえしにも しない） */
+  if(!st.ok&&!undo&&undoSpent(S,t.id)){sfx('pop');say('こいん を つかったから もどせないよ');return;}
   if(!st.ok&&!undo)return;
   /* もう報告できない（済んだ）けれど、エサがまだトレイにある → 取り消しだけ聞く */
   if(!st.ok){
@@ -86,7 +88,7 @@ function confirmTask(id){
   const label=t.id==='hamigaki'?(st.slot==='am'?'あさの はみがき':'よるの はみがき'):t.label;
   openModal(`<div class="center"><div class="big">${t.icon}</div><p class="q">${label} できた？</p>
     <div class="btns"><button class="btn" data-act="yes">できた！</button><button class="btn ghost" data-act="no">まだ</button></div>
-    ${undo?`<div class="btns"><button class="btn small ghost" data-act="undo">↩️ ${t.id==='hamigaki'?undoLabel(S,t.id)+' を もどす':'まちがえた（もどす）'}</button></div>`:''}</div>`,
+    ${undo?`<div class="btns"><button class="btn small ghost" data-act="undo">↩️ ${t.id==='hamigaki'?undoLabel(S,t.id)+' を もどす':'まちがえた（もどす）'}</button></div>`:undoSpent(S,t.id)?`<p class="sub">こいん を つかったから もどせないよ</p>`:''}</div>`,
     act=>{closeModal();if(act==='yes')report(t);else if(act==='undo')cancelReport(t);},true);
 }
 /* 取り消し：その日の最後の報告を戻し、もらったエサも 1 つ戻す（エサをあげる前だけ） */
@@ -388,7 +390,7 @@ function render(){
     else if(t.id==='hamigaki'){dots=`<span class="dot ${S.cnt.hamigaki_am?'on':''}"></span>あさ <span class="dot ${S.cnt.hamigaki_pm?'on':''}"></span>よる`;}
     else{for(let i=0;i<taskLimit(t,S);i++)dots+=`<span class="dot ${i<(S.cnt[t.id]||0)?'on':''}"></span>`;}
     /* 済んでいても、取り消せる間は押せる（見た目は済んだまま） */
-    const off=!st.ok&&!canUndo(S,t.id);
+    const off=!st.ok&&!canUndo(S,t.id)&&!undoSpent(S,t.id); // こいん を使って戻せないときも押せる（ひとこと を出す）
     return `<button class="task${!st.ok&&!off?' done':''}" data-task="${t.id}" aria-label="${t.label}" ${off?'disabled':''}><span class="tf${t.id===mark.task?' stamp':''}">${tf}</span><span class="ti">${t.icon}</span><span class="tl">${t.short}</span><span class="td">${dots}</span></button>`;
   }).join('');
   mark={};

@@ -2,7 +2,7 @@
 // ファイルを文字列として読むだけ。DOM は使わない。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,readdirSync} from 'node:fs';
 
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const APP=read('js/app.js'),CSS=read('css/style.css'),HTML=read('index.html');
@@ -92,4 +92,48 @@ test('こいんの見た目（.coin と 0.5 秒の coinpop）がある',()=>{
   assert.ok(/\.coin\{/.test(CSS),'.coin');
   assert.ok(/\.coin\.coinpop\{animation:coinpop \.5s/.test(CSS),'.coin.coinpop');
   assert.ok(CSS.includes('@keyframes coinpop'),'@keyframes coinpop');
+});
+
+/* ---- 版とオフライン用キャッシュ ---- */
+const SW=read('sw.js');
+/* sw.js の ASSETS 配列を文字列の一覧として取り出す */
+function swAssets(){
+  const m=SW.match(/const ASSETS\s*=\s*\[([\s\S]*?)\];/);
+  assert.ok(m,'sw.js に ASSETS が無い');
+  return [...m[1].matchAll(/'([^']*)'/g)].map(x=>x[1]);
+}
+/* js/app.js から import・export from・import() をたどり、実行時に読み込まれうる js をすべて集める（コメント内の型注釈は除く） */
+function reachable(){
+  const seen=new Set(),todo=['app.js'];
+  while(todo.length){
+    const f=todo.pop();if(seen.has(f))continue;seen.add(f);
+    const src=read('js/'+f).replace(/\/\*[\s\S]*?\*\//g,'').replace(/^\s*\/\/.*$/gm,'');
+    for(const m of src.matchAll(/(?:^|\n)\s*(?:import|export)\s[^;]*?from\s*'\.\/([^']+)'/g))todo.push(m[1]);
+    for(const m of src.matchAll(/\bimport\(\s*'\.\/([^']+)'\s*\)/g))todo.push(m[1]);
+  }
+  return [...seen];
+}
+
+test('版は v2.6.0（sw.js の VERSION と app.js の APP_VERSION）',()=>{
+  assert.ok(/const VERSION = 'v2\.6\.0';/.test(SW),'sw.js VERSION');
+  assert.ok(APP.includes("const APP_VERSION='v2.6.0';"),'app.js APP_VERSION');
+});
+
+test('sw.js の ASSETS に app.js から読み込まれる js がすべてある',()=>{
+  const a=new Set(swAssets()),r=reachable();
+  for(const f of ['room-data.js','room-edit.js','room-shop.js','room-ui.js','room-ui-shop.js','room-ui-edit.js','room-art-kit.js','room-art-a.js','room-art-b.js','room-art-c.js'])
+    assert.ok(r.includes(f),'app.js からたどれない: '+f);
+  for(const f of r)assert.ok(a.has('./js/'+f),'ASSETS に無い: ./js/'+f);
+  for(const f of readdirSync(new URL('../js/',import.meta.url)).filter(n=>n.endsWith('.js')))
+    assert.ok(a.has('./js/'+f),'ASSETS に無い: ./js/'+f);
+});
+
+test('sw.js の ASSETS に dev/・tests/ は入れない。重複せず、どれも実在する',()=>{
+  const list=swAssets();
+  for(const u of list)assert.ok(!/(^|\/)(dev|tests|docs|\.superpowers|\.playwright-mcp)\//.test(u),'入れてはいけない: '+u);
+  assert.equal(new Set(list).size,list.length,'重複');
+  for(const u of list)if(u!=='./'){
+    let ok=true;try{readFileSync(new URL('../'+u.slice(2),import.meta.url));}catch{ok=false;}
+    assert.ok(ok,'ファイルが無い: '+u);
+  }
 });

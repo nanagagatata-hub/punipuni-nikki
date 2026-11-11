@@ -2,10 +2,12 @@
 // アプリ本体をキャッシュし、オフラインでも起動できるようにする。
 // ファイルを変更したら VERSION を必ず上げること（上げないと端末に古い版が残る）。
 // install では HTTP キャッシュを通さずに取得する（古い版と新しい版のファイルが混ざらないように）。
-const VERSION = 'v2.5.1';
+const VERSION = 'v2.6.0';
 const CACHE = 'punipuni-' + VERSION;
 const ASSETS = [
   './', './index.html', './css/style.css', './js/app.js', './js/data.js', './js/rules.js', './js/state.js', './js/art.js', './js/sound.js', './js/room.js', './js/room-ai.js', './js/room-art.js',
+  './js/room-data.js', './js/room-edit.js', './js/room-shop.js', './js/room-ui.js', './js/room-ui-shop.js', './js/room-ui-edit.js',
+  './js/room-art-kit.js', './js/room-art-a.js', './js/room-art-b.js', './js/room-art-c.js',
   './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'
 ];

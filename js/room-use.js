@@ -99,9 +99,9 @@ export function useSpot(room,index){
   if(!s)return null;
   if(u.spot==='on')return {...base,stand:cell(s),at:center,lift:u.seat,face:0};
   if(u.spot==='in'){
-    // 入口から足あとの方へ 0.4 マス入る
+    // 入口から足あとの方へ 0.4 マス入る。のぞく ときは こちら（正面）を向く
     const m=mid(s);
-    return {...base,stand:cell(s),at:{x:m.x+s.nx*.4,y:m.y+s.ny*.4},lift:u.seat,face:toward(s)};
+    return {...base,stand:cell(s),at:{x:m.x+s.nx*.4,y:m.y+s.ny*.4},lift:u.seat,face:0};
   }
   return {...base,stand:cell(s),at:mid(s),lift:0,face:toward(s)};
 }

@@ -93,6 +93,7 @@ test('てんと（in）：at は stand から足あとへ 0.4 マス',()=>{
   assert.equal(s.stand.y,4);
   assert.ok(Math.abs(Math.hypot(s.at.x-(s.stand.x+.5),s.at.y-(s.stand.y+.5))-.4)<1e-9);
   assert.ok(s.at.y<s.stand.y+.5);
+  assert.equal(s.face,0); // のぞく ときは こちらを向く
 });
 test('useSpot：範囲外・知らない ID は null、roomUses は置いた順',()=>{
   const R=room(6,[{id:'table',x:0,y:0,r:0},{id:'nope',x:3,y:3,r:0},{id:'plush',x:4,y:4,r:0}]);

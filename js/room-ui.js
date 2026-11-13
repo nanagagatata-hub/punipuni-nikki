@@ -31,7 +31,9 @@ function showCoin(){
   const S=host.getS(),n=Math.max(0,Math.floor(Number(S.coin))||0);
   for(const id of ['roomCoin','shopCoin']){
     const el=$(id);if(!el)continue;
-    el.textContent='🪙 '+n;el.setAttribute('aria-label','こいん '+n+' まい');
+    el.textContent='';
+    const im=document.createElement('img');im.className='ico';im.alt='';im.draggable=false;im.src='./icons/ui/coin.webp';
+    el.append(im,' '+n);el.setAttribute('aria-label','こいん '+n+' まい');
   }
 }
 

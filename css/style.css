@@ -160,6 +160,12 @@ img,svg{max-width:100%}
 .ti .ico{width:1.55em;height:1.55em}
 .tf .ico{width:1.35em;height:1.35em}
 .ico.inl{width:1.5em;height:1.5em;vertical-align:-.4em}
+/* ヘッダー・ボタン・つよさ の小さなイラスト */
+.pill .ico{width:1.55em;height:1.55em;margin-top:-.2em;margin-bottom:-.2em}
+.coin .ico{width:1.5em;height:1.5em;margin-top:-.2em;margin-bottom:-.2em}
+.gear .ico{display:block;margin:0 auto;width:1.45em;height:1.45em}
+.speak .ico{display:block;margin:0 auto;width:1.3em;height:1.3em}
+.prow .ico{width:1.5em;height:1.5em}
 .q{font-size:26px;font-weight:900;margin:12px 0 6px}
 .sub{font-size:15px;color:var(--soft);line-height:1.6;margin:4px 0;text-align:left}
 .center .sub{text-align:center}

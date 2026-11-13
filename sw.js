@@ -2,11 +2,12 @@
 // アプリ本体をキャッシュし、オフラインでも起動できるようにする。
 // ファイルを変更したら VERSION を必ず上げること（上げないと端末に古い版が残る）。
 // install では HTTP キャッシュを通さずに取得する（古い版と新しい版のファイルが混ざらないように）。
-const VERSION = 'v2.7.2';
+const VERSION = 'v2.7.3';
 const CACHE = 'punipuni-' + VERSION;
-// タスク・エサのイラスト（icons/ui/<id>.webp）。js/data.js の TASKS・FOODS の id と同じ
+// タスク・エサ・ボタンなどのイラスト（icons/ui/<名前>.webp）。前半は js/data.js の TASKS・FOODS の id と同じ
 const UI_ICONS = ['lesson', 'jishu', 'hamigaki', 'yasai', 'ofuro', 'dryer', 'manners', 'katazuke', 'hayane', 'hayaoki',
-  'nikuman', 'kotoba', 'ame', 'soup', 'purin', 'cookie', 'milk', 'pan', 'candy', 'parfait'].map(id => './icons/ui/' + id + '.webp');
+  'nikuman', 'kotoba', 'ame', 'soup', 'purin', 'cookie', 'milk', 'pan', 'candy', 'parfait',
+  'coin', 'zukan', 'oheya', 'gear', 'kashikosa', 'kirei', 'genki', 'hokahoka', 'omise', 'moyougae', 'yomiage'].map(id => './icons/ui/' + id + '.webp');
 const ASSETS = [
   './', './index.html', './css/style.css', './js/app.js', './js/data.js', './js/rules.js', './js/state.js', './js/art.js', './js/sound.js', './js/room.js', './js/room-ai.js', './js/room-art.js',
   './js/room-data.js', './js/room-edit.js', './js/room-shop.js', './js/room-ui.js', './js/room-ui-shop.js', './js/room-ui-edit.js', './js/room-use.js',

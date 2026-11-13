@@ -6,7 +6,7 @@ import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
 import {speak,sfx,setSound,unlock,sing} from './sound.js';
 import {initRoomUI,openRoom,isRoomOpen,refreshRoom,roomPoke} from './room-ui.js';
-const APP_VERSION='v2.7.2'; // sw.js の VERSION と同じ値にそろえる
+const APP_VERSION='v2.7.3'; // sw.js の VERSION と同じ値にそろえる
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -14,6 +14,10 @@ const rnd=a=>a[Math.floor(Math.random()*a.length)];
 /* タスク・エサのイラスト（icons/ui/<id>.webp）。id は TASKS・FOODS の固定のキーだけを渡す（利用者の入力は入れない） */
 const icoUrl=id=>`./icons/ui/${id}.webp`;
 const ico=(id,cls='ico')=>`<img class="${cls}" src="${icoUrl(id)}" alt="" draggable="false">`;
+/* つよさ の4つ（PARAMS の id → icons/ui の名前） */
+const PARAM_IMG={ka:'kashikosa',ki:'kirei',ge:'genki',ho:'hokahoka'};
+/* こいんの表示（絵＋数字）。数字は textContent 側で入れる */
+function coinInto(el,n){el.textContent='';const im=document.createElement('img');im.className='ico';im.alt='';im.draggable=false;im.src=icoUrl('coin');el.append(im,' '+n);}
 
 /* 保存データの上書き事故を防ぐ。
    この画面が最後に読んだ／書いた保存文字列を lastRaw に覚えておき、保存の前に localStorage と比べる。
@@ -372,7 +376,7 @@ let shownCoin=null;
 function setCoin(n){
   const el=$('#coin');if(!el)return;
   n=Math.max(0,Math.floor(Number(n))||0);
-  el.textContent='🪙 '+n;el.setAttribute('aria-label','こいん '+n+' まい');
+  coinInto(el,n);el.setAttribute('aria-label','こいん '+n+' まい');
   if(shownCoin!=null&&n>shownCoin)replay(el,'coinpop');
   shownCoin=n;
 }
@@ -420,7 +424,7 @@ function render(){
   }).join('');
   mark={};
   const mx=Math.max(10,...PARAMS.map(p=>S.p[p[0]]));
-  $('#params').innerHTML=PARAMS.map(p=>`<div class="prow"><span>${p[1]}</span><span>${p[2]}</span><div class="bar"><i data-w="${S.p[p[0]]/mx*100}"></i></div><b>${Math.floor(S.p[p[0]])}</b></div>`).join('');
+  $('#params').innerHTML=PARAMS.map(p=>`<div class="prow"><span>${PARAM_IMG[p[0]]?ico(PARAM_IMG[p[0]]):p[1]}</span><span>${p[2]}</span><div class="bar"><i data-w="${S.p[p[0]]/mx*100}"></i></div><b>${Math.floor(S.p[p[0]])}</b></div>`).join('');
     document.querySelectorAll('[data-w]').forEach(el=>{el.style.width=Math.max(0,Math.min(100,+el.dataset.w||0))+'%';});
   renderBubble();
   setCoin(S.coin);

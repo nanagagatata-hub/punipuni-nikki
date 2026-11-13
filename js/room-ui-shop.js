@@ -10,6 +10,15 @@ import {itemSVG,patternSVG} from './room-art.js';
 
 const $=id=>document.getElementById(id);
 const COIN='🪙 ';
+/** 文の中の「🪙 」を、こいんの絵（icons/ui/coin.webp）に置き換えて入れる。残りの文字は textContent 相当（テキストノード）で入れる */
+function setCoinText(el,str){
+  const nodes=[];
+  String(str).split(COIN).forEach((part,i)=>{
+    if(i>0){const im=document.createElement('img');im.className='ico';im.alt='';im.draggable=false;im.src='./icons/ui/coin.webp';nodes.push(im,' ');}
+    if(part)nodes.push(part);
+  });
+  el.replaceChildren(...nodes);
+}
 /** おみせ を開いている間 さわれなくする、おへや の部分 */
 const BEHIND=['roomStage','shopBtn','editBtn','.rbubble'];
 
@@ -84,7 +93,7 @@ function renderCards(){
     b.disabled=c.state!=='ok';
     b.appendChild(artEl(c.id));
     const nm=document.createElement('span');nm.className='sname';nm.textContent=c.name;b.appendChild(nm);
-    const note=document.createElement('span');note.className='snote';note.textContent=noteOf(c);b.appendChild(note);
+    const note=document.createElement('span');note.className='snote';setCoinText(note,noteOf(c));b.appendChild(note);
     if(cat==='kagu'&&c.have>0&&c.state==='ok'){
       const h=document.createElement('span');h.className='shave';h.textContent='もってる '+c.have;b.appendChild(h);
     }
@@ -104,7 +113,7 @@ function ask(id){
   const q=document.createElement('span');q.className='sask';q.textContent='これを かう？';
   const n=document.createElement('span');n.className='sname';n.textContent=c.name;
   $('shopConfirmName').replaceChildren(q,n);
-  $('shopConfirmPrice').textContent=COIN+c.price;
+  setCoinText($('shopConfirmPrice'),COIN+c.price);
   $('shopBuy').disabled=false;
   $('shopConfirm').hidden=false;
   $('shopCards').toggleAttribute('inert',true);

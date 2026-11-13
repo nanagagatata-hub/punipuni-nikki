@@ -6,7 +6,7 @@ import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
 import {speak,sfx,setSound,unlock,sing} from './sound.js';
 import {initRoomUI,openRoom,isRoomOpen,refreshRoom,roomPoke} from './room-ui.js';
-const APP_VERSION='v2.7.3'; // sw.js の VERSION と同じ値にそろえる
+const APP_VERSION='v2.7.4'; // sw.js の VERSION と同じ値にそろえる
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -391,16 +391,16 @@ function render(){
   const bd=band(new Date(),S.cfg);$('#screen').className='screen t-'+bd;
   if(sceneBand!==bd){$('#scene').innerHTML=sceneSVG(bd);sceneBand=bd;}
   $('#gauges').innerHTML=S.stage===0?`<span class="glabel">たまご を あたためよう</span>`:
-    `<div class="gauge"><span class="glabel">おなか</span>${icons('🍙',S.hunger,lastG?lastG.h:S.hunger)}</div><div class="gauge"><span class="glabel">ごきげん</span>${icons('🌸',S.mood,lastG?lastG.m:S.mood)}</div>`;
+    `<div class="gauge"><span class="glabel">おなか</span>${icons(ico('onaka'),S.hunger,lastG?lastG.h:S.hunger)}</div><div class="gauge"><span class="glabel">ごきげん</span>${icons(ico('gokigen'),S.mood,lastG?lastG.m:S.mood)}</div>`;
   lastG={h:S.hunger,m:S.mood};
   let b='';
-  if(now<S.boostUntil)b+=`<span class="badge">🚀 ぐんぐんたいむ あと ${Math.ceil((S.boostUntil-now)/H)}じかん</span>`;
-  if(S.sick)b+=`<span class="badge sick">🤒 びょうき：ごはん あと ${2-S.cure}こ で なおる</span>`;
-  if(sleeping)b+=`<span class="badge">💤 ねんね ちゅう</span>`;
+  if(now<S.boostUntil)b+=`<span class="badge">${ico('gungun','ico inl')} ぐんぐんたいむ あと ${Math.ceil((S.boostUntil-now)/H)}じかん</span>`;
+  if(S.sick)b+=`<span class="badge sick">${ico('byouki','ico inl')} びょうき：ごはん あと ${2-S.cure}こ で なおる</span>`;
+  if(sleeping)b+=`<span class="badge">${ico('nenne','ico inl')} ねんね ちゅう</span>`;
   const night=isNight(new Date(now),S.cfg);
-  if(night&&now<S.tempUntil)b+=`<span class="badge">⏰ あと ${minLabel(Math.ceil((S.tempUntil-now)/60e3))} おきてるよ</span>`;
-  else if(night&&S.cfg.tempWake&&S.tempNight!==nightKey(now,S.cfg))b+=`<button class="badge wakebtn" id="tempWake">⏰ ちょっとだけ おきて</button>`;
-  if(farewellReady(S,now))b+=`<span class="badge letter">💌 ${esc(S.name)} が なにか いいたそう</span>`;
+  if(night&&now<S.tempUntil)b+=`<span class="badge">${ico('tokei','ico inl')} あと ${minLabel(Math.ceil((S.tempUntil-now)/60e3))} おきてるよ</span>`;
+  else if(night&&S.cfg.tempWake&&S.tempNight!==nightKey(now,S.cfg))b+=`<button class="badge wakebtn" id="tempWake">${ico('tokei','ico inl')} ちょっとだけ おきて</button>`;
+  if(farewellReady(S,now))b+=`<span class="badge letter">${ico('otegami','ico inl')} ${esc(S.name)} が なにか いいたそう</span>`;
   $('#badges').innerHTML=b;
   if(S.stage<3){const pct=Math.min(100,(S.pts-TH[S.stage])/(TH[S.stage+1]-TH[S.stage])*100);
     $('#growth').innerHTML=`${STAGE[S.stage]}　つぎ の しんか まで<div class="bar"><i data-w="${pct}"></i></div>`;}
@@ -414,7 +414,7 @@ function render(){
     `<p class="empty">できたこと を おしえると<br>ごはん が もらえるよ</p>`;
   $('#tasks').innerHTML=TASKS.map(t=>{
     const st=taskState(t,S,new Date()),note=taskNote(t,S,st);
-    let dots='',tf=st.ok?ico(t.food):st.why==='done'?'💮':st.why==='day'?'📅':'⏰';
+    let dots='',tf=ico(st.ok?t.food:st.why==='done'?'hanamaru':st.why==='day'?'calendar':'tokei');
     if(note)dots=note;
     else if(t.id==='hamigaki'){dots=`<span class="dot ${S.cnt.hamigaki_am?'on':''}"></span>あさ <span class="dot ${S.cnt.hamigaki_pm?'on':''}"></span>よる`;}
     else{for(let i=0;i<taskLimit(t,S);i++)dots+=`<span class="dot ${i<(S.cnt[t.id]||0)?'on':''}"></span>`;}

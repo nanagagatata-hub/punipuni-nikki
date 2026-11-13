@@ -58,7 +58,7 @@ test('render() の最後で こいんの表示を更新する',()=>{
 test('ヘッダーの並びは こいん・ずかん・おへや・せってい',()=>{
   const i=HTML.indexOf('class="topbtns"');assert.ok(i>=0);
   const t=HTML.slice(i,HTML.indexOf('</header>',i));
-  const c=t.indexOf('<span class="coin" id="coin" role="status"></span>'),z=t.indexOf('id="zukanBtn"'),o=t.indexOf('<button class="pill" id="oheyaBtn">🏠 おへや</button>'),g=t.indexOf('id="gear"');
+  const c=t.indexOf('<span class="coin" id="coin" role="status"></span>'),z=t.indexOf('id="zukanBtn"'),o=t.indexOf('id="oheyaBtn"'),g=t.indexOf('id="gear"');
   assert.ok(c>=0&&z>=0&&o>=0&&g>=0,'#coin・#zukanBtn・#oheyaBtn・#gear がある');
   assert.ok(c<z&&z<o&&o<g,'順番');
 });
@@ -124,9 +124,21 @@ function reachable(){
   return [...seen];
 }
 
-test('版は v2.7.0（sw.js の VERSION と app.js の APP_VERSION）',()=>{
-  assert.ok(/const VERSION = 'v2\.7\.0';/.test(SW),'sw.js VERSION');
-  assert.ok(APP.includes("const APP_VERSION='v2.7.0';"),'app.js APP_VERSION');
+test('版は sw.js の VERSION と app.js の APP_VERSION が同じ（CLAUDE.md 約束10）',()=>{
+  const sv=SW.match(/const VERSION = '(v\d+\.\d+\.\d+)';/),av=APP.match(/const APP_VERSION='(v\d+\.\d+\.\d+)';/);
+  assert.ok(sv,'sw.js VERSION');assert.ok(av,'app.js APP_VERSION');
+  assert.equal(sv[1],av[1],'sw.js と app.js の版がそろっている');
+});
+
+test('icons/ui の画像と sw.js の UI_ICONS が一致し、ASSETS に入っている（絵が増えたら足し忘れない）',()=>{
+  const m=SW.match(/const UI_ICONS = \[([\s\S]*?)\]\.map/);
+  assert.ok(m,'sw.js に UI_ICONS が無い');
+  const listed=[...m[1].matchAll(/'([a-z0-9-]+)'/g)].map(x=>x[1]);
+  const files=readdirSync(new URL('../icons/ui/',import.meta.url)).filter(f=>f.endsWith('.webp')).map(f=>f.replace(/\.webp$/,''));
+  assert.ok(files.length>0,'icons/ui に画像がある');
+  assert.deepEqual([...listed].sort(),[...files].sort(),'UI_ICONS と icons/ui の中身が同じ');
+  assert.equal(new Set(listed).size,listed.length,'UI_ICONS に重複がない');
+  assert.ok(/\.\.\.UI_ICONS/.test(SW),'ASSETS に ...UI_ICONS がある');
 });
 
 test('sw.js の ASSETS に 段階4 の room-use.js・room-fx.js がある',()=>{

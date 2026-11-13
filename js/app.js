@@ -1,20 +1,42 @@
 // ぷにぷに にっき 本体（状態・描画・操作）
 import {H,TH,STAGE,WD,TASKS,FOODS,PARAMS,FORMS,ZORDER,WORDS,PHRASES,LINES,SONG} from './data.js';
 import {dayKey,band,isNight,asleep,nightKey,minLabel,taskState,taskNote,decay,afterFeed,chooseForm,finalDue,farewellReady,look,pickLine,canUndo,undoReport,undoLabel,undoSpent,taskLimit,secretLeft,grantCoin} from './rules.js';
-import {KEY,DEF,loadState,encodeState,decodeState,cleanCfg} from './state.js';
+import {KEY,DEF,sanitize,loadState,encodeState,decodeState,cleanCfg} from './state.js';
 import {petSVG,sceneSVG} from './art.js';
 let sceneBand='';
 import {speak,sfx,setSound,unlock,sing} from './sound.js';
 import {initRoomUI,openRoom,isRoomOpen,refreshRoom,roomPoke} from './room-ui.js';
-const APP_VERSION='v2.7.0'; // sw.js の VERSION と同じ値にそろえる
+const APP_VERSION='v2.7.2'; // sw.js の VERSION と同じ値にそろえる
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rnd=a=>a[Math.floor(Math.random()*a.length)];
+/* タスク・エサのイラスト（icons/ui/<id>.webp）。id は TASKS・FOODS の固定のキーだけを渡す（利用者の入力は入れない） */
+const icoUrl=id=>`./icons/ui/${id}.webp`;
+const ico=(id,cls='ico')=>`<img class="${cls}" src="${icoUrl(id)}" alt="" draggable="false">`;
 
-function load(){try{return loadState(localStorage);}catch(e){return DEF();}}
-
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+/* 保存データの上書き事故を防ぐ。
+   この画面が最後に読んだ／書いた保存文字列を lastRaw に覚えておき、保存の前に localStorage と比べる。
+   違っていたら「ほかの画面（別タブ・何日も眠っていた古い画面など）が新しいデータを書いた」ので、
+   古い S で上書きせずに新しいデータを取り込む（以前は古い画面が前面に戻ると何日も前の状態に戻っていた） */
+let lastRaw=null;
+function readRaw(){try{return localStorage.getItem(KEY);}catch(e){return null;}}
+function load(){lastRaw=readRaw();try{return loadState(localStorage);}catch(e){return DEF();}}
+/* ほかの画面が書いた保存データを読めなかった（新しい版の形式・壊れている）ときは、この画面からは書き込まない。
+   読めないデータを初期データで上書きして消さないため。復元・リセット（save(true)）だけは書く */
+let readonly=false;
+/* ほかの画面が書いたデータがあれば S に取り込む。取り込んだら true */
+function sync(){
+  const raw=readRaw();
+  if(raw==null||raw===lastRaw)return false;
+  let next;try{next=sanitize(JSON.parse(raw));}catch(e){readonly=true;return false;}
+  S=next;lastRaw=raw;readonly=false;setSound(S.sound);return true;
+}
+/* force：復元・リセットなど、今の S を必ず書くとき */
+function save(force){
+  if(!force&&(sync()||readonly))return;
+  try{const raw=JSON.stringify(S);localStorage.setItem(KEY,raw);lastRaw=raw;readonly=false;}catch(e){}
+}
 
 let S=load();
 let bubble={ja:'',zh:''};
@@ -46,7 +68,10 @@ function sayWord(pre){const w=Math.random()<.5?rnd(WORDS):rnd(PHRASES);say(`${pr
 function fxBurst(icon,from){
   const r=(from||(isRoomOpen()?$('#roomPet'):$('#pet'))).getBoundingClientRect(),list=Array.isArray(icon)?icon:[icon];
   for(let i=0;i<5;i++){
-    const s=document.createElement('span');s.className='fx';s.textContent=list[i%list.length];
+    const s=document.createElement('span'),it=list[i%list.length];s.className='fx';
+    /* 'img:<id>' なら絵（icons/ui）、そうでなければ絵文字 */
+    if(typeof it==='string'&&it.startsWith('img:')){const im=document.createElement('img');im.className='ico';im.alt='';im.draggable=false;im.src=icoUrl(it.slice(4));s.appendChild(im);}
+    else s.textContent=it;
     s.style.left=(r.left+r.width/2-17+(Math.random()*80-40))+'px';
     s.style.top=(r.top+r.height*.45)+'px';
     s.style.setProperty('--dx',(Math.random()*120-60)+'px');
@@ -79,14 +104,14 @@ function confirmTask(id){
   if(!st.ok&&!undo)return;
   /* もう報告できない（済んだ）けれど、エサがまだトレイにある → 取り消しだけ聞く */
   if(!st.ok){
-    openModal(`<div class="center"><div class="big">${t.icon}</div><p class="q">まちがえちゃった？</p>
-      <p class="sub">${undoLabel(S,t.id)} を もどすと、もらった ${FOODS[t.food].icon} も もどるよ</p>
+    openModal(`<div class="center"><div class="big">${ico(t.id)}</div><p class="q">まちがえちゃった？</p>
+      <p class="sub">${undoLabel(S,t.id)} を もどすと、もらった ${ico(t.food,'ico inl')} も もどるよ</p>
       <div class="btns"><button class="btn" data-act="undo">↩️ もどす</button><button class="btn ghost" data-act="no">そのまま</button></div></div>`,
       act=>{closeModal();if(act==='undo')cancelReport(t);},true);
     return;
   }
   const label=t.id==='hamigaki'?(st.slot==='am'?'あさの はみがき':'よるの はみがき'):t.label;
-  openModal(`<div class="center"><div class="big">${t.icon}</div><p class="q">${label} できた？</p>
+  openModal(`<div class="center"><div class="big">${ico(t.id)}</div><p class="q">${label} できた？</p>
     <div class="btns"><button class="btn" data-act="yes">できた！</button><button class="btn ghost" data-act="no">まだ</button></div>
     ${undo?`<div class="btns"><button class="btn small ghost" data-act="undo">↩️ ${t.id==='hamigaki'?undoLabel(S,t.id)+' を もどす':'まちがえた（もどす）'}</button></div>`:undoSpent(S,t.id)?`<p class="sub">こいん を つかったから もどせないよ</p>`:''}</div>`,
     act=>{closeModal();if(act==='yes')report(t);else if(act==='undo')cancelReport(t);},true);
@@ -106,8 +131,8 @@ function report(t){
   S.undo.push({t:t.id,k:key,f:t.food,b:S.boostUntil,n:S.inv[t.food],c});if(S.undo.length>30)S.undo.shift();
   const f=FOODS[t.food];
   if(t.id==='lesson'){S.boostUntil=Date.now()+24*H;say(`すごい！${f.name} を もらったよ。ぐんぐんたいむ が はじまった！`);}
-  else say(`${f.name} を もらったよ！した の ${f.icon} を おして あげてね`);
-  lastInteract=Date.now();sfx('chime');fxBurst(f.icon);mark={task:t.id,food:t.food};save();render();
+  else say(`${f.name} を もらったよ！した の ごはん を おして あげてね`);
+  lastInteract=Date.now();sfx('chime');fxBurst('img:'+t.food);mark={task:t.id,food:t.food};save();render();
   fxBurst(['⭐','✨','💖'],document.querySelector(`[data-task="${t.id}"]`));
 }
 function feed(fid){
@@ -124,7 +149,7 @@ function feed(fid){
   }
   const mul=now<S.boostUntil?1.5:1;
   S.pts+=f.pt*mul;S.p[f.param]+=f.amt*mul;
-  sfx('munch');fxBurst(f.icon);setReact('happy');
+  sfx('munch');fxBurst('img:'+fid);setReact('happy');
   if(S.stage===0) say('たまごが ぽかぽか してきた…！');
   else if(fid==='kotoba'||fid==='nikuman') sayWord('もぐもぐ！');
   else say(line('eat'));
@@ -321,9 +346,9 @@ function openSettings(){
       if(act==='import'){
         let next;try{next=decodeState($('#codeIn').value);}catch(e){toast('コードが正しくありません。全体をコピーできているか確認してください');return;}
         if(!btn.dataset.armed){btn.dataset.armed='1';btn.textContent='今のデータを置き換えます。もう一度タップ';return;}
-        try{S=next;setSound(S.sound);save();closeModal();say('おかえり！データを もどしたよ');render();toast('復元しました');}catch(e){toast('コードが正しくありません。全体をコピーできているか確認してください');}}
+        try{S=next;setSound(S.sound);save(true);closeModal();say('おかえり！データを もどしたよ');render();toast('復元しました');}catch(e){toast('コードが正しくありません。全体をコピーできているか確認してください');}}
       if(act==='reset'){if(!btn.dataset.armed){btn.dataset.armed='1';btn.textContent='本当に消す？もう一度タップ';return;}
-        S=DEF();setSound(S.sound);save();closeModal();say('あたらしい たまご が きたよ！');render();toast('リセットしました');}
+        S=DEF();setSound(S.sound);save(true);closeModal();say('あたらしい たまご が きたよ！');render();toast('リセットしました');}
     },true);
 }
 
@@ -338,7 +363,7 @@ let mark={},lastG=null,lastPts=null,lastSnap=null;
 function flyFood(fid){
   const b=document.querySelector(`#tray [data-food="${fid}"]`);if(!b)return;
   const r=b.getBoundingClientRect(),p=$('#pet').getBoundingClientRect(),s=document.createElement('span');
-  s.className='flyfood';s.textContent=FOODS[fid].icon;s.style.left=(r.left+r.width/2-20)+'px';s.style.top=(r.top+r.height/2-24)+'px';
+  s.className='flyfood';{const im=document.createElement('img');im.className='ico';im.alt='';im.draggable=false;im.src=icoUrl(fid);s.appendChild(im);}s.style.left=(r.left+r.width/2-20)+'px';s.style.top=(r.top+r.height/2-24)+'px';
   s.style.setProperty('--tx',(p.left+p.width/2-r.left-r.width/2)+'px');s.style.setProperty('--ty',(p.top+p.height*.55-r.top-r.height/2)+'px');
   document.body.appendChild(s);setTimeout(()=>s.remove(),700);
 }
@@ -381,17 +406,17 @@ function render(){
   if(lastPts!=null&&S.pts>lastPts)replay($('#growth .bar'),'shine');
   lastPts=S.pts;
   const foods=Object.keys(FOODS).filter(k=>S.inv[k]>0);
-  $('#tray').innerHTML=foods.length?foods.map(k=>`<button class="food${k===mark.food?' popin':''}" data-food="${k}" aria-label="${FOODS[k].name} を あげる">${FOODS[k].icon}<span class="n">${S.inv[k]}</span></button>`).join(''):
+  $('#tray').innerHTML=foods.length?foods.map(k=>`<button class="food${k===mark.food?' popin':''}" data-food="${k}" aria-label="${FOODS[k].name} を あげる">${ico(k)}<span class="n">${S.inv[k]}</span></button>`).join(''):
     `<p class="empty">できたこと を おしえると<br>ごはん が もらえるよ</p>`;
   $('#tasks').innerHTML=TASKS.map(t=>{
     const st=taskState(t,S,new Date()),note=taskNote(t,S,st);
-    let dots='',tf=st.ok?FOODS[t.food].icon:st.why==='done'?'💮':st.why==='day'?'📅':'⏰';
+    let dots='',tf=st.ok?ico(t.food):st.why==='done'?'💮':st.why==='day'?'📅':'⏰';
     if(note)dots=note;
     else if(t.id==='hamigaki'){dots=`<span class="dot ${S.cnt.hamigaki_am?'on':''}"></span>あさ <span class="dot ${S.cnt.hamigaki_pm?'on':''}"></span>よる`;}
     else{for(let i=0;i<taskLimit(t,S);i++)dots+=`<span class="dot ${i<(S.cnt[t.id]||0)?'on':''}"></span>`;}
     /* 済んでいても、取り消せる間は押せる（見た目は済んだまま） */
     const off=!st.ok&&!canUndo(S,t.id)&&!undoSpent(S,t.id); // こいん を使って戻せないときも押せる（ひとこと を出す）
-    return `<button class="task${!st.ok&&!off?' done':''}" data-task="${t.id}" aria-label="${t.label}" ${off?'disabled':''}><span class="tf${t.id===mark.task?' stamp':''}">${tf}</span><span class="ti">${t.icon}</span><span class="tl">${t.short}</span><span class="td">${dots}</span></button>`;
+    return `<button class="task${!st.ok&&!off?' done':''}" data-task="${t.id}" aria-label="${t.label}" ${off?'disabled':''}><span class="tf${t.id===mark.task?' stamp':''}">${tf}</span><span class="ti">${ico(t.id)}</span><span class="tl">${t.short}</span><span class="td">${dots}</span></button>`;
   }).join('');
   mark={};
   const mx=Math.max(10,...PARAMS.map(p=>S.p[p[0]]));
@@ -455,7 +480,14 @@ gear.addEventListener('pointerdown',()=>{held=false;holdT=setTimeout(()=>{held=t
 ['pointerup','pointerleave','pointercancel'].forEach(ev=>gear.addEventListener(ev,()=>clearTimeout(holdT)));
 gear.addEventListener('click',()=>{if(!held)toast('おうちの ひと は ながおし してね');});
 gear.addEventListener('contextmenu',e=>e.preventDefault());
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick(Date.now());if(Date.now()-greetAt>=30*60e3)greet();save();render();}});
+/* ほかの画面が書いたデータを取り込む：別タブが保存した時・前面に戻った時（下）・戻る/進むで復帰した時・さわる直前 */
+window.addEventListener('storage',e=>{if(e.key===KEY&&sync())render();});
+window.addEventListener('pageshow',e=>{if(e.persisted&&sync())render();});
+document.addEventListener('pointerdown',()=>{if(sync())render();},true);
+/* キーボード・VoiceOver などの click（pointerdown が来ない）でも、操作で S を変える前に最新にそろえる。
+   ここでは描き直さない（押したボタンを消さないため。操作のあとで描き直される） */
+document.addEventListener('click',()=>{sync();},true);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){sync();tick(Date.now());if(Date.now()-greetAt>=30*60e3)greet();save();render();}});
 
 /* ---------- start ---------- */
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
@@ -479,4 +511,4 @@ tick(Date.now());
 greet();
 setSound(S.sound);
 save();render();
-setInterval(()=>{const n=Date.now();tick(n);idle(n);save();render();},30000);
+setInterval(()=>{const n=Date.now();sync();tick(n);idle(n);save();render();},30000);

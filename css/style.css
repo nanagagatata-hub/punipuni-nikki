@@ -153,6 +153,13 @@ img,svg{max-width:100%}
 .sheet h3{margin:18px 0 8px;font-size:18px;text-align:left}
 .sheet h3:first-child{margin-top:0}
 .big{font-size:80px;line-height:1.1}
+/* タスク・エサのイラスト（icons/ui）。大きさは まわりの font-size に合わせる */
+.ico{width:1.2em;height:1.2em;object-fit:contain;vertical-align:middle;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
+.ti .ico,.tf .ico,.food .ico,.big .ico,.fx .ico,.flyfood .ico{display:block;margin:0 auto}
+.big .ico{width:1.1em;height:1.1em}
+.ti .ico{width:1.55em;height:1.55em}
+.tf .ico{width:1.35em;height:1.35em}
+.ico.inl{width:1.5em;height:1.5em;vertical-align:-.4em}
 .q{font-size:26px;font-weight:900;margin:12px 0 6px}
 .sub{font-size:15px;color:var(--soft);line-height:1.6;margin:4px 0;text-align:left}
 .center .sub{text-align:center}
